@@ -1,0 +1,96 @@
+.commits {
+  padding: 20px;
+}
+
+.commits__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.commits__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dd-muted);
+}
+
+.commits__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The timeline rail behind the dots. */
+.commits__list::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 2px;
+  background: var(--dd-line);
+}
+
+.commit {
+  position: relative;
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  gap: 12px;
+}
+
+.commit__dot {
+  width: 12px;
+  height: 12px;
+  margin-top: 3px;
+  border: 2px solid var(--dd-muted);
+  border-radius: 50%;
+  background: var(--dd-card);
+}
+
+.commit__dot--ai {
+  border-color: var(--dd-blue-strong);
+  background: var(--dd-blue);
+}
+
+.commit__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.commit__subject {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.commit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.commit__meta code {
+  font-family: var(--dd-mono);
+}
+
+.commit__ai {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-weight: 700;
+}
+
+/* Long branches scroll inside the card so it stays beside the graphs. */
+.commits__list {
+  max-height: 420px;
+  overflow-y: auto;
+}

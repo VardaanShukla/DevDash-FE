@@ -1,0 +1,117 @@
+/* The sign-in form, inside the splash's sliding panel. */
+.login {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(380px, 100%);
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+.login--done {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.login h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.login__lead {
+  margin: -6px 0 4px;
+  color: var(--dd-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.login__field > span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.login__input {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+}
+
+.login__input:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+}
+
+.login__input input {
+  flex: 1;
+  min-width: 0;
+  padding: 13px 14px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.login__show {
+  margin-right: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login__show:hover {
+  color: var(--dd-ink);
+}
+
+.login__error {
+  margin: -4px 0 0;
+  color: var(--dd-del);
+  font-size: 13px;
+}
+
+.login__submit {
+  padding: 13px 16px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px -8px rgba(37, 99, 235, 0.7);
+}
+
+.login__submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
+}
+
+.login__hint {
+  margin: 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.login__hint code {
+  font-family: var(--dd-mono);
+  color: var(--dd-ink-soft);
+}

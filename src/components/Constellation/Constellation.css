@@ -1,0 +1,1235 @@
+/* The constellation screen: parts list, sky and details panel on one dark console. It is
+   always dark, in the light theme too, like the splash. */
+.cn {
+  --cn-ink: #e8f1f2;
+  --cn-soft: #a7bcc0;
+  --cn-muted: #66828a;
+  --cn-gold: #f5c76b;
+  --cn-teal: #5eead4;
+  --cn-violet: #c69ae8;
+  --cn-pink: #e58aa8;
+  --cn-panel: rgba(12, 30, 34, 0.72);
+  --cn-raise: rgba(255, 255, 255, 0.035);
+  --cn-line: rgba(140, 220, 210, 0.13);
+  --cn-line-strong: rgba(140, 220, 210, 0.28);
+  position: relative;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 340px;
+  gap: 12px;
+  min-height: 560px;
+  padding: 12px;
+  border-radius: 22px;
+  background: radial-gradient(ellipse 120% 90% at 50% 40%, #0a2629, #041110 70%);
+  color: var(--cn-ink);
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(120, 200, 190, 0.08);
+  isolation: isolate;
+  font-size: 13px;
+}
+
+.cn button {
+  font: inherit;
+}
+
+.cn h4 {
+  margin: 6px 2px 0;
+  color: var(--cn-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+/* Side panels. */
+.cn-rail,
+.cn-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid var(--cn-line);
+  border-radius: 16px;
+  background: var(--cn-panel);
+  backdrop-filter: blur(16px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 220, 210, 0.2) transparent;
+  animation: cn-rise 500ms ease 200ms both;
+}
+
+.cn-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--cn-line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--cn-muted);
+}
+
+.cn-search:focus-within {
+  border-color: rgba(94, 234, 212, 0.55);
+  color: var(--cn-teal);
+}
+
+.cn-search input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--cn-ink);
+  font: inherit;
+}
+
+.cn-search input::placeholder {
+  color: var(--cn-muted);
+}
+
+.cn-rail__filters {
+  display: flex;
+  gap: 6px;
+}
+
+.cn-chip {
+  padding: 5px 10px;
+  border: 1px solid var(--cn-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--cn-soft);
+  font-size: 12px !important;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.cn-chip:hover:not(:disabled) {
+  border-color: var(--cn-line-strong);
+  color: var(--cn-ink);
+}
+
+.cn-chip--on {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(94, 234, 212, 0.14);
+  color: var(--cn-ink);
+}
+
+.cn-chip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Rows used in every list on the screen. */
+.cn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-list__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: none;
+  color: var(--cn-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.cn-list__row:hover,
+.cn-list__row--hover {
+  background: rgba(94, 234, 212, 0.08);
+}
+
+.cn-list__row--on {
+  border-color: rgba(245, 199, 107, 0.55);
+  background: rgba(245, 199, 107, 0.1);
+}
+
+.cn-list__row--still {
+  cursor: default;
+  background: var(--cn-raise);
+}
+
+.cn-list__row--still:hover {
+  background: var(--cn-raise);
+}
+
+.cn-list__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cn-list__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-list__label--mono {
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cn-list__row--hot .cn-list__label {
+  color: #fff3d6;
+}
+
+.cn-list__sub {
+  overflow: hidden;
+  color: var(--cn-muted);
+  font-family: var(--dd-mono);
+  font-size: 10.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-badge {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--cn-soft);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cn-badge--gold {
+  background: rgba(245, 199, 107, 0.14);
+  color: var(--cn-gold);
+}
+
+.cn-dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #fbe9ff, var(--cn-violet) 50%, #5a3a8f);
+}
+
+.cn-dot--hot {
+  background: radial-gradient(circle at 35% 35%, #fff0f4, var(--cn-pink) 50%, #7a2a4c);
+  box-shadow: 0 0 0 1.5px rgba(245, 199, 107, 0.8), 0 0 8px rgba(245, 199, 107, 0.6);
+}
+
+.cn-dot--sun {
+  background: radial-gradient(circle at 35% 35%, #fffbea, var(--cn-gold) 50%, #9b6a1c);
+  box-shadow: 0 0 8px var(--cn-gold);
+}
+
+.cn-dot--file {
+  width: 7px;
+  height: 7px;
+  background: var(--cn-teal);
+}
+
+.cn-dot--lit {
+  background: var(--cn-gold);
+  box-shadow: 0 0 6px var(--cn-gold);
+}
+
+.cn-meter {
+  flex: 0 0 54px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.cn-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--cn-teal), var(--cn-violet));
+}
+
+.cn-add {
+  color: #4ade80;
+}
+
+.cn-del {
+  color: #f87171;
+}
+
+/* The sky, in the middle. */
+.cn-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--cn-line);
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(36, 104, 102, 0.55), transparent 70%),
+    radial-gradient(ellipse 100% 90% at 50% 50%, #08272a, #031110 70%, #010504);
+  user-select: none;
+}
+
+.cn-sky {
+  position: absolute;
+  inset: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.cn-sky:active {
+  cursor: grabbing;
+}
+
+.cn-sky__world--fly {
+  transition: transform 820ms cubic-bezier(0.3, 0.7, 0.15, 1);
+}
+
+.cn-sky__drift {
+  transform-box: view-box;
+  animation: cn-drift 26s ease-in-out 2s infinite alternate;
+}
+
+.cn-sky__stars circle {
+  fill: #cfe9e6;
+}
+
+.cn-sky__faded {
+  opacity: 0.2;
+  transition: opacity 250ms ease;
+}
+
+.cn-sky__sun {
+  cursor: pointer;
+}
+
+.cn-sky__sun-ball {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-core 1000ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+.cn-sky__sun-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-fade 900ms ease both, cn-halo 5s ease-in-out 1s infinite;
+}
+
+.cn-sky__sun-ticks {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-fade 700ms ease 350ms both, cn-spin 60s linear infinite;
+}
+
+.cn-sky__sun-ticks line {
+  stroke: #ffe3a3;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.cn-sky__sun-ring {
+  fill: none;
+  stroke: var(--cn-gold);
+  stroke-opacity: 0.35;
+  stroke-dasharray: 1 4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-fade 600ms ease 400ms both, cn-spin 40s linear reverse infinite;
+}
+
+.cn-sky__sun-name,
+.cn-sky__sun-count,
+.cn-sky__name,
+.cn-sky__share-text,
+.cn-sky__twig-label {
+  font-family: var(--dd-font);
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #031110;
+}
+
+.cn-sky__sun-name {
+  fill: var(--cn-ink);
+  font-size: calc(17px / var(--k, 1));
+  font-weight: 650;
+  stroke-width: calc(4px / var(--k, 1));
+  animation: cn-fade 600ms ease 600ms both;
+}
+
+.cn-sky__sun-count {
+  fill: var(--cn-gold);
+  font-size: calc(11.5px / var(--k, 1));
+  stroke-width: calc(3px / var(--k, 1));
+  animation: cn-fade 600ms ease 700ms both;
+}
+
+.cn-sky__grain {
+  fill: #b8fff2;
+  opacity: 0;
+  animation: cn-grain 1600ms cubic-bezier(0.1, 0.7, 0.3, 1) both;
+}
+
+.cn-sky__grain--gold {
+  fill: #ffe2a0;
+}
+
+.cn-sky__ray {
+  stroke: #fff2c8;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: cn-ray 900ms ease-out 120ms both;
+}
+
+.cn-sky__beam,
+.cn-sky__beam-glow,
+.cn-sky__edge {
+  fill: none;
+  stroke-dasharray: 1;
+  animation: cn-draw 700ms ease-out both;
+}
+
+.cn-sky__beam {
+  stroke: rgba(245, 210, 140, 0.3);
+}
+
+.cn-sky__beam--hot {
+  stroke: rgba(255, 228, 170, 0.9);
+  stroke-width: 1.6;
+}
+
+.cn-sky__beam-glow {
+  stroke: rgba(245, 199, 107, 0.08);
+  stroke-width: 5;
+  filter: url(#cn-beam);
+}
+
+.cn-sky__beam-glow--hot {
+  stroke: rgba(245, 199, 107, 0.38);
+  stroke-width: 8;
+}
+
+.cn-sky__edge {
+  stroke: rgba(94, 234, 212, 0.32);
+  animation-duration: 900ms;
+  transition: stroke 200ms ease;
+}
+
+.cn-sky__edge--lit {
+  stroke: rgba(94, 234, 212, 0.95);
+}
+
+.cn-sky__comet circle {
+  fill: #c9fff5;
+}
+
+.cn-sky__comet--gold circle {
+  fill: #ffe7a8;
+}
+
+.cn-sky__node {
+  cursor: pointer;
+  outline: none;
+  animation: cn-burst 950ms cubic-bezier(0.16, 0.9, 0.3, 1.15) both;
+}
+
+.cn-sky__tree {
+  animation: cn-fade 700ms ease both;
+}
+
+.cn-sky__orb {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 200ms ease;
+}
+
+.cn-sky__node:hover .cn-sky__orb,
+.cn-sky__node:focus-visible .cn-sky__orb,
+.cn-sky__node--open .cn-sky__orb {
+  transform: scale(1.15);
+}
+
+.cn-sky__shine {
+  fill: rgba(255, 255, 255, 0.55);
+  pointer-events: none;
+}
+
+.cn-sky__ring {
+  fill: none;
+  stroke: #e7d6ff;
+  stroke-opacity: 0.35;
+  stroke-dasharray: 1.5 3;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-spin 18s linear infinite;
+}
+
+.cn-sky__ring--hot {
+  stroke: var(--cn-gold);
+  stroke-opacity: 0.85;
+}
+
+.cn-sky__node:focus-visible .cn-sky__ring,
+.cn-sky__node--open .cn-sky__ring {
+  stroke: var(--cn-teal);
+  stroke-opacity: 1;
+  stroke-width: 1.4;
+  stroke-dasharray: none;
+}
+
+.cn-sky__twig {
+  stroke: rgba(160, 230, 220, 0.28);
+  stroke-width: 0.8;
+}
+
+.cn-sky__twig--lit {
+  stroke: rgba(245, 210, 140, 0.6);
+}
+
+.cn-sky__leaf {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: cn-twinkle 3.6s ease-in-out infinite;
+}
+
+.cn-sky__leaf-pad {
+  fill: transparent;
+}
+
+.cn-sky__leaf-hit {
+  cursor: pointer;
+}
+
+.cn-sky__leaf-hit:hover .cn-sky__leaf {
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.cn-sky__leaf-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.2;
+}
+
+/* Labels keep their size on screen however far the sky is zoomed. */
+.cn-sky__twig-label {
+  fill: var(--cn-soft);
+  font-size: calc(9px / var(--k, 1));
+  stroke-width: calc(2.5px / var(--k, 1));
+}
+
+.cn-sky__twig-label--lit {
+  fill: var(--cn-gold);
+  font-weight: 700;
+}
+
+.cn-sky__twig-label--open {
+  fill: var(--cn-ink);
+  font-size: calc(11px / var(--k, 1));
+}
+
+/* The close-up tree grows out of the orb. */
+.cn-sky__tree--open {
+  animation: cn-unfold 500ms cubic-bezier(0.2, 0.8, 0.2, 1.1) both;
+}
+
+.cn-sky__name,
+.cn-sky__share-text {
+  text-anchor: middle;
+}
+
+.cn-sky__name {
+  fill: var(--cn-ink);
+  font-size: calc(12.5px / var(--k, 1));
+  font-weight: 650;
+  stroke-width: calc(3px / var(--k, 1));
+}
+
+.cn-sky__share {
+  fill: rgba(8, 28, 30, 0.85);
+  stroke: rgba(140, 220, 210, 0.22);
+  stroke-width: 0.8;
+}
+
+.cn-sky__share--hot {
+  stroke: rgba(245, 199, 107, 0.7);
+}
+
+.cn-sky__share-text {
+  fill: var(--cn-soft);
+  font-size: 9px;
+  font-weight: 700;
+  stroke: none;
+}
+
+.cn-sky__node--hot .cn-sky__share-text {
+  fill: var(--cn-gold);
+}
+
+/* Floating controls over the sky. */
+.cn-tools {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  animation: cn-rise 500ms ease 900ms both;
+}
+
+.cn-tools > * {
+  pointer-events: auto;
+}
+
+.cn-tools__group,
+.cn-tools__parts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--cn-line);
+  border-radius: 11px;
+  background: var(--cn-panel);
+  backdrop-filter: blur(12px);
+}
+
+.cn-tools__group > button:not(.cn-chip) {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--cn-ink);
+  font-size: 17px !important;
+  cursor: pointer;
+}
+
+.cn-tools__group > button:not(.cn-chip):hover {
+  background: rgba(94, 234, 212, 0.14);
+}
+
+.cn-tools__group > span {
+  min-width: 44px;
+  color: var(--cn-soft);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.cn-tools__group .cn-chip {
+  border-color: transparent;
+}
+
+.cn-tools__parts {
+  display: none;
+  gap: 6px;
+  padding: 6px 12px;
+  color: var(--cn-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-hover {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 190px;
+  padding: 10px 12px;
+  border: 1px solid var(--cn-line-strong);
+  border-radius: 12px;
+  background: rgba(8, 26, 29, 0.92);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.8);
+  color: var(--cn-soft);
+  font-size: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  animation: cn-pop 150ms ease both;
+}
+
+.cn-hover--left {
+  transform: translate(-100%, -50%);
+}
+
+.cn-hover strong {
+  color: var(--cn-ink);
+  font-size: 13.5px;
+}
+
+.cn-hover__path {
+  color: var(--cn-muted);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+}
+
+.cn-hover__hot {
+  color: var(--cn-gold);
+  font-weight: 600;
+}
+
+.cn-hover em {
+  margin-top: 2px;
+  color: var(--cn-teal);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.cn-legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid var(--cn-line);
+  border-radius: 10px;
+  background: var(--cn-panel);
+  backdrop-filter: blur(12px);
+  color: var(--cn-soft);
+  font-size: 11px;
+  list-style: none;
+  animation: cn-rise 500ms ease 1s both;
+}
+
+.cn-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cn-legend__line {
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--cn-teal);
+  box-shadow: 0 0 6px var(--cn-teal);
+}
+
+.cn-hint {
+  margin: 0 4px 0 auto;
+  color: var(--cn-muted);
+  font-size: 11.5px;
+  pointer-events: none;
+}
+
+/* The details panel. */
+.cn-inspector__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: cn-slide 350ms ease both;
+}
+
+.cn-inspector__head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cn-inspector__head h3,
+.cn-inspector__part h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.cn-inspector__head code,
+.cn-inspector__part code {
+  color: var(--cn-muted);
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+.cn-inspector__eyebrow {
+  color: var(--cn-teal);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cn-inspector__back {
+  align-self: flex-start;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--cn-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--cn-soft);
+  font-size: 12px !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-inspector__back:hover {
+  border-color: var(--cn-line-strong);
+  color: var(--cn-ink);
+}
+
+.cn-inspector__part {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cn-inspector__part p {
+  margin: 3px 0 0;
+  color: var(--cn-soft);
+  font-size: 12.5px;
+}
+
+.cn-inspector__orb {
+  position: relative;
+  flex: none;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #fbf2ff, var(--cn-violet) 42%, #3b2c7a 82%);
+  box-shadow: 0 0 30px -4px rgba(198, 154, 232, 0.7);
+}
+
+.cn-inspector__orb--hot {
+  background: radial-gradient(circle at 36% 32%, #fff4f7, var(--cn-pink) 42%, #6a1f40 84%);
+  box-shadow: 0 0 30px -4px rgba(229, 138, 168, 0.75);
+}
+
+.cn-inspector__orb::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(200, 245, 235, 0.6) 0 1.2deg, transparent 1.2deg 5deg);
+  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
+  mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
+  animation: cn-spin 40s linear infinite;
+}
+
+.cn-inspector__note {
+  margin: 0;
+  padding: 2px;
+  color: var(--cn-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cn-inspector__open {
+  padding: 9px 14px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #5eead4, #2bb3a3);
+  color: #032421;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cn-inspector__open:hover {
+  filter: brightness(1.08);
+}
+
+.cn-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.cn-tiles__tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--cn-line);
+  border-radius: 12px;
+  background: var(--cn-raise);
+}
+
+.cn-tiles__tile dt {
+  color: var(--cn-muted);
+  font-size: 11px;
+}
+
+.cn-tiles__tile dd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cn-tiles__tile dd svg {
+  flex: none;
+  color: var(--cn-teal);
+}
+
+.cn-tiles__tile--gold dd,
+.cn-tiles__tile--gold dd svg {
+  color: var(--cn-gold);
+}
+
+.cn-tabs {
+  /* Five tabs don't fit one row of the panel: three on top, two below. */
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  scrollbar-width: none;
+}
+
+.cn-tabs__tab {
+  display: flex;
+  grid-column: span 2;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 4px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--cn-soft);
+  font-size: 12px !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-tabs__tab:nth-child(n + 4) {
+  grid-column: span 3;
+}
+
+.cn-tabs__tab span {
+  color: var(--cn-muted);
+  font-size: 10.5px;
+}
+
+.cn-tabs__tab:hover {
+  color: var(--cn-ink);
+}
+
+.cn-tabs__tab--on {
+  background: rgba(94, 234, 212, 0.16);
+  color: var(--cn-ink);
+}
+
+.cn-tabs__tab--on span {
+  color: var(--cn-teal);
+}
+
+.cn-rate {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(120deg, rgba(20, 12, 14, 0.75), rgba(90, 30, 40, 0.42));
+  box-shadow: inset 0 0 0 1px rgba(255, 160, 160, 0.12);
+}
+
+.cn-rate > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cn-rate strong {
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.cn-rate__label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cn-rate__sub {
+  color: var(--cn-muted);
+  font-size: 10.5px;
+}
+
+.cn-rate__spark {
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  gap: 2px;
+  max-width: 140px;
+  height: 50px;
+}
+
+.cn-rate__spark span {
+  flex: 1;
+  border-radius: 1px;
+  background: rgba(255, 220, 190, 0.16);
+  transform-origin: bottom;
+  animation: cn-grow 600ms ease both;
+}
+
+.cn-rate__spark .cn-rate__bar--on {
+  background: linear-gradient(180deg, #ffe7c0, #e08a5a);
+}
+
+.cn-list__row--still .cn-list__label {
+  font-weight: 500;
+}
+
+.cn-change {
+  color: var(--cn-gold);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cn-change--added {
+  color: #4ade80;
+}
+
+.cn-change--deleted {
+  color: #f87171;
+}
+
+/* Narrower screens: the parts list folds away behind a "Parts" button over the sky. */
+@media (max-width: 1700px) {
+  .cn {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+
+  .cn-rail {
+    position: absolute;
+    top: 64px;
+    left: 24px;
+    bottom: 24px;
+    z-index: 5;
+    width: 260px;
+    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    transform: translateX(-16px);
+    pointer-events: none;
+    visibility: hidden;
+    transition: opacity 200ms ease, transform 200ms ease, visibility 0s linear 200ms;
+    animation: none;
+  }
+
+  .cn--rail-open .cn-rail {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    visibility: visible;
+    transition: opacity 200ms ease, transform 200ms ease;
+  }
+
+  .cn-tools__parts {
+    display: flex;
+  }
+}
+
+@media (max-width: 1100px) {
+  .cn-hint {
+    display: none;
+  }
+}
+
+/* Phones: the sky on top, the details under it, and the page scrolls. */
+@media (max-width: 760px) {
+  .cn {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px;
+  }
+
+  .cn-stage {
+    height: 62vh;
+    min-height: 420px;
+  }
+
+  .cn-inspector {
+    overflow: visible;
+  }
+
+  .cn-rail {
+    top: 56px;
+    left: 16px;
+    right: 16px;
+    bottom: auto;
+    width: auto;
+    max-height: 56vh;
+  }
+
+  .cn-legend {
+    display: none;
+  }
+}
+
+@keyframes cn-core {
+  0% {
+    transform: scale(0.1);
+    filter: brightness(3);
+  }
+  55% {
+    transform: scale(1.7);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes cn-halo {
+  50% {
+    transform: scale(1.12);
+    opacity: 0.75;
+  }
+}
+
+@keyframes cn-grain {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy));
+  }
+}
+
+@keyframes cn-ray {
+  0% {
+    opacity: 0;
+    stroke-dasharray: 0 400;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    stroke-dasharray: 70 400;
+    stroke-dashoffset: -130;
+  }
+}
+
+@keyframes cn-burst {
+  0% {
+    opacity: 0;
+    transform: translate(var(--fx), var(--fy)) scale(0.2);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes cn-drift {
+  from {
+    transform: rotate(-0.6deg);
+  }
+  to {
+    transform: rotate(0.6deg);
+  }
+}
+
+@keyframes cn-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes cn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cn-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cn-twinkle {
+  50% {
+    opacity: 0.55;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes cn-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes cn-slide {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+@keyframes cn-unfold {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes cn-pop {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cn-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cn *,
+  .cn *::before,
+  .cn *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,164 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 16px;
+}
+
+.sidebar__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+}
+
+.sidebar__heading h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dd-ink-soft);
+}
+
+.sidebar__count {
+  font-size: 12px;
+  color: var(--dd-muted);
+}
+
+.sidebar__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar__item {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar__item:hover:not(:disabled) {
+  background: var(--dd-mod-bg);
+}
+
+.sidebar__item--active {
+  background: var(--dd-mod-bg);
+  box-shadow: inset 3px 0 0 var(--dd-accent);
+}
+
+.sidebar__item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidebar__avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--dd-blue-strong), var(--dd-blue));
+  color: #fff;
+  font-weight: 700;
+}
+
+.sidebar__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sidebar__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sidebar__branch {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.sidebar__ai {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sidebar__add {
+  padding: 10px;
+  border: 1.5px dashed var(--dd-line);
+  border-radius: 10px;
+  background: none;
+  color: var(--dd-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar__add:hover {
+  border-color: var(--dd-accent);
+  background: var(--dd-accent-soft);
+}
+
+/* Remove sits over the item's right edge: shown on hover or focus, always when the
+   folder is gone, since such a project can't be opened to remove it there. */
+.sidebar__row {
+  position: relative;
+}
+
+.sidebar__remove {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--dd-line);
+  border-radius: 6px;
+  background: var(--dd-card);
+  color: var(--dd-ink-soft);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%);
+}
+
+.sidebar__row:hover .sidebar__remove,
+.sidebar__remove:focus-visible,
+.sidebar__row--missing .sidebar__remove {
+  opacity: 1;
+}
+
+.sidebar__remove:hover {
+  border-color: var(--dd-del);
+  color: var(--dd-del);
+}
+
+@media (hover: none) {
+  .sidebar__remove {
+    opacity: 1;
+  }
+}

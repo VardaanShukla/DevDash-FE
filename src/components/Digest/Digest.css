@@ -1,0 +1,410 @@
+/* The daily digest: a summary card, then one card per prompt, the risky ones first. */
+.digest {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 980px;
+}
+
+.digest__head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+}
+
+.digest__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.digest__title h2 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.digest__title span {
+  color: var(--dd-muted);
+  font-size: 13px;
+}
+
+.digest__days {
+  display: flex;
+  gap: 6px;
+}
+
+.digest__days button,
+.digest__button {
+  padding: 6px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.digest__days button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.digest__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.digest__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink-soft);
+  font-size: 12.5px;
+}
+
+.digest__stat strong {
+  color: var(--dd-ink);
+  font-size: 18px;
+}
+
+.digest__stat--risk {
+  border-color: color-mix(in srgb, var(--dd-del) 45%, transparent);
+}
+
+.digest__stat--risk strong {
+  color: var(--dd-del);
+}
+
+.digest__stat--warn strong {
+  color: var(--dd-mod);
+}
+
+.digest__you,
+.digest__note {
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+}
+
+.digest__note {
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+.digest__add {
+  color: var(--dd-add);
+  font-weight: 700;
+}
+
+.digest__del {
+  color: var(--dd-del);
+  font-weight: 700;
+}
+
+.digest__error {
+  margin: 0;
+  color: var(--dd-del);
+  font-size: 13px;
+}
+
+.digest__empty {
+  padding: 22px;
+}
+
+.digest__empty h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.digest__empty p {
+  margin: 0 0 12px;
+  color: var(--dd-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.digest__group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.digest__group-title {
+  margin: 6px 0 0;
+  color: var(--dd-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.digest__group-title--risk {
+  color: var(--dd-del);
+}
+
+.digest__change {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px;
+}
+
+.digest__change--risk {
+  border-left: 3px solid var(--dd-del);
+}
+
+.digest__change-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.digest__prompt {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.digest__prompt--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.digest__link {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dd-accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.digest__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+}
+
+.digest__meta code,
+.digest__committed code {
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  color: var(--dd-ink-soft);
+}
+
+.digest__repo {
+  color: var(--dd-ink);
+  font-weight: 700;
+}
+
+.digest__committed {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.digest__uncommitted {
+  color: var(--dd-mod);
+  font-weight: 600;
+}
+
+.digest__flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.digest__flag {
+  padding: 3px 9px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.digest__flag--risk {
+  border-color: transparent;
+  background: var(--dd-del-bg);
+  color: var(--dd-del);
+}
+
+.digest__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.digest__toggle span {
+  width: 10px;
+  color: var(--dd-muted);
+}
+
+.digest__files {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.digest__file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  min-width: 0;
+}
+
+.digest__file-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  min-width: 0;
+}
+
+.digest__path {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--dd-mono);
+  font-size: 12.5px;
+  color: var(--dd-ink);
+}
+
+.digest__functions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.digest__fn {
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  color: var(--dd-mod);
+  background: var(--dd-mod-bg);
+}
+
+.digest__fn--added {
+  color: var(--dd-add);
+  background: var(--dd-add-bg);
+}
+
+.digest__fn--deleted {
+  color: var(--dd-del);
+  background: var(--dd-del-bg);
+}
+
+.digest__why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  color: var(--dd-ink-soft);
+  font-size: 12.5px;
+}
+
+.digest__why--risk strong {
+  color: var(--dd-del);
+}
+
+.digest__why code {
+  flex-basis: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dd-ink) 6%, transparent);
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.digest__change--undone .digest__prompt {
+  color: var(--dd-muted);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--dd-muted) 60%, transparent);
+}
+
+.digest__undone-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-weight: 700;
+}
+
+.digest__undo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--dd-line);
+}
+
+.digest__undo p {
+  flex: 1 1 320px;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.digest__undo .digest__error {
+  flex-basis: 100%;
+}
+
+.digest__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.digest__button--danger {
+  border-color: transparent;
+  background: var(--dd-del);
+  color: #fff;
+}
+
+@media (max-width: 520px) {
+  .digest__change,
+  .digest__head {
+    padding: 16px;
+  }
+}

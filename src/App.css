@@ -1,0 +1,502 @@
+/* One screen, like a car's display: the menu down the left, and beside it a status bar
+   over the current view. The page itself never scrolls on a desktop. */
+.app {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px 14px;
+}
+
+.topbar__title {
+  min-width: 0;
+}
+
+.topbar__title h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+}
+
+.topbar__title p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--dd-ink-soft);
+}
+
+.topbar__title code {
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  color: var(--dd-accent);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.brand__dev {
+  color: var(--dd-blue);
+}
+
+.brand__tag {
+  color: var(--dd-red);
+  font-family: var(--dd-mono);
+  font-size: 0.65em;
+  padding: 0 2px;
+}
+
+.brand__dash {
+  color: var(--dd-ink);
+}
+
+.topbar__controls {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.toggle--disabled {
+  color: var(--dd-muted);
+  cursor: not-allowed;
+}
+
+.theme-button {
+  padding: 6px 12px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 999px;
+  background: var(--dd-glass);
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.switcher__label {
+  padding: 0 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 14px;
+  background: var(--dd-glass);
+}
+
+.switcher__select {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  border: none;
+  background: transparent;
+  font-weight: 700;
+}
+
+.switcher__select option {
+  background: var(--dd-card);
+}
+
+.switcher__add {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 10px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clock {
+  font-family: var(--dd-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dd-ink-soft);
+}
+
+/* The view area: fills what's left under the status bar. */
+.screen {
+  flex: 1;
+  width: 100%;
+  max-width: 1680px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 0 24px 20px;
+  transition: opacity 150ms ease;
+}
+
+.screen--loading {
+  opacity: 0.6;
+}
+
+.screen > * {
+  height: 100%;
+}
+
+.screen > .notice,
+.screen > .welcome {
+  height: auto;
+  max-width: 920px;
+  margin: 24px auto 0;
+}
+
+/* Branch flow: the graph gets the room, the branch list sits beside it. */
+.flow-view {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  min-height: 0;
+}
+
+.flow-view > * {
+  min-height: 0;
+}
+
+/* Views that hold one big card stretch it to the full height. */
+.screen--changes .changes,
+.screen--commits .commits {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.screen--changes .changes__body {
+  flex: 1;
+  max-height: none;
+}
+
+.screen--commits .commits__list {
+  max-height: none;
+  min-height: 0;
+  flex: 0 1 auto;
+}
+
+
+.branches {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.branches__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.branches__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 12px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.branches__item:hover,
+.branches__item--shown {
+  border-color: var(--dd-accent);
+  background: var(--dd-accent-soft);
+}
+
+.branches__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--dd-mono);
+  font-size: 13px;
+}
+
+.branches__tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.branches__tag--current {
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+}
+
+.branches__tag--done {
+  background: var(--dd-line);
+  color: var(--dd-muted);
+}
+
+.projects {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 420px);
+  align-items: start;
+  justify-content: center;
+  gap: 18px;
+}
+
+.projects .sidebar {
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+.notice h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.notice p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--dd-ink-soft);
+}
+
+.notice code {
+  font-family: var(--dd-mono);
+  font-size: 13px;
+}
+
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 40px;
+}
+
+.welcome h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+.welcome > p {
+  margin: 0;
+  color: var(--dd-ink-soft);
+}
+
+.welcome__steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.welcome__steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: 14px;
+  counter-increment: step;
+  font-size: 13px;
+  color: var(--dd-ink-soft);
+}
+
+.welcome__steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-weight: 700;
+}
+
+.welcome__steps strong {
+  color: var(--dd-ink);
+  font-size: 14px;
+}
+
+/* Smaller screens can't fit a whole view, so the view scrolls under the bars. */
+@media (max-width: 1180px), (max-height: 680px) {
+  .screen {
+    overflow-y: auto;
+  }
+
+  .screen > * {
+    height: auto;
+  }
+
+  .screen--changes > *,
+  .screen--flow > *,
+  .screen--constellation > * {
+    height: calc(100dvh - 110px);
+  }
+
+  .clock {
+    display: none;
+  }
+
+  .flow-view {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 16px;
+  }
+
+  .topbar__controls {
+    gap: 8px;
+  }
+
+  .screen {
+    padding: 0 16px 20px;
+  }
+
+  .projects {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcome {
+    padding: 24px 16px;
+  }
+
+  .welcome__steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .screen {
+    padding-bottom: 88px;
+  }
+
+  /* The sky and its details stack, and the page scrolls. */
+  .screen--constellation > * {
+    height: auto;
+  }
+
+  .clock {
+    display: none;
+  }
+}
+
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: var(--dd-card);
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sync:disabled {
+  cursor: progress;
+}
+
+.sync--error {
+  border-color: var(--dd-del);
+  color: var(--dd-del);
+}
+
+.sync__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dd-add);
+}
+
+.sync--error .sync__dot {
+  background: var(--dd-del);
+}
+
+.sync__dot--running {
+  background: var(--dd-blue);
+  animation: sync-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes sync-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.notice .select {
+  margin-top: 12px;
+}
+
+/* My day: the to-do list beside the calendar. */
+.planner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+@media (max-width: 1000px) {
+  .planner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

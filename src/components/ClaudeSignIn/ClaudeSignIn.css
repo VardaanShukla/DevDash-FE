@@ -1,0 +1,71 @@
+.signin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--dd-accent) 45%, transparent);
+  border-radius: 12px;
+  background: var(--dd-accent-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.signin p {
+  margin: 0;
+  color: var(--dd-ink-soft);
+}
+
+.signin__title {
+  font-size: 13.5px;
+}
+
+.signin__steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--dd-ink-soft);
+}
+
+.signin__steps a {
+  color: var(--dd-accent);
+  font-weight: 600;
+}
+
+.signin__code {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.signin__code input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+  color: inherit;
+  font-family: var(--dd-mono);
+  font-size: 12.5px;
+}
+
+.signin__button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.signin__button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.signin__error {
+  color: var(--dd-del) !important;
+}

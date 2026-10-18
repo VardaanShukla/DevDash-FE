@@ -1,0 +1,223 @@
+/* Two cards side by side: the setup steps, and a guide to every screen. */
+.help {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.help > .card {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.help h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.help__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.help__note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--dd-muted);
+}
+
+.help__progress {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.help__progress--done {
+  background: var(--dd-add-bg);
+  color: var(--dd-add);
+}
+
+.help__subheading {
+  margin-top: 26px !important;
+}
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guide li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+}
+
+.guide__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+}
+
+.guide h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 3px;
+  font-size: 14px;
+}
+
+.guide kbd {
+  padding: 0 6px;
+  border: 1px solid var(--dd-line);
+  border-radius: 5px;
+  color: var(--dd-muted);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.guide p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dd-ink-soft);
+}
+
+.colours {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 18px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--dd-ink-soft);
+}
+
+.colours li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.colours span {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+}
+
+@media (max-width: 1180px) {
+  .help {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 14px;
+}
+
+.step__mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.step--done .step__mark {
+  background: var(--dd-add-bg);
+  color: var(--dd-add);
+}
+
+.step--todo .step__mark {
+  border: 2px solid var(--dd-line);
+}
+
+.step--info .step__mark {
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-family: var(--dd-mono);
+}
+
+.step__body {
+  min-width: 0;
+}
+
+.step__body h3 {
+  margin: 1px 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.step__body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--dd-ink-soft);
+}
+
+.step__command {
+  position: relative;
+  margin-top: 8px;
+}
+
+.step__command pre {
+  margin: 0;
+  padding: 10px 56px 10px 10px;
+  max-height: 200px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--dd-bg);
+  border: 1px solid var(--dd-line);
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.step__command button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--dd-line);
+  border-radius: 6px;
+  background: var(--dd-card);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.step__body p {
+  overflow-wrap: anywhere;
+}

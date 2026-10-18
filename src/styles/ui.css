@@ -1,0 +1,50 @@
+/* Pieces shared by every view: the glass card, selects and pills. */
+.card {
+  background: var(--dd-glass);
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 22px;
+  box-shadow: var(--dd-shadow);
+  padding: 24px 28px;
+  backdrop-filter: blur(16px) saturate(140%);
+}
+
+.select {
+  max-width: 180px;
+  padding: 7px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill--add {
+  color: var(--dd-add);
+  background: var(--dd-add-bg);
+}
+
+.pill--del {
+  color: var(--dd-del);
+  background: var(--dd-del-bg);
+}
+
+.pill--mod {
+  color: var(--dd-mod);
+  background: var(--dd-mod-bg);
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 20px 16px;
+  }
+}

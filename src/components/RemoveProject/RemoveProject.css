@@ -1,0 +1,20 @@
+.remove__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--dd-ink-soft);
+}
+
+.remove__path {
+  overflow-wrap: anywhere;
+  font-family: var(--dd-mono);
+  font-size: 12px;
+}
+
+.button--danger {
+  background: var(--dd-del);
+}

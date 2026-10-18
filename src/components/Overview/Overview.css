@@ -1,0 +1,620 @@
+/* Three columns that fill the screen: dials | gauge | flow and parts. */
+.overview {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(300px, 400px);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+
+.overview__col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  min-width: 0;
+}
+
+.overview .card {
+  padding: 18px 20px;
+}
+
+.card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--dd-ink-soft);
+}
+
+.card__link {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-accent);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.card__link:hover {
+  background: var(--dd-accent-soft);
+}
+
+.ov-eyebrow {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dd-accent);
+}
+
+.ov-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dd-muted);
+}
+
+/* Branch */
+.ov-branch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ov-branch__name {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--dd-mono);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.ov-branch__base {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--dd-ink-soft);
+}
+
+.ov-branch__base code,
+.ov-branch__done code {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+}
+
+.ov-branch__picker {
+  max-width: none;
+  margin-top: 6px;
+}
+
+.ov-branch__done {
+  margin: 4px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ov-branch__tag {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Dials */
+.ov-dials {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 10px;
+}
+
+.dial {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dial svg {
+  width: 84px;
+  height: 84px;
+}
+
+.dial__track,
+.dial__value {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.dial__track {
+  stroke: var(--dd-line);
+}
+
+.dial__value {
+  stroke: var(--dd-accent);
+  filter: drop-shadow(0 0 5px var(--dd-accent));
+  transition: stroke-dasharray 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dial--blue .dial__value {
+  stroke: var(--dd-blue);
+  filter: drop-shadow(0 0 5px var(--dd-blue));
+}
+
+.dial__text {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  font-family: var(--dd-mono);
+  font-size: 18px;
+}
+
+.dial__label {
+  margin-top: -6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dial__detail {
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.ov-behind {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dd-ink-soft);
+}
+
+.ov-behind__track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--dd-line);
+}
+
+.ov-behind__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--dd-blue), var(--dd-accent));
+}
+
+.ov-behind__fill--warn {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+}
+
+/* Commits */
+.ov-commits {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 120px;
+}
+
+.ov-commits__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ov-commits__list li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+.ov-commits__dot {
+  grid-row: span 2;
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border: 2px solid var(--dd-muted);
+  border-radius: 50%;
+}
+
+.ov-commits__dot--ai {
+  border-color: #fbbf24;
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+}
+
+.ov-commits__subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ov-commits__meta {
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+/* Gauge */
+.ov-gauge {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ov-gauge::before {
+  content: "";
+  position: absolute;
+  inset: auto 10% -30% 10%;
+  height: 60%;
+  background: radial-gradient(closest-side, var(--dd-accent-soft), transparent);
+  pointer-events: none;
+}
+
+/* Sized by the screen's height too, so the gauge never pushes the stats off screen. */
+.ov-gauge__dial {
+  position: relative;
+  width: min(100%, 440px, calc((100dvh - 430px) * 1.13));
+  min-width: 240px;
+}
+
+.gauge {
+  display: block;
+  width: 100%;
+}
+
+.gauge__track {
+  fill: none;
+  stroke: var(--dd-line);
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.gauge__tick {
+  stroke: var(--dd-muted);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+.gauge__mark {
+  fill: var(--dd-muted);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+}
+
+.gauge__value,
+.gauge__glow {
+  fill: none;
+  stroke: url(#gauge-fill);
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: gauge-sweep 1.4s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+
+.gauge__value {
+  stroke-width: 14;
+}
+
+.gauge__glow {
+  stroke-width: 22;
+  opacity: 0.55;
+}
+
+.gauge__needle {
+  fill: #fff;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px var(--dd-accent));
+  animation: gauge-fade 0.3s ease 1.4s forwards;
+}
+
+.ov-gauge__center {
+  position: absolute;
+  top: 57%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.ov-gauge__center strong {
+  font-family: var(--dd-mono);
+  font-size: clamp(44px, 6vw, 76px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.ov-gauge__center > span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.ov-gauge__split {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  font-family: var(--dd-mono);
+  font-size: 13px !important;
+  letter-spacing: 0 !important;
+}
+
+.ov-add {
+  color: var(--dd-add);
+}
+
+.ov-del {
+  color: var(--dd-del);
+}
+
+.ov-gears {
+  display: flex;
+  gap: 14px;
+  margin-top: -40px;
+  font-family: var(--dd-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dd-muted);
+}
+
+.ov-gears .is-on {
+  color: var(--dd-accent);
+  text-shadow: 0 0 10px var(--dd-accent);
+}
+
+.ov-gauge__label {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--dd-ink-soft);
+}
+
+.ov-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 520px);
+  margin-top: 18px;
+}
+
+.ov-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dd-card) 60%, transparent);
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.ov-stat:hover {
+  border-color: var(--dd-accent);
+}
+
+.ov-stat span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.ov-stat strong {
+  font-family: var(--dd-mono);
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.ov-stat em {
+  font-size: 11px;
+  font-style: normal;
+  color: var(--dd-muted);
+}
+
+/* Right column */
+.overview .flow--compact {
+  padding: 16px 0 10px;
+}
+
+.ov-parts {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+.ov-langs {
+  margin-bottom: 10px;
+}
+
+.ov-langs__bar {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.ov-langs ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--dd-ink-soft);
+}
+
+.ov-langs li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ov-langs li span {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+
+.ov-parts__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ov-part {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 12px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ov-part:hover {
+  border-color: var(--dd-accent);
+}
+
+.ov-part--hot {
+  border-color: color-mix(in srgb, var(--dd-accent) 45%, transparent);
+  background: var(--dd-accent-soft);
+}
+
+.ov-part__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ov-part__role {
+  grid-row: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.ov-part__badge,
+.ov-part__files {
+  grid-row: span 2;
+  font-family: var(--dd-mono);
+  font-size: 11px;
+}
+
+.ov-part__badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--dd-accent);
+  color: #04110f;
+  font-weight: 700;
+}
+
+.ov-part__files {
+  color: var(--dd-muted);
+}
+
+@keyframes gauge-sweep {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes gauge-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gauge__value,
+  .gauge__glow,
+  .gauge__needle {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+
+  .gauge__glow {
+    opacity: 0.55;
+  }
+}
+
+/* Laptops: the gauge on top, the two side columns side by side below it. */
+@media (max-width: 1180px) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    height: auto;
+  }
+
+  .ov-gauge {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 460px;
+  }
+}
+
+@media (max-width: 720px) {
+  .overview {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ov-gauge {
+    min-height: 420px;
+  }
+}

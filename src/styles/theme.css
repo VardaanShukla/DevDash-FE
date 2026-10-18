@@ -1,0 +1,92 @@
+/* Brand colours and surfaces. Components read these; canvas code reads them with
+   getComputedStyle. Dark mode swaps the surfaces and ink, never the brand blue and red. */
+:root {
+  --dd-blue: #4fc3f7;
+  --dd-blue-strong: #0288d1;
+  --dd-red: #ef4444;
+  /* The glow colour of the dashboard: gauges, active menu items, changed parts. */
+  --dd-accent: #0d9488;
+  --dd-accent-soft: rgba(13, 148, 136, 0.12);
+  --dd-on-accent: #fff;
+  --dd-ink: #0f172a;
+  --dd-ink-soft: #475569;
+  --dd-muted: #94a3b8;
+  --dd-bg: #eef2f7;
+  --dd-backdrop:
+    radial-gradient(900px 520px at 78% 70%, rgba(45, 212, 191, 0.16), transparent 62%),
+    radial-gradient(800px 480px at 12% 8%, rgba(56, 189, 248, 0.16), transparent 60%);
+  /* Opaque card colour, for things drawn on top of a card; cards themselves are glass. */
+  --dd-card: #f8fafc;
+  --dd-glass: rgba(255, 255, 255, 0.72);
+  --dd-glass-line: rgba(15, 23, 42, 0.08);
+  --dd-line: #e2e8f0;
+  --dd-shadow: 0 18px 40px -22px rgba(15, 23, 42, 0.28), 0 1px 3px rgba(15, 23, 42, 0.05);
+
+  /* Change colours: added, removed, changed. */
+  --dd-add: #16a34a;
+  --dd-add-bg: #dcfce7;
+  --dd-del: #dc2626;
+  --dd-del-bg: #fee2e2;
+  --dd-mod: #0288d1;
+  --dd-mod-bg: #e0f2fe;
+
+  --dd-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --dd-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+/* Dark is the dashboard look: deep navy, glass cards, teal and blue glows. */
+:root[data-theme="dark"] {
+  --dd-accent: #2dd4bf;
+  --dd-accent-soft: rgba(45, 212, 191, 0.14);
+  --dd-on-accent: #04110f;
+  --dd-ink: #f1f5f9;
+  --dd-ink-soft: #cbd5e1;
+  --dd-muted: #64748b;
+  --dd-bg: #05080f;
+  --dd-backdrop:
+    radial-gradient(900px 560px at 78% 72%, rgba(45, 212, 191, 0.13), transparent 62%),
+    radial-gradient(800px 500px at 10% 6%, rgba(56, 189, 248, 0.12), transparent 60%),
+    radial-gradient(600px 400px at 50% 110%, rgba(99, 102, 241, 0.10), transparent 70%);
+  --dd-card: #0e1522;
+  --dd-glass: rgba(17, 25, 40, 0.66);
+  --dd-glass-line: rgba(148, 163, 184, 0.12);
+  --dd-line: rgba(148, 163, 184, 0.14);
+  --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --dd-add: #4ade80;
+  --dd-add-bg: rgba(74, 222, 128, 0.14);
+  --dd-del: #f87171;
+  --dd-del-bg: rgba(248, 113, 113, 0.14);
+  --dd-mod: #4fc3f7;
+  --dd-mod-bg: rgba(79, 195, 247, 0.14);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--dd-backdrop), var(--dd-bg);
+  background-attachment: fixed;
+  color: var(--dd-ink);
+  font-family: var(--dd-font);
+  -webkit-font-smoothing: antialiased;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+button,
+select,
+input {
+  font: inherit;
+  color: inherit;
+}
