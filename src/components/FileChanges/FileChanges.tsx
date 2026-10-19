@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiStatus, FileChange, FunctionDetail, FunctionExplanation, Hunk, Line } from "../../api/types";
 import FunctionChanges from "../FunctionChanges/FunctionChanges";
 import Pill from "../Pill/Pill";
+import { keyName, typing } from "../../shortcuts";
 import { wordDiff, type Segment } from "./wordDiff";
 import "./FileChanges.css";
 
@@ -42,9 +43,15 @@ type Props = {
   explainFunction: (file: FileChange, name: string) => Promise<FunctionExplanation>;
   ai: AiStatus | null;
   onSignedIn: () => void;
+  // Told the file on show, for the breadcrumb.
+  onSelect?: (name: string | null) => void;
+  // The keys for the next and previous file, from Settings; j and k unless changed.
+  keys?: { next?: string; previous?: string };
 };
 
-export default function FileChanges({ files, focus, version, loadFunctions, explainFunction, ai, onSignedIn }: Props) {
+export default function FileChanges({ files, focus, version, loadFunctions, explainFunction, ai, onSignedIn, onSelect, keys }: Props) {
+  const nextKey = keys?.next ?? "j";
+  const previousKey = keys?.previous ?? "k";
   // Real code first, by folder; generated files such as lockfiles go last.
   const ordered = useMemo(
     () =>
@@ -66,6 +73,11 @@ export default function FileChanges({ files, focus, version, loadFunctions, expl
   }, [focus]);
   const index = Math.max(0, ordered.findIndex((file) => file.path === selected));
   const file = ordered[index];
+  const shownName = file ? file.path.split("/").pop()! : null;
+  useEffect(() => {
+    onSelect?.(shownName);
+    return () => onSelect?.(null);
+  }, [shownName, onSelect]);
 
   // Keep a selection when the list changes underneath (a new commit, a checkout).
   useEffect(() => {
@@ -80,17 +92,18 @@ export default function FileChanges({ files, focus, version, loadFunctions, expl
     }
   }, [layout]);
 
-  // j / k step through files, as in most code review tools.
+  // j / k (or the keys set in Settings) step through files, as in most code review tools.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      if (event.metaKey || event.ctrlKey || event.altKey || /INPUT|SELECT|TEXTAREA/.test(target.tagName)) return;
-      if (event.key === "j") setSelected(ordered[Math.min(ordered.length - 1, index + 1)]?.path ?? null);
-      if (event.key === "k") setSelected(ordered[Math.max(0, index - 1)]?.path ?? null);
+      if (typing(event)) return;
+      const key = keyName(event);
+      if (!key) return;
+      if (key === nextKey) setSelected(ordered[Math.min(ordered.length - 1, index + 1)]?.path ?? null);
+      if (key === previousKey) setSelected(ordered[Math.max(0, index - 1)]?.path ?? null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ordered, index]);
+  }, [ordered, index, nextKey, previousKey]);
 
   if (!file) return null;
   const groups = groupByFolder(ordered);

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../../api/client";
-import type { AiTool, AiToolId, Repo } from "../../api/types";
+import type { AiStatus, AiTool, AiToolId, Repo } from "../../api/types";
+import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import "./AddProject.css";
 
 type Props = {
@@ -21,6 +22,14 @@ export default function AddProject({ onClose, onAdded }: Props) {
   const [ai, setAi] = useState("none");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Claude Code's state, checked once Claude is picked; null while checking.
+  const [claude, setClaude] = useState<AiStatus | null>(null);
+  const checkClaude = useCallback(() => {
+    api.ai().then(setClaude, () => {});
+  }, []);
+  useEffect(() => {
+    if (ai === "claude") checkClaude();
+  }, [ai, checkClaude]);
 
   useEffect(() => {
     api.aiTools().then((list) => setTools([NO_AI, ...list])).catch(() => {});
@@ -83,6 +92,9 @@ export default function AddProject({ onClose, onAdded }: Props) {
             </label>
           ))}
         </fieldset>
+
+        {/* Picking Claude: get it installed and signed in right here, if it isn't yet. */}
+        {ai === "claude" && claude?.signed_in !== true && <ClaudeSetup ai={claude} onRefresh={checkClaude} />}
 
         {error && <p className="modal__error">{error}</p>}
 

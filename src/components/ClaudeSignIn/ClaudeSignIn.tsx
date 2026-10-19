@@ -7,9 +7,14 @@ import "./ClaudeSignIn.css";
 // `claude auth login`, which opens the sign-in page in the browser; when that page shows a
 // code instead of finishing by itself, it's pasted here.
 
-type Props = { onSignedIn: () => void };
+type Props = {
+  onSignedIn: () => void;
+  // Wording for where it's shown; by default it's the prompt for a sign-in that ran out.
+  title?: string;
+  intro?: string;
+};
 
-export default function ClaudeSignIn({ onSignedIn }: Props) {
+export default function ClaudeSignIn({ onSignedIn, title, intro }: Props) {
   const [signIn, setSignIn] = useState<SignIn | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,8 +41,9 @@ export default function ClaudeSignIn({ onSignedIn }: Props) {
     api.signIn().then(setSignIn, (e: Error) => setError(e.message)).finally(() => setBusy(false));
   };
 
-  const finish = (event: React.FormEvent) => {
-    event.preventDefault();
+  // Not a form of its own: it can sit inside one (adding a project), where forms can't nest.
+  const finish = () => {
+    if (busy || !code.trim()) return;
     setBusy(true);
     api
       .signInCode(code)
@@ -50,15 +56,15 @@ export default function ClaudeSignIn({ onSignedIn }: Props) {
 
   return (
     <div className="signin">
-      <strong className="signin__title">Sign in to Claude to get explanations</strong>
+      <strong className="signin__title">{title ?? "Sign in to Claude to get explanations"}</strong>
       {!waiting ? (
         <>
           <p>
             {signIn?.state === "failed"
               ? `Signing in didn't work${signIn.detail ? ` (${signIn.detail})` : ""}. Try again.`
-              : "DevDash asks your Claude account. Your sign-in has run out or was never made on this computer."}
+              : intro ?? "DevDash asks your Claude account. Your sign-in has run out or was never made on this computer."}
           </p>
-          <button className="signin__button" onClick={start} disabled={busy}>
+          <button type="button" className="signin__button" onClick={start} disabled={busy}>
             {busy ? "Opening the sign-in page…" : "Sign in to Claude"}
           </button>
         </>
@@ -80,19 +86,25 @@ export default function ClaudeSignIn({ onSignedIn }: Props) {
             </li>
             <li>If the page then shows a code, paste it here. Otherwise this finishes by itself.</li>
           </ol>
-          <form className="signin__code" onSubmit={finish}>
+          <div className="signin__code" role="group" aria-label="Finish signing in">
             <input
               value={code}
               onChange={(event) => setCode(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  finish();
+                }
+              }}
               placeholder="Paste the code"
               aria-label="Code from the sign-in page"
               spellCheck={false}
               autoComplete="off"
             />
-            <button className="signin__button" disabled={busy || !code.trim()}>
+            <button type="button" className="signin__button" onClick={finish} disabled={busy || !code.trim()}>
               {busy ? "Signing in…" : "Finish"}
             </button>
-          </form>
+          </div>
         </>
       )}
       {error && <p className="signin__error">{error}</p>}

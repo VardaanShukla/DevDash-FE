@@ -30,8 +30,8 @@ export function useSetup(repo: Repo | null) {
 
 // What each screen is for, in more words than the menu has room for.
 const GUIDE: Partial<Record<View, string>> = {
-  home: "Every project you've connected, with its branch, what isn't committed yet and its latest commit, next to your to-dos and the next few days on your calendar. Click a project to open it.",
-  digest: "Every prompt you gave Claude Code on one day, in every connected project: the files and functions it changed and whether that's committed yet. Changes touching sign-in, payments, the database or tests, or adding something that looks like a key, come first under Needs a look. The flags come from simple rules, not AI.",
+  home: "Every project you've connected, with its branch, what isn't committed yet and its latest commit. Click a project to show it here: its branch changes (pick another branch, click a file to see it in Changes), its branch flow and a map of its parts. Double-click a project to open its summary. Each section's link opens its full screen (This branch, Branch flow, Project map). Your to-dos and the next few days on your calendar are at the bottom.",
+  digest: "Every prompt you gave Claude Code on one day, in every connected project: the files and functions it changed and whether that's committed yet. Changes touching sign-in, payments, the database or tests, or adding something that looks like a key, come first under Needs a look. The flags come from simple rules, not AI. A prompt counts every file that changed while it ran, however Claude changed it; one changed without Claude's Edit or Write tools (a shell command, or your own edit at the same time) is marked changed during this prompt. Work from a cloud session (claude.ai/code) shows once it is committed and on a branch here, pushed and synced or pulled: any commit with Claude as co-author counts, listed under its commit message and marked From a cloud session. Files written straight into the folder outside any Claude Code prompt on this computer, with no commit, can't be told apart from your own edits, so they aren't counted here; you still see them under Changes and as uncommitted work.",
   summary: "The whole project in one place: what it is, how its parts work together, what it's built with, and who works on it. Claude can write a plain-English description.",
   overview: "How big the change is on the speedometer, how much of it was made with AI, and the latest commits.",
   flow: "Each line is a branch. A line leaves the base branch when work starts and joins it again when it is merged. Point at a dot to see that commit.",
@@ -41,6 +41,7 @@ const GUIDE: Partial<Record<View, string>> = {
   commits: "Every commit on this branch, newest first, with who made it and when.",
   planner: "Your to-dos, each for this branch, the whole project or anything, and the week ahead from your calendar. Double-click a to-do to edit it.",
   project: "Add another git folder, connect Claude to record the request behind each change, or remove a project.",
+  settings: "Dark or light, whether uncommitted work shows from the start, your password and signing out, and the shortcut keys: click a key to change it. Settings are saved by DevDash, so every browser you sign in from gets the same.",
 };
 
 const COLOURS = [

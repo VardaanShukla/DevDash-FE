@@ -206,8 +206,12 @@ export type AiStatus = {
   available: boolean;
   // null when Claude Code couldn't say.
   signed_in: boolean | null;
+  // The signed-in account's email (or organization).
+  account?: string | null;
   model: string;
   detail: string | null;
+  // Claude Code's official installers for this computer, when it isn't installed.
+  install?: { shell: string; command: string }[];
 };
 
 export type SignIn = { state: "idle" | "waiting" | "signed_in" | "failed"; url: string | null; detail: string | null };
@@ -292,7 +296,17 @@ export type ProjectCard = {
   branches: number;
 };
 
-export type AuthStatus = { password_set: boolean; signed_in: boolean };
+export type AuthStatus = { password_set: boolean; signed_in: boolean; username?: string };
+
+// The dashboard's settings, kept by the backend so every browser gets them.
+export type Preferences = {
+  theme: "dark" | "light";
+  // Show uncommitted work from the start; null until picked, so the dashboard asks once.
+  uncommitted: boolean | null;
+  // Action -> key. Actions: view:<screen>, theme, uncommitted, sync, next-file, previous-file.
+  // An empty key means the shortcut is off.
+  shortcuts: Record<string, string>;
+};
 
 // The daily digest: what Claude changed on one day, prompt by prompt.
 export type DigestFlag = {
@@ -309,6 +323,9 @@ export type DigestFile = {
   deletions: number;
   functions: { name: string; change: "added" | "deleted" | "modified" }[];
   flags: DigestFlag[];
+  // Changed while the prompt ran, but not through Claude's Edit or Write: a shell command,
+  // or possibly your own edit made at the same time.
+  watched: boolean;
 };
 export type DigestChange = {
   id: string;
@@ -317,6 +334,9 @@ export type DigestChange = {
   prompt: string | null;
   // False: an AI-co-authored commit with no recorded prompt; prompt is its message.
   prompt_recorded: boolean;
+  // prompt: recorded by the Claude Code hooks. commit: an AI-co-authored commit made here.
+  // cloud: a Claude co-authored commit found on a branch, made where no hook ran (a cloud session).
+  origin: "prompt" | "commit" | "cloud";
   at: string;
   commit: { sha: string; message: string; count: number } | null;
   files: DigestFile[];

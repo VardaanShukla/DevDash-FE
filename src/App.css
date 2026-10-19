@@ -25,6 +25,55 @@
   min-width: 0;
 }
 
+/* Where you are, above the screen's name: Home › project › screen › what's picked. */
+.crumbs ol {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0 0 3px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.crumbs li {
+  display: flex;
+  min-width: 0;
+}
+
+.crumbs li + li::before {
+  content: "›";
+  margin: 0 7px;
+  color: var(--dd-muted);
+}
+
+.crumbs button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dd-ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.crumbs button:hover,
+.crumbs button:focus-visible {
+  color: var(--dd-accent);
+  text-decoration: underline;
+}
+
+.crumbs span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dd-muted);
+}
+
+.crumbs [aria-current] {
+  color: var(--dd-ink);
+  font-weight: 600;
+}
+
 .topbar__title h1 {
   margin: 0;
   font-size: 22px;
@@ -368,6 +417,33 @@
 .welcome__steps strong {
   color: var(--dd-ink);
   font-size: 14px;
+}
+
+.welcome__optional {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.welcome__claude {
+  width: 100%;
+  max-width: 620px;
+}
+
+.welcome__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.welcome__skip {
+  color: var(--dd-muted);
+  font-size: 13px;
 }
 
 /* Smaller screens can't fit a whole view, so the view scrolls under the bars. */

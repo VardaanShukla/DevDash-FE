@@ -21,6 +21,8 @@
   --dd-glass-line: rgba(15, 23, 42, 0.08);
   --dd-line: #e2e8f0;
   --dd-shadow: 0 18px 40px -22px rgba(15, 23, 42, 0.28), 0 1px 3px rgba(15, 23, 42, 0.05);
+  /* The thin scroll bar thumb, shown only while the pointer is over what scrolls. */
+  --dd-scroll: rgba(71, 85, 105, 0.35);
 
   /* Change colours: added, removed, changed. */
   --dd-add: #16a34a;
@@ -53,6 +55,7 @@
   --dd-glass-line: rgba(148, 163, 184, 0.12);
   --dd-line: rgba(148, 163, 184, 0.14);
   --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --dd-scroll: rgba(148, 163, 184, 0.3);
   --dd-add: #4ade80;
   --dd-add-bg: rgba(74, 222, 128, 0.14);
   --dd-del: #f87171;
@@ -66,6 +69,38 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Scroll bars everywhere: no track, just a thin faint thumb that appears while the pointer
+   is over the area that scrolls, so a scrolling panel never shows a wide empty bar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: var(--dd-scroll) transparent;
+}
+
+/* Browsers without scrollbar-color (older Safari) use these instead. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--dd-scroll);
 }
 
 html,

@@ -1,25 +1,31 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import "./SideMenu.css";
 
-// The menu down the left side: the brand, the project, then one item per view. Keys 1 to 9
-// switch to the first nine. On a phone it turns into a bar along the bottom.
+// The menu down the left side: the brand, the project, then one item per view, with
+// Settings and Help at the bottom. Each item's shortcut key (set in Settings) shows in its
+// tooltip; App listens for the keys. On a phone it turns into a bar along the bottom.
 
-export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "constellation" | "changes" | "commits" | "planner" | "project" | "help";
+export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "constellation" | "changes" | "commits" | "planner" | "project" | "settings" | "help";
 
-export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode }[] = [
-  { id: "home", label: "Home", hint: "All your projects, to-dos and calendar", icon: <HomeIcon /> },
+// Screens marked inMenu: false are sections of Home; Home's links open their full screen.
+export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
+  { id: "home", label: "Home", hint: "Your projects, the branch's changes, branch flow and map, to-dos and calendar", icon: <HomeIcon /> },
   { id: "digest", label: "Claude's changes", hint: "What Claude changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
-  { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon /> },
-  { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon /> },
-  { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon /> },
+  { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
+  { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
+  { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon />, inMenu: false },
   { id: "constellation", label: "Constellation", hint: "The project as a sky of parts: pick one to look inside", icon: <ConstellationIcon /> },
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "planner", label: "My day", hint: "Your to-dos and the week on your calendar", icon: <DayIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
+  { id: "settings", label: "Settings", hint: "Theme, uncommitted work, your account and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
+// Settings and Help sit apart, at the bottom of the menu.
+const BOTTOM = 2;
+const MENU = VIEWS.filter((view) => view.inMenu !== false);
 
 type Props = {
   view: View;
@@ -28,27 +34,20 @@ type Props = {
   badges?: Partial<Record<View, number>>;
   // The project switcher, shown under the brand.
   project?: ReactNode;
+  // Each screen's shortcut key, for its tooltip.
+  keys?: Partial<Record<View, string>>;
 };
 
-export default function SideMenu({ view, onView, badges = {}, project }: Props) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-      if (event.metaKey || event.ctrlKey || event.altKey || /INPUT|SELECT|TEXTAREA/.test(target.tagName)) return;
-      const item = VIEWS[Number(event.key) - 1];
-      if (item) onView(item.id);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onView]);
-
-  const item = (entry: (typeof VIEWS)[number], i: number) => (
+export default function SideMenu({ view, onView, badges = {}, project, keys = {} }: Props) {
+  // A Home section's full screen lights Home in the menu.
+  const lit = VIEWS.find((entry) => entry.id === view)?.inMenu === false ? "home" : view;
+  const item = (entry: (typeof VIEWS)[number]) => (
     <button
       key={entry.id}
-      className={`menu__item${view === entry.id ? " menu__item--active" : ""}`}
+      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}`}
       onClick={() => onView(entry.id)}
       aria-current={view === entry.id ? "page" : undefined}
-      title={`${entry.label}: ${entry.hint} (key ${i + 1})`}
+      title={`${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
     >
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
@@ -65,9 +64,9 @@ export default function SideMenu({ view, onView, badges = {}, project }: Props) 
       </span>
       {project && <div className="menu__project">{project}</div>}
       <nav className="menu__nav" aria-label="Views">
-        {VIEWS.slice(0, -1).map(item)}
+        {MENU.slice(0, -BOTTOM).map(item)}
         <span className="menu__spacer" />
-        {item(VIEWS[VIEWS.length - 1], VIEWS.length - 1)}
+        {MENU.slice(-BOTTOM).map(item)}
       </nav>
     </aside>
   );
@@ -148,6 +147,15 @@ function HelpIcon() {
       <circle cx="12" cy="12" r="9" />
       <path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.4" />
       <circle cx="12" cy="16.8" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     </svg>
   );
 }

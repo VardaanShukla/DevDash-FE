@@ -2,6 +2,7 @@ import type {
   Agenda,
   AiStatus,
   AuthStatus,
+  Preferences,
   AiTool,
   AiToolId,
   Branches,
@@ -69,8 +70,12 @@ export const api = {
   logIn: (username: string, password: string) =>
     request<AuthStatus>("/api/auth/login", "POST", { username, password }),
   logOut: () => request<AuthStatus>("/api/auth/logout", "POST", {}),
-  setPassword: (username: string, password: string, current?: string) =>
+  // Leave the username out to keep the current one.
+  setPassword: (username: string | undefined, password: string, current?: string) =>
     request<AuthStatus>("/api/auth/password", "PUT", { username, password, current }),
+  preferences: () => get<Preferences>("/api/preferences"),
+  setPreferences: (changes: Partial<Preferences>) => request<Preferences>("/api/preferences", "PUT", changes),
+  resetShortcuts: () => request<Preferences>("/api/preferences/reset-shortcuts", "POST", {}),
   repos: () => get<Repo[]>("/api/repos"),
   addRepo: (path: string, ai: AiToolId | null) => request<Repo>("/api/repos", "POST", { path, ai }),
   // The server only takes JSON for changes, so even a delete sends an empty object.

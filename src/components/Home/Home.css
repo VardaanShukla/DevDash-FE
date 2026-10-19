@@ -1,13 +1,302 @@
-/* Projects on the left, the to-do list and calendar beside them, a greeting on top. */
+/* A greeting on top; projects on the left, the picked project's branch changes in the
+   middle, its branch flow and map on the right; the to-do list and calendar underneath.
+   The page scrolls on its own when it's taller than the screen. */
 .home {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr) minmax(0, 1.2fr);
+  grid-template-rows: auto minmax(250px, auto) minmax(300px, auto) minmax(320px, auto);
   grid-template-areas:
     "hello hello hello"
-    "projects todos calendar";
+    "projects changes flow"
+    "projects changes map"
+    "todos todos calendar";
+  align-content: start;
   gap: 18px;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px 22px;
+}
+
+.home__section .card__header {
+  margin: 0;
+}
+
+/* Every section on Home titled alike, the flow graph's own card included. */
+.home .card__title,
+.home .flow__title,
+.home__projects h3 {
+  color: var(--dd-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.home__links {
+  display: inline-flex;
+  gap: 14px;
+}
+
+/* Branch changes. */
+.home__changes {
+  grid-area: changes;
+  max-height: 680px;
+}
+
+.home__branch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.home__picker {
+  max-width: 260px;
+  font-family: var(--dd-mono);
+}
+
+.home__branch code,
+.home__muted code {
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  color: var(--dd-accent);
+}
+
+.home__numbers {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(3, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__numbers li,
+.home__numbers button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+}
+
+.home__numbers li:has(button) {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.home__numbers button {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home__numbers button:hover {
+  border-color: var(--dd-accent);
+}
+
+.home__numbers strong {
+  color: var(--dd-ink);
+  font-size: 19px;
+}
+
+.home__add {
+  color: var(--dd-add);
+}
+
+.home__del {
+  color: var(--dd-del);
+}
+
+.home__files {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.home__files button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 70px auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home__files button:hover {
+  background: var(--dd-accent-soft);
+}
+
+.home__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dd-mod);
+}
+
+.home__status--added {
+  background: var(--dd-add);
+}
+
+.home__status--deleted {
+  background: var(--dd-del);
+}
+
+.home__status--renamed {
+  background: #a78bfa;
+}
+
+.home__path {
+  overflow: hidden;
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home__path em {
+  color: var(--dd-muted);
+  font-style: normal;
+}
+
+.home__bar {
+  display: flex;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--dd-line);
+}
+
+.home__bar-add {
+  background: var(--dd-add);
+}
+
+.home__bar-del {
+  background: var(--dd-del);
+}
+
+.home__lines {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.home__all {
+  align-self: flex-start;
+}
+
+/* Branch flow: the compact graph, filling its spot. */
+.home__flow {
+  grid-area: flow;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.home__flow > .card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Project map preview. */
+.home__map {
+  grid-area: map;
+}
+
+.home__langs {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.home__parts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.home__part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.home__part:hover {
+  border-color: var(--dd-accent);
+  transform: translateY(-2px);
+}
+
+.home__part strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home__part span {
+  color: var(--dd-muted);
+  font-size: 11.5px;
+}
+
+.home__part em {
+  color: var(--dd-accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.home__part i {
+  display: flex;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--dd-line);
+}
+
+.home__part--hot {
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, transparent);
+  box-shadow: 0 0 18px -8px var(--dd-accent);
 }
 
 .home__hello {
@@ -80,6 +369,7 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  max-height: 680px;
   padding: 20px 22px;
 }
 
@@ -124,6 +414,7 @@
 .home__todos,
 .home__calendar {
   display: flex;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -234,14 +525,16 @@
   font-style: normal;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1400px) {
   .home {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto minmax(440px, auto) minmax(260px, auto) minmax(260px, auto) minmax(320px, auto);
     grid-template-areas:
       "hello hello"
-      "projects todos"
-      "projects calendar";
+      "projects changes"
+      "flow flow"
+      "map map"
+      "todos calendar";
   }
 }
 
@@ -249,6 +542,10 @@
   .home {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: none;
-    grid-template-areas: "hello" "projects" "todos" "calendar";
+    grid-template-areas: "hello" "projects" "changes" "flow" "map" "todos" "calendar";
+  }
+
+  .home__numbers {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
