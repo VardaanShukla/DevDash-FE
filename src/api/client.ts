@@ -1,7 +1,9 @@
 import type {
   Agenda,
   AiStatus,
+  AiProvider,
   AuthStatus,
+  PreferenceChange,
   Preferences,
   AiTool,
   AiToolId,
@@ -74,7 +76,7 @@ export const api = {
   setPassword: (username: string | undefined, password: string, current?: string) =>
     request<AuthStatus>("/api/auth/password", "PUT", { username, password, current }),
   preferences: () => get<Preferences>("/api/preferences"),
-  setPreferences: (changes: Partial<Preferences>) => request<Preferences>("/api/preferences", "PUT", changes),
+  setPreferences: (changes: PreferenceChange) => request<Preferences>("/api/preferences", "PUT", changes),
   resetShortcuts: () => request<Preferences>("/api/preferences/reset-shortcuts", "POST", {}),
   repos: () => get<Repo[]>("/api/repos"),
   addRepo: (path: string, ai: AiToolId | null) => request<Repo>("/api/repos", "POST", { path, ai }),
@@ -116,7 +118,8 @@ export const api = {
       ...options,
     }),
   ai: () => get<AiStatus>("/api/ai"),
-  signIn: () => request<SignIn>("/api/ai/sign-in", "POST", {}),
+  aiProviders: () => get<AiStatus[]>("/api/ai/providers"),
+  signIn: (provider: AiProvider = "claude") => request<SignIn>("/api/ai/sign-in", "POST", { provider }),
   signInStatus: () => get<SignIn>("/api/ai/sign-in"),
   signInCode: (code: string) => request<SignIn>("/api/ai/sign-in/code", "POST", { code }),
   summary: (repoId: number, head: string) =>

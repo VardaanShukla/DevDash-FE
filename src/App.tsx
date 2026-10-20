@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
-import type { AiStatus, AuthStatus, Branches, Comparison, Flow, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
+import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
 import Agenda from "./components/Agenda/Agenda";
 import Digest from "./components/Digest/Digest";
@@ -18,7 +18,7 @@ import RemoveProject from "./components/RemoveProject/RemoveProject";
 import SideMenu, { VIEWS, type View } from "./components/SideMenu/SideMenu";
 import Sidebar from "./components/Sidebar/Sidebar";
 import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
-import Settings from "./components/Settings/Settings";
+import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
 import Todos from "./components/Todos/Todos";
 import Splash from "./components/Splash/Splash";
@@ -188,7 +188,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     );
   }, []);
   const changePrefs = useCallback(
-    (changes: Partial<Preferences>) =>
+    (changes: PreferenceChange) =>
       api.setPreferences(changes).then((saved) => {
         setPrefs(saved);
         setTheme(saved.theme);
@@ -448,7 +448,9 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       );
     }
     if (error && !repos) return <Notice title="Something needs attention">{error}</Notice>;
-    if (repos && repos.length === 0) return <Welcome ai={ai} onAiRefresh={refreshAi} onAdd={() => setAdding(true)} />;
+    if (repos && repos.length === 0) {
+      return <Welcome ai={ai} onAiRefresh={refreshAi} onAdd={() => setAdding(true)} prefs={prefs} onPrefs={changePrefs} />;
+    }
     if (view === "help" && repo) return <Help repo={repo} steps={setup.steps} error={setup.error} />;
     if (view === "home" && repos) {
       return (
@@ -839,23 +841,29 @@ function BasePicker({ branches, head, onPick }: { branches: Branches; head: stri
 }
 
 // The first run: connect Claude (optional, and right here), then add a project.
-function Welcome({ ai, onAiRefresh, onAdd }: { ai: AiStatus | null; onAiRefresh: () => void; onAdd: () => void }) {
-  const ready = ai?.available && ai.signed_in;
+function Welcome({ ai, onAiRefresh, onAdd, prefs, onPrefs }: {
+  ai: AiStatus | null;
+  onAiRefresh: () => void;
+  onAdd: () => void;
+  prefs: Preferences | null;
+  onPrefs: (changes: PreferenceChange) => Promise<void>;
+}) {
+  const ready = ai?.available && ai.signed_in !== false;
   return (
     <section className="card welcome">
       <h1>See what changed in your code</h1>
       <p>DevDash turns your branches and commits into a page anyone can read. Two quick steps and you're in.</p>
       <ol className="welcome__steps">
         <li>
-          <strong>Connect Claude {ready ? "✓" : <span className="welcome__optional">optional</span>}</strong>
+          <strong>Connect an AI {ready ? "✓" : <span className="welcome__optional">optional</span>}</strong>
           <span>
-            Signed in, DevDash explains every change in plain English. Recording what Claude changed works either way, and you
-            can do this later in Settings.
+            Claude, ChatGPT Codex, a free model on this computer, or Antigravity: it explains every change in plain English.
+            Recording what your AI coding tool changes works either way, and you can change this later in Settings.
           </span>
         </li>
         <li>
           <strong>Add a project</strong>
-          <span>Point DevDash at any git folder on this computer, and pick Claude as its AI tool to record the request behind each change.</span>
+          <span>Point DevDash at any git folder on this computer, and pick your AI coding tool to record the request behind each change.</span>
         </li>
         <li>
           <strong>Open a branch</strong>
@@ -863,13 +871,17 @@ function Welcome({ ai, onAiRefresh, onAdd }: { ai: AiStatus | null; onAiRefresh:
         </li>
       </ol>
       <div className="welcome__claude">
-        <ClaudeSetup ai={ai} onRefresh={onAiRefresh} />
+        {prefs ? (
+          <AiPicker prefs={prefs} onPrefs={onPrefs} onActiveChange={onAiRefresh} active={ai} />
+        ) : (
+          <ClaudeSetup ai={ai} onRefresh={onAiRefresh} />
+        )}
       </div>
       <div className="welcome__actions">
         <button className="button" onClick={onAdd}>
           + Add your first project
         </button>
-        {!ready && <span className="welcome__skip">No Claude for now? Just add a project; you can connect it later.</span>}
+        {!ready && <span className="welcome__skip">No AI for now? Just add a project; you can connect one later.</span>}
       </div>
     </section>
   );

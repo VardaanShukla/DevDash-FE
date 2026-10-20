@@ -38,6 +38,8 @@
   position: relative;
   min-height: 520px;
   overflow: hidden;
+  /* Never scrollable, even by focus: the daytime sun rays reach past the edges. */
+  overflow: clip;
   border-radius: 22px;
   background:
     radial-gradient(ellipse 55% 50% at 50% 44%, rgba(34, 98, 96, 0.6), transparent 70%),
@@ -1488,26 +1490,27 @@
 }
 
 /* ------------------------------------------------------------------------------------
-   Daytime: the light theme's sky. A sunlit sky chart: blue at the top warming to a peach
-   horizon, the project a golden sun throwing slow-turning shafts of light, clouds drifting
-   across, faint orbit rings like a star atlas, and porcelain planets with soft shadows.
+   Daytime: the light theme's sky, in the same coffee and cream as the rest of the light
+   theme. A sunlit chart: the project a golden sun throwing slow-turning shafts of light,
+   faint orbit rings like a star atlas, and porcelain planets with soft shadows.
    ------------------------------------------------------------------------------------ */
 :root[data-theme="light"] .cn {
-  --cn-ink: #0f2a3a;
-  --cn-soft: #3d5a68;
-  --cn-muted: #6d8794;
-  --cn-gold: #e8890c;
-  --cn-teal: #0d9488;
-  --cn-violet: #6366f1;
-  --cn-pink: #14b8a6;
-  --cn-glass: rgba(255, 255, 255, 0.72);
-  --cn-glass-line: rgba(14, 64, 90, 0.12);
-  --cn-added: #16a34a;
-  --cn-deleted: #dc2626;
-  --cn-modified: #0284c7;
-  --cn-renamed: #9333ea;
-  --cn-quiet: #0d9488;
-  --cn-twig: #3a9e93;
+  /* Text tones all read at 4.5:1 or more on the light sky and the cream glass. */
+  --cn-ink: #24180f;
+  --cn-soft: #45392d;
+  --cn-muted: #5e5044;
+  --cn-gold: #9a4508;
+  --cn-teal: #0b5f59;
+  --cn-violet: #4f46e5;
+  --cn-pink: #0f766e;
+  --cn-glass: rgba(255, 250, 243, 0.86);
+  --cn-glass-line: rgba(84, 56, 30, 0.16);
+  --cn-added: #15803d;
+  --cn-deleted: #b91c1c;
+  --cn-modified: #035e8f;
+  --cn-renamed: #7e22ce;
+  --cn-quiet: #0b5f59;
+  --cn-twig: #2f6f5f;
   --cn-core-1: #fffbea;
   --cn-core-2: #ffcb47;
   --cn-core-3: #f07b12;
@@ -1523,25 +1526,27 @@
   --cn-halo-cool-strength: 0.22;
   --cn-sun-halo-1: #ffe9a8;
   --cn-sun-halo-2: #ffb347;
-  --cn-fan-1: #0ea5e9;
-  --cn-fan-2: #14b8a6;
-  --cn-text-halo: rgba(250, 252, 255, 0.92);
+  --cn-fan-1: #0b7a70;
+  --cn-fan-2: #a0703f;
+  --cn-text-halo: rgba(255, 250, 243, 0.95);
+  /* Coffee and cream: latte at the top, cream in the middle where the parts sit, a
+     deeper coffee at the horizon; the sun's glow kept close to it, and fine orbit rings. */
   background:
-    radial-gradient(ellipse 38% 34% at 50% 44%, rgba(255, 214, 120, 0.55), rgba(255, 196, 110, 0.12) 60%, transparent 75%),
-    repeating-radial-gradient(circle at 50% 44%, transparent 0 89px, rgba(14, 116, 144, 0.07) 89px 90px),
-    linear-gradient(180deg, #bfe3fb 0%, #e3f3ff 38%, #f8fbff 58%, #ffeedd 86%, #ffe1c7 100%);
-  box-shadow: 0 30px 60px -34px rgba(30, 64, 110, 0.45), inset 0 0 0 1px rgba(14, 64, 90, 0.1);
+    radial-gradient(circle at 50% 47%, rgba(255, 200, 100, 0.4) 0, rgba(255, 220, 150, 0.16) 8%, transparent 20%),
+    repeating-radial-gradient(circle at 50% 47%, transparent 0 79px, rgba(11, 95, 89, 0.09) 79px 80px),
+    linear-gradient(180deg, #e5d0b6 0%, #f0e3d1 40%, #f6ecdf 68%, #e8d3b9 100%);
+  box-shadow: 0 30px 60px -34px rgba(74, 46, 20, 0.45), inset 0 0 0 1px rgba(84, 56, 30, 0.12);
 }
 
-/* Shafts of sunlight turning slowly around the sun. */
+/* Faint shafts of sunlight turning slowly around the sun, fading well before the parts. */
 :root[data-theme="light"] .cn::before {
   content: "";
   position: absolute;
   inset: -40%;
   pointer-events: none;
-  background: repeating-conic-gradient(from 0deg at 50% 47%, rgba(255, 236, 170, 0.42) 0deg 5deg, transparent 5deg 22deg);
-  -webkit-mask: radial-gradient(circle at 50% 47%, #000 4%, rgba(0, 0, 0, 0.5) 18%, transparent 38%);
-  mask: radial-gradient(circle at 50% 47%, #000 4%, rgba(0, 0, 0, 0.5) 18%, transparent 38%);
+  background: repeating-conic-gradient(from 0deg at 50% 47%, rgba(255, 214, 130, 0.28) 0deg 3deg, transparent 3deg 18deg);
+  -webkit-mask: radial-gradient(circle at 50% 47%, #000 2%, rgba(0, 0, 0, 0.35) 9%, transparent 20%);
+  mask: radial-gradient(circle at 50% 47%, #000 2%, rgba(0, 0, 0, 0.35) 9%, transparent 20%);
   animation: cn-spin 160s linear infinite;
 }
 
@@ -1551,14 +1556,12 @@
   position: absolute;
   inset: 0 -30%;
   pointer-events: none;
+  /* Two or three clouds along the top edge only, away from the parts and labels. */
   background:
-    radial-gradient(ellipse 14% 6% at 12% 18%, rgba(255, 255, 255, 0.95), transparent 70%),
-    radial-gradient(ellipse 9% 4% at 18% 15%, rgba(255, 255, 255, 0.9), transparent 70%),
-    radial-gradient(ellipse 18% 7% at 72% 12%, rgba(255, 255, 255, 0.85), transparent 70%),
-    radial-gradient(ellipse 10% 4% at 80% 9%, rgba(255, 255, 255, 0.9), transparent 70%),
-    radial-gradient(ellipse 16% 6% at 40% 88%, rgba(255, 255, 255, 0.7), transparent 70%),
-    radial-gradient(ellipse 12% 5% at 90% 80%, rgba(255, 255, 255, 0.65), transparent 70%);
-  filter: blur(6px);
+    radial-gradient(ellipse 12% 4% at 14% 9%, rgba(255, 250, 243, 0.85), transparent 70%),
+    radial-gradient(ellipse 8% 3% at 20% 7%, rgba(255, 250, 243, 0.8), transparent 70%),
+    radial-gradient(ellipse 14% 4.5% at 76% 8%, rgba(255, 250, 243, 0.75), transparent 70%);
+  filter: blur(5px);
   animation: cn-clouds 90s ease-in-out infinite alternate;
 }
 
@@ -1573,7 +1576,12 @@
 
 /* Daytime stars: faint ink dots on the chart, still twinkling. */
 :root[data-theme="light"] .cn__stars circle {
-  fill: #35508f;
+  fill: #6b4a2e;
+}
+
+/* Fewer and fainter than by night: a chart, not a starfield. */
+:root[data-theme="light"] .cn__stars {
+  opacity: 0.45;
 }
 
 :root[data-theme="light"] .cn__core-ticks line {
@@ -1617,7 +1625,8 @@
 }
 
 :root[data-theme="light"] .cn__beam {
-  stroke: rgba(2, 132, 199, 0.32);
+  stroke: rgba(11, 95, 89, 0.5);
+  stroke-width: 1.2;
 }
 
 :root[data-theme="light"] .cn__beam--hot {
@@ -1625,15 +1634,16 @@
 }
 
 :root[data-theme="light"] .cn__beam-glow {
-  stroke: rgba(14, 165, 233, 0.08);
+  stroke: rgba(11, 95, 89, 0.05);
 }
 
+/* By day the glow stays a soft halo, so the line itself carries the colour. */
 :root[data-theme="light"] .cn__beam-glow--hot {
-  stroke: rgba(14, 165, 233, 0.3);
+  stroke: rgba(11, 95, 89, 0.14);
 }
 
 :root[data-theme="light"] .cn__edge {
-  stroke: rgba(13, 148, 136, 0.35);
+  stroke: rgba(13, 107, 100, 0.5);
 }
 
 :root[data-theme="light"] .cn__edge--lit {
@@ -1642,15 +1652,18 @@
 
 /* Planets: porcelain, lit from the top left, casting a soft shadow on the sky. */
 :root[data-theme="light"] .cn__orb {
-  filter: drop-shadow(0 6px 8px rgba(30, 41, 90, 0.28));
+  stroke: rgba(30, 41, 90, 0.28);
+  stroke-width: 0.8;
+  filter: drop-shadow(0 6px 8px rgba(30, 41, 90, 0.3));
 }
 
 :root[data-theme="light"] .cn__shine {
-  fill: rgba(255, 255, 255, 0.85);
+  fill: rgba(255, 250, 243, 0.85);
 }
 
 :root[data-theme="light"] .cn__node-ring {
-  stroke: #6366f1;
+  stroke: #4f46e5;
+  stroke-opacity: 0.55;
 }
 
 :root[data-theme="light"] .cn__twig {
@@ -1662,8 +1675,18 @@
 }
 
 :root[data-theme="light"] .cn__share {
-  fill: rgba(255, 255, 255, 0.92);
-  stroke: rgba(14, 64, 90, 0.18);
+  fill: #ffffff;
+  stroke: rgba(11, 95, 89, 0.3);
+}
+
+/* Names a little bolder by day, so they hold their own against the bright sky. */
+:root[data-theme="light"] .cn__name {
+  font-weight: 700;
+  stroke-width: 4px;
+}
+
+:root[data-theme="light"] .cn__core-name {
+  stroke-width: 5px;
 }
 
 :root[data-theme="light"] .cn__share--hot {
@@ -1692,7 +1715,7 @@
 :root[data-theme="light"] .cn__legend,
 :root[data-theme="light"] .cn-focus__crumbs ol,
 :root[data-theme="light"] .cn-focus__back {
-  box-shadow: 0 12px 30px -16px rgba(30, 64, 110, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px -16px rgba(74, 46, 20, 0.4), inset 0 1px 0 rgba(255, 250, 243, 0.9);
 }
 
 :root[data-theme="light"] .cn__bar::before {
@@ -1702,13 +1725,13 @@
 :root[data-theme="light"] .cn__add,
 :root[data-theme="light"] .cn-row__badge--add,
 :root[data-theme="light"] .cn-panel__change--added {
-  color: #15803d;
+  color: #166534;
 }
 
 :root[data-theme="light"] .cn__del,
 :root[data-theme="light"] .cn-row__badge--del,
 :root[data-theme="light"] .cn-panel__change--deleted {
-  color: #dc2626;
+  color: #b91c1c;
 }
 
 /* Inside a part, by day. */
@@ -1765,23 +1788,23 @@
 :root[data-theme="light"] .cn-panel__actions,
 :root[data-theme="light"] .cn-panel__tile,
 :root[data-theme="light"] .cn-panel__fns li {
-  background: rgba(14, 64, 90, 0.06);
+  background: rgba(84, 56, 30, 0.06);
 }
 
 :root[data-theme="light"] .cn-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(240, 247, 255, 0.82));
-  box-shadow: 0 12px 26px -16px rgba(30, 64, 110, 0.45);
+  background: linear-gradient(135deg, rgba(255, 250, 243, 0.92), rgba(250, 241, 228, 0.82));
+  box-shadow: 0 12px 26px -16px rgba(74, 46, 20, 0.45);
 }
 
 :root[data-theme="light"] .cn-card--on {
   border-color: rgba(2, 132, 199, 0.7);
-  background: linear-gradient(135deg, rgba(224, 242, 254, 0.95), rgba(255, 255, 255, 0.9));
+  background: linear-gradient(135deg, rgba(240, 227, 208, 0.95), rgba(255, 250, 243, 0.9));
   box-shadow: 0 0 26px -6px rgba(14, 165, 233, 0.55), inset 0 0 0 1px rgba(2, 132, 199, 0.3);
 }
 
 :root[data-theme="light"] .cn-row {
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 4px 12px -8px rgba(30, 64, 110, 0.35);
+  background: rgba(255, 250, 243, 0.78);
+  box-shadow: 0 4px 12px -8px rgba(74, 46, 20, 0.35);
 }
 
 :root[data-theme="light"] .cn-row--on {
@@ -1796,7 +1819,7 @@
 
 :root[data-theme="light"] .cn-focus:not(.cn-focus--narrow) .cn-row:hover {
   background: #ffffff;
-  box-shadow: 0 14px 30px -10px rgba(30, 64, 110, 0.45), 0 0 0 1px rgba(13, 148, 136, 0.35);
+  box-shadow: 0 14px 30px -10px rgba(74, 46, 20, 0.45), 0 0 0 1px rgba(13, 148, 136, 0.35);
 }
 
 :root[data-theme="light"] .cn-focus:not(.cn-focus--narrow) .cn-row:hover .cn-row__label {
@@ -1804,7 +1827,7 @@
 }
 
 :root[data-theme="light"] .cn-focus__track {
-  stroke: rgba(14, 64, 90, 0.12);
+  stroke: rgba(84, 56, 30, 0.12);
 }
 
 :root[data-theme="light"] .cn-focus__thumb {
@@ -1813,9 +1836,9 @@
 }
 
 :root[data-theme="light"] .cn-panel {
-  border-color: rgba(14, 64, 90, 0.14);
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(241, 248, 255, 0.9));
-  box-shadow: 0 30px 60px -24px rgba(30, 64, 110, 0.5), 0 0 40px -20px rgba(45, 212, 191, 0.4);
+  border-color: rgba(84, 56, 30, 0.14);
+  background: linear-gradient(160deg, rgba(255, 250, 243, 0.94), rgba(250, 242, 231, 0.9));
+  box-shadow: 0 30px 60px -24px rgba(74, 46, 20, 0.5), 0 0 40px -20px rgba(45, 212, 191, 0.4);
 }
 
 :root[data-theme="light"] .cn-panel__open {
@@ -1828,7 +1851,7 @@
 }
 
 :root[data-theme="light"] .cn-panel__rate {
-  background: linear-gradient(120deg, rgba(255, 247, 237, 0.9), rgba(224, 242, 254, 0.8));
+  background: linear-gradient(120deg, rgba(255, 247, 237, 0.9), rgba(240, 227, 208, 0.8));
   box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.14);
 }
 

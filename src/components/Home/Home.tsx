@@ -77,8 +77,8 @@ export default function Home(props: Props) {
                 <strong>{digest.claude.risky || digest.claude.prompts}</strong>
                 <span>
                   {digest.claude.risky
-                    ? `of Claude's ${digest.claude.prompts} changes today need a look`
-                    : `Claude ${digest.claude.prompts === 1 ? "change" : "changes"} today`}
+                    ? `of today's ${digest.claude.prompts} AI changes need a look`
+                    : `AI ${digest.claude.prompts === 1 ? "change" : "changes"} today`}
                 </span>
               </button>
             </li>

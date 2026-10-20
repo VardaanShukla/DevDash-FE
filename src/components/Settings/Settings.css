@@ -1,4 +1,113 @@
-/* Settings: the look, uncommitted work, the account on the left; shortcut keys on the right. */
+/* Settings: the look, uncommitted work, the account and the AI on the left; shortcut keys on the right. */
+
+/* The AI that writes explanations: one card per AI with whether it's ready, then the
+   setup steps and the model for the one picked. */
+.ai-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-picker__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.ai-picker__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--dd-line);
+  border-radius: 14px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.ai-picker__option:hover {
+  border-color: color-mix(in srgb, var(--dd-accent) 60%, transparent);
+}
+
+.ai-picker__option--on {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 3px var(--dd-accent-soft);
+}
+
+.ai-picker__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ai-picker__top strong {
+  font-size: 13.5px;
+}
+
+.ai-picker__blurb {
+  color: var(--dd-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ai-picker__state {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ai-picker__state--ready {
+  background: var(--dd-add-bg);
+  color: var(--dd-add);
+}
+
+.ai-picker__state--signin {
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+}
+
+.ai-picker__state--setup,
+.ai-picker__state--checking {
+  background: var(--dd-line);
+  color: var(--dd-ink-soft);
+}
+
+.ai-picker__model {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-picker__model label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ai-picker__model .select {
+  max-width: 340px;
+}
+
+.ai-picker__custom {
+  max-width: 340px;
+  padding: 8px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+  font-family: var(--dd-mono);
+  font-size: 13px;
+}
 .settings {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -129,17 +238,17 @@
 }
 
 .settings__theme--light .settings__preview {
-  background: radial-gradient(circle at 70% 40%, rgba(255, 210, 110, 0.6), transparent 55%), linear-gradient(180deg, #cfe9fb, #fff3e6);
+  background: radial-gradient(circle at 70% 40%, rgba(255, 210, 120, 0.45), transparent 55%), linear-gradient(180deg, #dcc6aa, #ecdcc7);
 }
 
 .settings__theme--light .settings__preview i,
 .settings__theme--light .settings__preview b {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 2px 6px -3px rgba(15, 23, 42, 0.3);
+  background: rgba(255, 249, 240, 0.9);
+  box-shadow: 0 2px 6px -3px rgba(74, 46, 20, 0.35);
 }
 
 .settings__theme--light .settings__preview b:nth-of-type(1) {
-  background: linear-gradient(90deg, rgba(13, 148, 136, 0.45), rgba(255, 255, 255, 0.85) 60%);
+  background: linear-gradient(90deg, rgba(11, 95, 89, 0.45), rgba(255, 249, 240, 0.9) 60%);
 }
 
 /* A switch: a real checkbox, drawn as a track and knob. */

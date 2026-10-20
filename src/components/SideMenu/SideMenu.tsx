@@ -10,7 +10,7 @@ export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" |
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
   { id: "home", label: "Home", hint: "Your projects, the branch's changes, branch flow and map, to-dos and calendar", icon: <HomeIcon /> },
-  { id: "digest", label: "Claude's changes", hint: "What Claude changed each day, and what to check", icon: <DigestIcon /> },
+  { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
   { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },

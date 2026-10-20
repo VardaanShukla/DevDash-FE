@@ -41,7 +41,7 @@ export default function RemoveProject({ repo, onClose, onRemoved }: Props) {
         <ul className="remove__list">
           <li>Your files, branches and git history stay exactly as they are.</li>
           {repo.ai === "claude" ? (
-            <li>DevDash stops recording Claude here and deletes the Claude requests it recorded for this project.</li>
+            <li>DevDash stops recording AI changes here and deletes the AI requests it recorded for this project.</li>
           ) : (
             <li>DevDash just stops showing it.</li>
           )}

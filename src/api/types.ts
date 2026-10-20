@@ -201,7 +201,19 @@ export type FunctionDetail = {
   explanation: FunctionExplanation | null;
 };
 
+// An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama) or Antigravity.
+export type AiProvider = "claude" | "codex" | "ollama" | "antigravity";
+export type AiModel = { id: string; label: string; note: string };
+
 export type AiStatus = {
+  provider: AiProvider;
+  name: string;
+  // How it signs in: a button here, a command run in a terminal, or no sign-in at all.
+  login: "button" | "terminal" | "none" | null;
+  login_command: string | null;
+  // Cheapest first; empty when the tool can't list them (type one instead).
+  models: AiModel[];
+  default_model: string | null;
   tool: string;
   available: boolean;
   // null when Claude Code couldn't say.
@@ -306,6 +318,13 @@ export type Preferences = {
   // Action -> key. Actions: view:<screen>, theme, uncommitted, sync, next-file, previous-file.
   // An empty key means the shortcut is off.
   shortcuts: Record<string, string>;
+  // Which AI writes explanations, and the model picked for each (missing: its cheapest).
+  ai: { provider: AiProvider; models: Partial<Record<AiProvider, string>> };
+};
+// What a change sends: only the settings to change; for the AI, the provider and/or the
+// models of the AIs to change ("" goes back to that AI's default).
+export type PreferenceChange = Omit<Partial<Preferences>, "ai"> & {
+  ai?: { provider?: AiProvider; models?: Partial<Record<AiProvider, string>> };
 };
 
 // The daily digest: what Claude changed on one day, prompt by prompt.

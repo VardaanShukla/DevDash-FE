@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
-import type { AiStatus, Preferences } from "../../api/types";
+import type { AiProvider, AiStatus, PreferenceChange, Preferences } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
@@ -11,20 +11,20 @@ import "./Settings.css";
 
 type Props = {
   prefs: Preferences;
-  onPrefs: (changes: Partial<Preferences>) => Promise<void>;
+  onPrefs: (changes: PreferenceChange) => Promise<void>;
   onResetShortcuts: () => Promise<void>;
   username?: string;
   passwordSet: boolean;
   onSignOut?: () => void;
   // After setting or changing the password, so the account details are read again.
   onPasswordSet: () => void;
-  // Claude Code: installed, signed in, and as whom; null while it's being checked.
+  // The AI picked for explanations: installed, signed in, and as whom; null while checked.
   ai: AiStatus | null;
   onAiRefresh: () => void;
 };
 
 export default function Settings({ prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh }: Props) {
-  // Claude can be installed, signed in or out outside DevDash: look again on opening Settings.
+  // An AI can be installed, signed in or out outside DevDash: look again on opening Settings.
   useEffect(() => onAiRefresh(), [onAiRefresh]);
 
   return (
@@ -49,7 +49,7 @@ export default function Settings({ prefs, onPrefs, onResetShortcuts, username, p
                   <b />
                 </span>
                 <strong>{theme === "dark" ? "Dark" : "Light"}</strong>
-                <span>{theme === "dark" ? "Deep navy, glowing night sky" : "Bright glass, sunlit sky"}</span>
+                <span>{theme === "dark" ? "Deep navy, glowing night sky" : "Latte and cream, sunlit sky"}</span>
               </button>
             ))}
           </div>
@@ -77,16 +77,151 @@ export default function Settings({ prefs, onPrefs, onResetShortcuts, username, p
         <Account username={username} passwordSet={passwordSet} onSignOut={onSignOut} onPasswordSet={onPasswordSet} />
 
         <section className="card settings__section">
-          <h2>Claude</h2>
+          <h2>AI for explanations</h2>
           <p className="settings__note">
-            Signed in to Claude Code, DevDash explains changes in plain English. Recording what Claude changed doesn't need
-            it: connect Claude per project under Projects.
+            Pick the AI that writes DevDash's plain-English explanations, and its model. Smaller models use fewer tokens:
+            each AI starts on its cheapest model. Explanations are saved, so each is asked for once.
+            Recording what your AI coding tool changes is separate: connect it per project under Projects.
           </p>
-          <ClaudeSetup ai={ai} onRefresh={onAiRefresh} />
+          <AiPicker prefs={prefs} onPrefs={onPrefs} onActiveChange={onAiRefresh} active={ai} />
         </section>
       </div>
 
       <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />
+    </div>
+  );
+}
+
+// What each AI is, in a line.
+const BLURB: Record<AiProvider, string> = {
+  claude: "Anthropic's Claude Code. Uses your Claude plan.",
+  codex: "OpenAI's Codex CLI. Uses your ChatGPT plan.",
+  ollama: "A model running on this computer. Free and private, but slower.",
+  antigravity: "Google's Antigravity CLI. Uses your Google account.",
+};
+const ORDER: AiProvider[] = ["claude", "codex", "ollama", "antigravity"];
+
+// Choosing the AI that writes explanations: each with whether it's ready, the setup steps
+// for the one picked (install, sign in), and its model. Also on the first-run screen.
+export function AiPicker({ prefs, onPrefs, onActiveChange, active }: {
+  prefs: Preferences;
+  onPrefs: (changes: PreferenceChange) => Promise<void>;
+  // The AI in use changed, or may have (signed in, installed): read it again.
+  onActiveChange: () => void;
+  // The AI in use, as the dashboard last read it; refreshes the list when it changes.
+  active?: AiStatus | null;
+}) {
+  const [list, setList] = useState<AiStatus[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(() => {
+    api.aiProviders().then(
+      (found) => (setList(found), setError(null)),
+      (e: Error) => setError(e.message),
+    );
+  }, []);
+  useEffect(load, [load, active]);
+
+  const chosen = prefs.ai.provider;
+  const current = list?.find((p) => p.provider === chosen) ?? null;
+  const pick = (provider: AiProvider) =>
+    onPrefs({ ai: { provider } }).then(onActiveChange, (e: Error) => setError(e.message));
+  const refresh = () => {
+    load();
+    onActiveChange();
+  };
+
+  return (
+    <div className="ai-picker">
+      <div className="ai-picker__options" role="radiogroup" aria-label="AI for explanations">
+        {ORDER.map((id) => {
+          const p = list?.find((item) => item.provider === id);
+          const state = !p ? "checking" : !p.available ? "setup" : p.signed_in === false ? "signin" : "ready";
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={chosen === id}
+              className={`ai-picker__option${chosen === id ? " ai-picker__option--on" : ""}`}
+              onClick={() => chosen !== id && pick(id)}
+            >
+              <span className="ai-picker__top">
+                <strong>{p?.name ?? id}</strong>
+                <span className={`ai-picker__state ai-picker__state--${state}`}>
+                  {state === "checking" ? "Checking…" : state === "ready" ? "Ready" : state === "signin" ? "Sign in" : p?.detail?.replace(/^Install the /, "Install ") ?? "Set up"}
+                </span>
+              </span>
+              <span className="ai-picker__blurb">{BLURB[id]}</span>
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+      <ClaudeSetup ai={current} onRefresh={refresh} />
+      {current?.available && (
+        <ModelPicker
+          key={current.provider}
+          ai={current}
+          chosen={prefs.ai.models[chosen] ?? ""}
+          onPick={(model) => onPrefs({ ai: { models: { [chosen]: model } } }).then(refresh, (e: Error) => setError(e.message))}
+        />
+      )}
+    </div>
+  );
+}
+
+// The model for the AI picked: its models cheapest first, or any name typed in.
+function ModelPicker({ ai, chosen, onPick }: { ai: AiStatus; chosen: string; onPick: (model: string) => void }) {
+  const known = ai.models.some((m) => m.id === chosen);
+  const [typing, setTyping] = useState(Boolean(chosen) && !known);
+  const [text, setText] = useState(known ? "" : chosen);
+  const shown = typing ? "__other" : chosen || ai.default_model || "";
+  const note = ai.models.find((m) => m.id === (chosen || ai.default_model))?.note;
+  const save = () => text.trim() !== chosen && onPick(text.trim());
+
+  return (
+    <div className="ai-picker__model">
+      <label>
+        <span>Model</span>
+        <select
+          className="select"
+          value={shown}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value === "__other") return setTyping(true);
+            setTyping(false);
+            // The default is stored as no choice, so a later, cheaper default reaches it.
+            onPick(value === ai.default_model ? "" : value);
+          }}
+        >
+          {ai.provider === "antigravity" && <option value="">Antigravity's own choice</option>}
+          {ai.models.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.label}
+              {m.id === ai.default_model ? " · default, fewest tokens" : ""}
+            </option>
+          ))}
+          <option value="__other">Another model (type its name)…</option>
+        </select>
+      </label>
+      {typing && (
+        <input
+          className="ai-picker__custom"
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          onBlur={save}
+          onKeyDown={(event) => event.key === "Enter" && save()}
+          placeholder={ai.provider === "ollama" ? "e.g. llama3.2:3b" : ai.provider === "antigravity" ? "a model name, as agy's /model shows it" : "model name"}
+          spellCheck={false}
+          autoFocus
+        />
+      )}
+      <p className="settings__note">
+        {!typing && note ? `${note} ` : ""}
+        {ai.provider === "ollama"
+          ? "Local models use no tokens; smaller ones answer faster."
+          : "Smaller models use fewer tokens; bigger ones explain tricky code better."}
+      </p>
     </div>
   );
 }

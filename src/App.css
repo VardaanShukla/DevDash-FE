@@ -105,11 +105,11 @@
 }
 
 .brand__dev {
-  color: var(--dd-blue);
+  color: var(--dd-brand-ink);
 }
 
 .brand__tag {
-  color: var(--dd-red);
+  color: var(--dd-brand-red);
   font-family: var(--dd-mono);
   font-size: 0.65em;
   padding: 0 2px;
@@ -320,9 +320,10 @@
   white-space: nowrap;
 }
 
+/* Solid, so it reads on the highlighted row it usually sits in. */
 .branches__tag--current {
-  background: var(--dd-accent-soft);
-  color: var(--dd-accent);
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
 }
 
 .branches__tag--done {

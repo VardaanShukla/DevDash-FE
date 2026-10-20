@@ -105,7 +105,7 @@ export default function Digest({ connected, version, onConnect }: Props) {
             <p className="digest__you">
               {data.claude.prompts > 0 && (
                 <>
-                  Claude: <b className="digest__add">+{data.claude.additions}</b> <b className="digest__del">−{data.claude.deletions}</b> lines.{" "}
+                  AI: <b className="digest__add">+{data.claude.additions}</b> <b className="digest__del">−{data.claude.deletions}</b> lines.{" "}
                 </>
               )}
               You: {data.you.files} {data.you.files === 1 ? "file" : "files"} in {data.you.commits}{" "}
@@ -127,16 +127,16 @@ export default function Digest({ connected, version, onConnect }: Props) {
           <section className="card digest__empty">
             {connected === 0 ? (
               <>
-                <h3>No project is connected to Claude yet</h3>
-                <p>DevDash records Claude's changes only in projects connected to it. Connect one, then restart any Claude Code session that's open.</p>
+                <h3>No project is recording AI changes yet</h3>
+                <p>DevDash records AI changes only in projects connected to your AI coding tool. Connect one, then restart any coding session that's open.</p>
                 <button className="digest__button" onClick={onConnect}>Open Projects</button>
               </>
             ) : (
               <>
-                <h3>{isToday ? "Claude hasn't changed anything today" : "Claude didn't change anything this day"}</h3>
+                <h3>{isToday ? "Your AI hasn't changed anything today" : "Your AI didn't change anything this day"}</h3>
                 <p>
-                  Changes show here as soon as a Claude Code prompt finishes in one of your {connected} connected{" "}
-                  {connected === 1 ? "project" : "projects"}, or a commit with Claude as co-author, from a cloud session
+                  Changes show here as soon as a prompt to your AI coding tool finishes in one of your {connected} connected{" "}
+                  {connected === 1 ? "project" : "projects"}, or a commit with an AI co-author, from a cloud session
                   for example, reaches one of your branches.
                 </p>
               </>
@@ -225,7 +225,7 @@ function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: str
           {change.branch && <code>{change.branch}</code>}
           <span>{time(change.at)}</span>
           {change.origin === "cloud" ? (
-            <span className="digest__cloud" title="A commit with Claude as co-author, found on this branch. No hook saw it being made, so the commit message stands in for the prompt.">
+            <span className="digest__cloud" title="A commit with an AI co-author, found on this branch. No hook saw it being made, so the commit message stands in for the prompt.">
               From a cloud session
             </span>
           ) : (
@@ -308,7 +308,7 @@ function File({ file }: { file: DigestFile }) {
         {file.watched && (
           <span
             className="digest__watched"
-            title="This file changed while the prompt ran, but not through Claude's Edit or Write tools: Claude may have used a shell command, or you edited it at the same time. Check it's Claude's before undoing."
+            title="This file changed while the prompt ran, but not through the AI tool's own edit tools: it may have used a shell command, or you edited it at the same time. Check it's the AI's before undoing."
           >
             changed during this prompt
           </span>
