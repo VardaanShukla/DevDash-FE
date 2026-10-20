@@ -32,6 +32,8 @@ type Props = {
   onOpenFile: (path: string) => void;
   onAdd: () => void;
   onDigest: () => void;
+  // The signed-in DevDash username, for the greeting; none before a password is set.
+  username?: string;
 };
 
 export default function Home(props: Props) {
@@ -58,13 +60,52 @@ export default function Home(props: Props) {
   const uncommitted = (cards ?? []).reduce((sum, card) => sum + card.uncommitted, 0);
   const week = (cards ?? []).reduce((sum, card) => sum + card.commits_this_week, 0);
   const picked = repos.find((repo) => repo.id === repoId) ?? null;
+  const moment = timeOfDay();
+  // One line on what most needs you right now, from real numbers: AI changes to check,
+  // then work not committed, then a quiet "all caught up".
+  const risky = digest?.claude.risky ?? 0;
+  const aiToday = digest?.claude.prompts ?? 0;
+  const status: { text: string; tone: "risk" | "warn" | "calm"; go?: () => void } =
+    risky > 0
+      ? { text: `${risky} AI ${risky === 1 ? "change needs" : "changes need"} a look`, tone: "risk", go: onDigest }
+      : uncommitted > 0
+        ? { text: `${uncommitted} ${uncommitted === 1 ? "file" : "files"} not committed yet`, tone: "warn" }
+        : aiToday > 0
+          ? { text: `${aiToday} AI ${aiToday === 1 ? "change" : "changes"} today, nothing risky`, tone: "calm", go: onDigest }
+          : { text: "All caught up", tone: "calm" };
 
   return (
     <div className="home">
       <section className="home__hello">
-        <div>
-          <h2>{greeting()}</h2>
-          <span>{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>
+        <div className="home__greet">
+          <span className={`home__sky home__sky--${moment.part}`} aria-hidden="true">
+            <SkyIcon part={moment.part} />
+          </span>
+          <div>
+            <h2>
+              {moment.words}
+              {props.username && (
+                <>
+                  , <span className="home__name">{props.username}</span>
+                </>
+              )}
+            </h2>
+            <p className="home__sub">
+              <span>{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>
+              {cards && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  {status.go ? (
+                    <button className={`home__mood home__mood--${status.tone}`} onClick={status.go}>
+                      {status.text}
+                    </button>
+                  ) : (
+                    <span className={`home__mood home__mood--${status.tone}`}>{status.text}</span>
+                  )}
+                </>
+              )}
+            </p>
+          </div>
         </div>
         <ul className="home__stats">
           <Stat value={repos.length} label={repos.length === 1 ? "project" : "projects"} />
@@ -359,9 +400,45 @@ function Stat({ value, label, warn }: { value: number; label: string; warn?: boo
   );
 }
 
-function greeting() {
+type Part = "night" | "morning" | "afternoon" | "evening";
+
+// The greeting for the hour on this computer's clock.
+function timeOfDay(): { part: Part; words: string } {
   const hour = new Date().getHours();
-  return hour < 5 ? "Working late" : hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  if (hour < 5 || hour >= 22) return { part: "night", words: "Working late" };
+  if (hour < 12) return { part: "morning", words: "Good morning" };
+  if (hour < 17) return { part: "afternoon", words: "Good afternoon" };
+  return { part: "evening", words: "Good evening" };
+}
+
+// A small picture of the sky beside the greeting: rising sun, sun, setting sun, moon.
+function SkyIcon({ part }: { part: Part }) {
+  const props = { width: 22, height: 22, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8,
+                  strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (part === "night") {
+    return (
+      <svg {...props}>
+        <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        <path d="M17 3.5v2M16 4.5h2" />
+      </svg>
+    );
+  }
+  if (part === "afternoon") {
+    return (
+      <svg {...props}>
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4" />
+      </svg>
+    );
+  }
+  // Morning and evening: the sun on the horizon, rising or setting.
+  return (
+    <svg {...props}>
+      <path d="M7 17a5 5 0 0 1 10 0" />
+      <path d="M3 17h18M12 7v2M5.6 10.6l1.4 1.4M18.4 10.6L17 12M3.5 21h17" />
+      <path d={part === "morning" ? "M10 4.5l2-2 2 2" : "M10 2.5l2 2 2-2"} />
+    </svg>
+  );
 }
 
 function ago(iso: string) {

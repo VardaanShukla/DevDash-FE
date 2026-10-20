@@ -10,7 +10,7 @@ export type Repo = {
   ai: AiToolId | null;
 };
 
-export type AiToolId = "claude";
+export type AiToolId = "claude" | "codex" | "antigravity";
 
 export type AiTool = {
   id: string;
@@ -356,6 +356,8 @@ export type DigestChange = {
   // prompt: recorded by the Claude Code hooks. commit: an AI-co-authored commit made here.
   // cloud: a Claude co-authored commit found on a branch, made where no hook ran (a cloud session).
   origin: "prompt" | "commit" | "cloud";
+  // The AI tool the prompt went to (Claude, Codex or Antigravity); null for commits.
+  tool: string | null;
   at: string;
   commit: { sha: string; message: string; count: number } | null;
   files: DigestFile[];

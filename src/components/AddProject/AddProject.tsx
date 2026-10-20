@@ -16,20 +16,29 @@ const NO_AI: AiTool = {
   description: "Show your own commits and branches. You can connect an AI tool later.",
 };
 
+// What's left to do in the tool itself once the project is added.
+const AFTER: Record<string, string> = {
+  codex: "Once it's added, open Codex and type /hooks to trust DevDash's hooks (Codex asks once). Restart Codex if it's open.",
+  antigravity: "Once it's added, restart Antigravity (agy, the app or the IDE) if it's open, so it loads DevDash's hooks.",
+};
+
 export default function AddProject({ onClose, onAdded }: Props) {
   const [path, setPath] = useState("");
   const [tools, setTools] = useState<AiTool[]>([NO_AI]);
   const [ai, setAi] = useState("none");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Claude Code's state, checked once Claude is picked; null while checking.
-  const [claude, setClaude] = useState<AiStatus | null>(null);
-  const checkClaude = useCallback(() => {
-    api.ai().then(setClaude, () => {});
-  }, []);
+  // The picked AI tool's state (installed, signed in), checked once it's picked; null while checking.
+  const [status, setStatus] = useState<AiStatus | null>(null);
+  const checkStatus = useCallback(() => {
+    if (ai === "claude") api.ai().then(setStatus, () => {});
+    else if (ai === "codex" || ai === "antigravity")
+      api.aiProviders().then((list) => setStatus(list.find((item) => item.provider === ai) ?? null), () => {});
+  }, [ai]);
   useEffect(() => {
-    if (ai === "claude") checkClaude();
-  }, [ai, checkClaude]);
+    setStatus(null);
+    checkStatus();
+  }, [checkStatus]);
 
   useEffect(() => {
     api.aiTools().then((list) => setTools([NO_AI, ...list])).catch(() => {});
@@ -93,8 +102,9 @@ export default function AddProject({ onClose, onAdded }: Props) {
           ))}
         </fieldset>
 
-        {/* Picking Claude: get it installed and signed in right here, if it isn't yet. */}
-        {ai === "claude" && claude?.signed_in !== true && <ClaudeSetup ai={claude} onRefresh={checkClaude} />}
+        {/* Picking an AI tool: get it installed and signed in right here, if it isn't yet. */}
+        {ai !== "none" && status?.signed_in !== true && <ClaudeSetup ai={status} onRefresh={checkStatus} />}
+        {AFTER[ai] && <p className="modal__lead">{AFTER[ai]}</p>}
 
         {error && <p className="modal__error">{error}</p>}
 
