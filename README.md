@@ -3,43 +3,47 @@
 The DevDash dashboard: shows what changed in your repos, in a way people who don't read
 code can follow. It is a React and TypeScript page built with Vite. Everything it shows
 comes from the DevDash backend, [DevDash-BE](https://github.com/VardaanShukla/DevDash-BE),
-so the backend has to be running for the page to work.
+which also serves a built copy of this page.
 
-## Run it with the backend
+## Use it
 
-Needs Python 3.10 or newer, Node 18 or newer, and git.
+You don't need this repo or Node to use DevDash: the backend comes with a built copy of
+this page. On Linux, macOS or Windows:
 
-1. Install the backend and start its API on port 8765. Leave it running:
+```sh
+pipx install git+https://github.com/VardaanShukla/DevDash-BE.git
+devdash serve
+```
+
+Then open http://127.0.0.1:8765. See the backend's README for more.
+
+## Work on it
+
+Needs Node 18 or newer.
+
+1. Keep the backend running: `devdash serve`.
+2. In this repo, start the dev server, which reloads as you edit:
 
    ```sh
-   git clone https://github.com/VardaanShukla/DevDash-BE.git devdash-be
-   cd devdash-be
-   pipx install -e .          # or: python3 -m pip install -e .
-   devdash serve
-   ```
-
-2. In a second terminal, install the UI and start it on port 5173:
-
-   ```sh
-   git clone https://github.com/VardaanShukla/DevDash-FE.git devdash-ui
-   cd devdash-ui
    npm install
    npm run dev
    ```
 
-3. Open http://localhost:5173. The first visit asks you to pick a username and password,
-   then to add a project: the path of any git folder on your computer.
+3. Open http://localhost:5173.
 
 The dev server forwards every `/api` call to `http://127.0.0.1:8765` (see
-`vite.config.ts`), so the page and the API never need to know each other's address. The
-API only accepts requests from the page on port 5173 or 4173, so keep those ports.
+`vite.config.ts`). The API only accepts changes from the page on port 5173 or 4173 (or from
+the one it serves itself), so keep those ports.
 
-## Build
+To ship a change, build it into the backend and commit the result there:
 
 ```sh
-npm run build      # type-checks, then writes the page to dist/
-npm run preview    # serves dist/ on http://localhost:4173, forwarding /api the same way
+cd ../DevDash-BE
+python scripts/build_ui.py ../DevDash-FE
 ```
+
+`npm run build` alone type-checks and writes the page to `dist/`; `npm run preview` serves
+that on http://localhost:4173.
 
 ## What's inside
 

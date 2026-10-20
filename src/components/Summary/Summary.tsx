@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { AiStatus, ProjectExplanation, Summary as SummaryData } from "../../api/types";
 import { languageColor } from "../ProjectMap/ProjectMap";
-import ClaudeSignIn from "../ClaudeSignIn/ClaudeSignIn";
+import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import "./Summary.css";
 
 // The whole project on one screen: what it is, how it works, what it's built with, its
 // parts, how to run it and who has worked on it. The facts come from the project's own
-// files and git history; the plain-English description is Claude's, on request.
+// files and git history; the plain-English description is the picked AI's (Settings), on request.
 
 type Props = {
   summary: SummaryData;
@@ -62,7 +62,7 @@ export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }:
         <div className="summary__about">
           {explanation ? (
             <>
-              <span className="summary__ai-label">About this project, by Claude</span>
+              <span className="summary__ai-label">About this project, in plain English</span>
               <p className="summary__overview">{explanation.overview}</p>
               {explanation.state && <p className="summary__state">{explanation.state}</p>}
             </>
@@ -74,11 +74,11 @@ export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }:
           ) : (
             <p className="summary__muted">This project has no readme that says what it is.</p>
           )}
-          {!explanation && ai?.available && ai.signed_in === false && <ClaudeSignIn onSignedIn={onSignedIn} />}
+          {!explanation && ai && (!ai.available || ai.signed_in === false) && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
           {!explanation && ai?.available && ai.signed_in !== false && (
             <div className="summary__ask">
               <button onClick={run} disabled={state === "working"}>
-                {state === "working" ? "Claude is reading the project…" : "Describe it with Claude"}
+                {state === "working" ? `${ai.name} is reading the project…` : `Describe it with ${ai.name}`}
               </button>
               <span>
                 {state !== "idle" && state !== "working"
@@ -87,7 +87,6 @@ export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }:
               </span>
             </div>
           )}
-          {!explanation && ai && !ai.available && <p className="summary__muted">{ai.detail}</p>}
         </div>
       </section>
 

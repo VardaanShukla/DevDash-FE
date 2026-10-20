@@ -11,6 +11,8 @@ type Props = {
   map: MapData;
   files: FileChange[];
   onOpenFile: (path: string) => void;
+  // Told the picked part's name, for the breadcrumb.
+  onSelect?: (name: string | null) => void;
 };
 
 // One colour per language, shared by the bars and the legend.
@@ -37,7 +39,7 @@ const languageColor = (name: string) => LANGUAGE_COLORS[name] ?? "#cbd5e1";
 export type Part = MapArea & { changed: FileChange[]; added: number; removed: number };
 type Line = { key: string; source: string; target: string; imports: number; d: string };
 
-export default function ProjectMap({ map, files, onOpenFile }: Props) {
+export default function ProjectMap({ map, files, onOpenFile, onSelect }: Props) {
   const parts = useMemo(() => mapParts(map, files), [map, files]);
   const byId = useMemo(() => new Map(parts.map((part) => [part.id, part])), [parts]);
   const { layers, loose } = useMemo(() => arrange(map, parts), [map, parts]);
@@ -95,6 +97,10 @@ export default function ProjectMap({ map, files, onOpenFile }: Props) {
   const languages = totals(map.areas);
   const totalLanguageFiles = languages.reduce((sum, l) => sum + l.files, 0);
   const active = selected ? byId.get(selected) ?? null : null;
+  useEffect(() => {
+    onSelect?.(active?.name ?? null);
+    return () => onSelect?.(null);
+  }, [active?.name, onSelect]);
 
   const card = (part: Part) => {
     const hot = part.changed.length > 0;

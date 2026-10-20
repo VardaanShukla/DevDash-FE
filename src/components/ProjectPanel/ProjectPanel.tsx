@@ -34,10 +34,10 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
         <dt>Folder</dt>
         <dd className="panel__path">{repo.path}</dd>
         <dt>AI tool</dt>
-        <dd>{repo.ai === "claude" ? "Claude, recording requests" : "None, your changes only"}</dd>
+        <dd>{repo.ai === "claude" ? "Claude Code, recording each request" : "None, your changes only"}</dd>
       </dl>
       <button className={`button${repo.ai ? " button--ghost button--outline" : ""}`} onClick={toggleClaude} disabled={busy}>
-        {busy ? "Saving…" : repo.ai === "claude" ? "Stop recording Claude" : "Connect Claude"}
+        {busy ? "Saving…" : repo.ai === "claude" ? "Stop recording AI changes" : "Record AI changes"}
       </button>
       {repo.ai === "claude" && <p className="panel__note">Stopping keeps everything already recorded.</p>}
       {error && <p className="panel__error">{error}</p>}

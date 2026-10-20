@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
-import type { AiStatus, AuthStatus, Branches, Comparison, Flow, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
+import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
 import Agenda from "./components/Agenda/Agenda";
 import Digest from "./components/Digest/Digest";
@@ -17,9 +17,12 @@ import ProjectPanel from "./components/ProjectPanel/ProjectPanel";
 import RemoveProject from "./components/RemoveProject/RemoveProject";
 import SideMenu, { VIEWS, type View } from "./components/SideMenu/SideMenu";
 import Sidebar from "./components/Sidebar/Sidebar";
+import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
+import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
 import Todos from "./components/Todos/Todos";
 import Splash from "./components/Splash/Splash";
+import { keyName, typing } from "./shortcuts";
 import "./App.css";
 
 type Theme = "light" | "dark";
@@ -67,7 +70,13 @@ export default function App() {
   // The dashboard loads under the splash once signed in, and shows as the splash fades.
   return (
     <>
-      {auth?.signed_in && <Dashboard onSignOut={auth.password_set ? signOut : undefined} />}
+      {auth?.signed_in && (
+        <Dashboard
+          auth={auth}
+          onSignOut={auth.password_set ? signOut : undefined}
+          onAuthChange={() => api.auth().then(setAuth).catch(() => {})}
+        />
+      )}
       {!splashDone && (
         <Splash
           key={round}
@@ -75,7 +84,10 @@ export default function App() {
           panel={
             auth &&
             !auth.signed_in && (
-              <Login setup={!auth.password_set} onSignedIn={() => setAuth({ password_set: true, signed_in: true })} />
+              <Login
+                setup={!auth.password_set}
+                onSignedIn={() => api.auth().then(setAuth, () => setAuth({ password_set: true, signed_in: true }))}
+              />
             )
           }
           onDone={() => setSplashDone(true)}
@@ -85,9 +97,11 @@ export default function App() {
   );
 }
 
-function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
+function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSignOut?: () => void; onAuthChange: () => void }) {
   const [view, setView] = useState<View>(viewFromHash);
   const [theme, setTheme] = useState<Theme>(savedTheme);
+  // Settings from the backend: theme, uncommitted work from the start, shortcut keys.
+  const [prefs, setPrefs] = useState<Preferences | null>(null);
   const [repos, setRepos] = useState<Repo[] | null>(null);
   const [repoId, setRepoId] = useState<number | null>(null);
   const [branches, setBranches] = useState<Branches | null>(null);
@@ -114,6 +128,12 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
     }), []);
   // A file to show in What changed, picked from the project map; count re-picks the same.
   const [focus, setFocus] = useState<{ path: string; count: number } | null>(null);
+  // The screen a file was opened from, so the breadcrumb leads back to it from Changes.
+  const [openedFrom, setOpenedFrom] = useState<View | null>(null);
+  // What the screen on show has picked (a file, a part), as the breadcrumb's last step.
+  const [picked, setPicked] = useState<{ view: View; label: string } | null>(null);
+  const pickMap = useCallback((label: string | null) => setPicked(label ? { view: "map", label } : null), []);
+  const pickChanges = useCallback((label: string | null) => setPicked(label ? { view: "changes", label } : null), []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -154,6 +174,32 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
       /* storage unavailable */
     }
   }, [theme]);
+
+  // The saved settings decide the theme and whether uncommitted work shows from the start.
+  // Until they arrive the browser's last theme stays, so the page doesn't flash.
+  useEffect(() => {
+    api.preferences().then(
+      (saved) => {
+        setPrefs(saved);
+        setTheme(saved.theme);
+        if (saved.uncommitted) setUncommitted(true);
+      },
+      () => {},
+    );
+  }, []);
+  const changePrefs = useCallback(
+    (changes: PreferenceChange) =>
+      api.setPreferences(changes).then((saved) => {
+        setPrefs(saved);
+        setTheme(saved.theme);
+      }),
+    [],
+  );
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    changePrefs({ theme: next }).catch(() => {});
+  };
 
   useEffect(() => {
     api
@@ -269,6 +315,37 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
   const canIncludeUncommitted = branches !== null && head === branches.current;
   const watchUncommitted = uncommitted && canIncludeUncommitted;
 
+  // Shortcut keys from Settings. Next and previous file belong to Changes, which listens
+  // for them itself. The handler is read through a ref so it always sees this render.
+  const shortcuts = prefs?.shortcuts ?? {};
+  const onShortcut = useRef<(event: KeyboardEvent) => void>(() => {});
+  onShortcut.current = (event) => {
+    if (typing(event) || event.defaultPrevented || adding || removing) return;
+    const key = keyName(event);
+    const action = key && Object.keys(shortcuts).find((name) => shortcuts[name] === key);
+    if (!action) return;
+    if (action.startsWith("view:")) setView(action.slice(5) as View);
+    else if (action === "theme") toggleTheme();
+    else if (action === "uncommitted") canIncludeUncommitted && setUncommitted((on) => !on);
+    else if (action === "sync") syncNow.current();
+    else return;
+    event.preventDefault();
+  };
+  useEffect(() => {
+    const listen = (event: KeyboardEvent) => onShortcut.current(event);
+    window.addEventListener("keydown", listen);
+    return () => window.removeEventListener("keydown", listen);
+  }, []);
+  const viewKeys = Object.fromEntries(
+    Object.entries(shortcuts).filter(([name, key]) => name.startsWith("view:") && key).map(([name, key]) => [name.slice(5), key]),
+  ) as Partial<Record<View, string>>;
+  // Asked once, before anything else: show uncommitted work from the start?
+  const asking = prefs !== null && prefs.uncommitted === null && repos !== null && repos.length > 0;
+  const answer = (on: boolean) => {
+    setUncommitted(on);
+    changePrefs({ uncommitted: on }).catch(() => setPrefs((p) => p && { ...p, uncommitted: on }));
+  };
+
   // Watch git while the page is visible: a new branch, commit, checkout or (when shown)
   // an edit changes the fingerprint, and only then is anything reloaded.
   useEffect(() => {
@@ -342,13 +419,38 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
 
   const openFile = (path: string) => {
     setFocus((f) => ({ path, count: (f?.count ?? 0) + 1 }));
+    if (view !== "changes") setOpenedFrom(view);
     setView("changes");
   };
+  // Leaving Changes any other way forgets where the file came from.
+  useEffect(() => {
+    if (view !== "changes") setOpenedFrom(null);
+  }, [view]);
   const details = branches?.details ?? [];
 
   const content = () => {
+    // Settings work with no project at all.
+    if (view === "settings") {
+      return prefs ? (
+        <Settings
+          prefs={prefs}
+          onPrefs={changePrefs}
+          onResetShortcuts={() => api.resetShortcuts().then(setPrefs)}
+          username={auth.username}
+          passwordSet={auth.password_set}
+          onSignOut={onSignOut}
+          onPasswordSet={onAuthChange}
+          ai={ai}
+          onAiRefresh={refreshAi}
+        />
+      ) : (
+        <Notice title="Loading">Reading your settings…</Notice>
+      );
+    }
     if (error && !repos) return <Notice title="Something needs attention">{error}</Notice>;
-    if (repos && repos.length === 0) return <Welcome onAdd={() => setAdding(true)} />;
+    if (repos && repos.length === 0) {
+      return <Welcome ai={ai} onAiRefresh={refreshAi} onAdd={() => setAdding(true)} prefs={prefs} onPrefs={changePrefs} />;
+    }
     if (view === "help" && repo) return <Help repo={repo} steps={setup.steps} error={setup.error} />;
     if (view === "home" && repos) {
       return (
@@ -359,10 +461,18 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
           repoId={repoId}
           head={head}
           version={`${repos.length}:${repoId}:${revision}`}
+          comparison={comparison}
+          branches={details}
+          flow={flow}
+          map={map}
+          onPick={(id) => id !== repoId && selectRepo(id)}
           onOpen={(id) => {
-            selectRepo(id);
+            if (id !== repoId) selectRepo(id);
             setView("summary");
           }}
+          onHeadChange={setHead}
+          onView={setView}
+          onOpenFile={openFile}
           onAdd={() => setAdding(true)}
           onDigest={() => setView("digest")}
         />
@@ -447,7 +557,7 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
         );
       case "map":
         return map && map.areas.length > 0 ? (
-          <ProjectMap map={map} files={comparison.files} onOpenFile={openFile} />
+          <ProjectMap map={map} files={comparison.files} onOpenFile={openFile} onSelect={pickMap} />
         ) : (
           <Notice title="Project map">Reading the project's folders…</Notice>
         );
@@ -472,6 +582,8 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
             explainFunction={(file, name) => watchSignIn(api.explainFunction(repoId, file, name, compareOptions))}
             ai={ai}
             onSignedIn={refreshAi}
+            onSelect={pickChanges}
+            keys={{ next: shortcuts["next-file"], previous: shortcuts["previous-file"] }}
           />
         );
       case "commits":
@@ -480,6 +592,15 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
   };
 
   const current = VIEWS.find((item) => item.id === view)!;
+  const label = (id: View) => VIEWS.find((item) => item.id === id)!.label;
+  // Home › project › (the screen a file came from) › this screen › what's picked on it.
+  const crumbs: { label: string; go?: () => void }[] = [];
+  if (view !== "home") crumbs.push({ label: "Home", go: () => setView("home") });
+  if (repo && PROJECT_VIEWS.has(view)) crumbs.push({ label: repo.name, go: view === "summary" ? undefined : () => setView("summary") });
+  // Home is already the first step.
+  if (openedFrom && openedFrom !== "home" && view === "changes") crumbs.push({ label: label(openedFrom), go: () => setView(openedFrom) });
+  crumbs.push({ label: current.label });
+  if (picked && picked.view === view) crumbs.push({ label: picked.label });
 
   return (
     <div className="app">
@@ -487,6 +608,7 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
         <SideMenu
           view={view}
           onView={setView}
+          keys={viewKeys}
           badges={{
             changes: comparison?.files.length,
             commits: comparison?.commits.length,
@@ -524,10 +646,11 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
         <header className="topbar">
           {repos && repos.length > 0 ? (
             <div className="topbar__title">
+              <Breadcrumb crumbs={crumbs} />
               <h1>{current.label}</h1>
               <p>
                 {current.hint}
-                {repo && comparison && view !== "home" && view !== "digest" && view !== "project" && view !== "help" && (
+                {repo && comparison && view !== "home" && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
                   <>
                     {" "}
                     · <code>{comparison.head}</code> in {repo.name}
@@ -547,7 +670,11 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
             {sync && <SyncStatus sync={sync} onSync={() => syncNow.current()} />}
             <label
               className={`toggle${canIncludeUncommitted ? "" : " toggle--disabled"}`}
-              title={canIncludeUncommitted ? "Also show edits you haven't committed yet" : "Only for the branch that is checked out"}
+              title={
+                canIncludeUncommitted
+                  ? `Also show edits you haven't committed yet${shortcuts.uncommitted ? ` (key ${shortcuts.uncommitted.toUpperCase()})` : ""}. Settings decides whether it starts on.`
+                  : "Only for the branch that is checked out"
+              }
             >
               <input
                 type="checkbox"
@@ -557,12 +684,10 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
               />
               Uncommitted work
             </label>
-            <button className="theme-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-              {theme === "dark" ? "Light" : "Dark"}
-            </button>
-            {onSignOut && (
-              <button className="theme-button" onClick={onSignOut} title="Sign out of DevDash">
-                Sign out
+            {/* Without a project the menu is hidden, so Settings is reached from here. */}
+            {!(repos && repos.length > 0) && (
+              <button className="theme-button" onClick={() => setView("settings")}>
+                Settings
               </button>
             )}
           </div>
@@ -571,9 +696,58 @@ function Dashboard({ onSignOut }: { onSignOut?: () => void }) {
         <main className={`screen screen--${view}${loading ? " screen--loading" : ""}`}>{content()}</main>
       </div>
 
+      {asking && <AskUncommitted onAnswer={answer} />}
       {adding && <AddProject onClose={() => setAdding(false)} onAdded={added} />}
       {removing && <RemoveProject repo={removing} onClose={() => setRemoving(null)} onRemoved={removed} />}
     </div>
+  );
+}
+
+// Asked once, the first time the dashboard opens with a project: whether to show
+// uncommitted work from the start. Settings can change the answer later.
+function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
+  return (
+    <div className="ask" role="dialog" aria-modal="true" aria-labelledby="ask-title">
+      <section className="card ask__card">
+        <h2 id="ask-title">Show work you haven't committed yet?</h2>
+        <p className="settings__note">
+          DevDash can include edits you haven't committed in Changes, This branch and the map, every time it opens. You can
+          change this any time in Settings.
+        </p>
+        <div className="ask__choices">
+          <button className="ask__choice" onClick={() => onAnswer(true)} autoFocus>
+            <strong>Yes, always include uncommitted work</strong>
+            <span>See every edit as soon as you make it, committed or not.</span>
+          </button>
+          <button className="ask__choice" onClick={() => onAnswer(false)}>
+            <strong>No, only committed work to start with</strong>
+            <span>Turn on Uncommitted work at the top when you want it.</span>
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Screens about one project; the breadcrumb names the project before them.
+const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "constellation", "changes", "commits", "planner", "help"]);
+
+// Where you are: Home › project › screen › what's picked. Every step but the last goes back to it.
+function Breadcrumb({ crumbs }: { crumbs: { label: string; go?: () => void }[] }) {
+  return (
+    <nav className="crumbs" aria-label="Where you are">
+      <ol>
+        {crumbs.map((crumb, i) => (
+          <li key={i}>
+            {crumb.go && i < crumbs.length - 1 ? (
+              <button onClick={crumb.go}>{crumb.label}</button>
+            ) : (
+              <span aria-current={i === crumbs.length - 1 ? "page" : undefined}>{crumb.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }
 
@@ -666,28 +840,49 @@ function BasePicker({ branches, head, onPick }: { branches: Branches; head: stri
   );
 }
 
-function Welcome({ onAdd }: { onAdd: () => void }) {
+// The first run: connect Claude (optional, and right here), then add a project.
+function Welcome({ ai, onAiRefresh, onAdd, prefs, onPrefs }: {
+  ai: AiStatus | null;
+  onAiRefresh: () => void;
+  onAdd: () => void;
+  prefs: Preferences | null;
+  onPrefs: (changes: PreferenceChange) => Promise<void>;
+}) {
+  const ready = ai?.available && ai.signed_in !== false;
   return (
     <section className="card welcome">
       <h1>See what changed in your code</h1>
-      <p>DevDash turns your branches and commits into a page anyone can read. Start by adding a project.</p>
+      <p>DevDash turns your branches and commits into a page anyone can read. Two quick steps and you're in.</p>
       <ol className="welcome__steps">
         <li>
-          <strong>Add a project</strong>
-          <span>Point DevDash at any git folder on this computer.</span>
+          <strong>Connect an AI {ready ? "✓" : <span className="welcome__optional">optional</span>}</strong>
+          <span>
+            Claude, ChatGPT Codex, a free model on this computer, or Antigravity: it explains every change in plain English.
+            Recording what your AI coding tool changes works either way, and you can change this later in Settings.
+          </span>
         </li>
         <li>
-          <strong>Pick your AI tool</strong>
-          <span>Optional. With Claude connected, each change also shows the request behind it.</span>
+          <strong>Add a project</strong>
+          <span>Point DevDash at any git folder on this computer, and pick your AI coding tool to record the request behind each change.</span>
         </li>
         <li>
           <strong>Open a branch</strong>
           <span>See every file and function it changed compared with main.</span>
         </li>
       </ol>
-      <button className="button" onClick={onAdd}>
-        + Add your first project
-      </button>
+      <div className="welcome__claude">
+        {prefs ? (
+          <AiPicker prefs={prefs} onPrefs={onPrefs} onActiveChange={onAiRefresh} active={ai} />
+        ) : (
+          <ClaudeSetup ai={ai} onRefresh={onAiRefresh} />
+        )}
+      </div>
+      <div className="welcome__actions">
+        <button className="button" onClick={onAdd}>
+          + Add your first project
+        </button>
+        {!ready && <span className="welcome__skip">No AI for now? Just add a project; you can connect one later.</span>}
+      </div>
     </section>
   );
 }

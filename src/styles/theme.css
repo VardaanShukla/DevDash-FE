@@ -4,30 +4,39 @@
   --dd-blue: #4fc3f7;
   --dd-blue-strong: #0288d1;
   --dd-red: #ef4444;
-  /* The glow colour of the dashboard: gauges, active menu items, changed parts. */
-  --dd-accent: #0d9488;
-  --dd-accent-soft: rgba(13, 148, 136, 0.12);
+  /* The brand's blue as text (the "Dev" of the logo): deep enough to read on light glass. */
+  --dd-brand-ink: #0369a1;
+  --dd-brand-red: #b91c1c;
+  /* Text that warns (trade-offs, behind its base): amber, deep enough to read. */
+  --dd-warn: #b45309;
+  /* The glow colour of the dashboard: gauges, active menu items, changed parts. Every text
+     colour in the light theme reads at 4.5:1 or more on the cards and the page (WCAG AA). */
+  --dd-accent: #0b5f59;
+  --dd-accent-soft: rgba(11, 95, 89, 0.12);
   --dd-on-accent: #fff;
-  --dd-ink: #0f172a;
-  --dd-ink-soft: #475569;
-  --dd-muted: #94a3b8;
-  --dd-bg: #eef2f7;
+  /* Light is a latte: a light coffee page, cream cards, warm tan borders and coffee-dark ink. */
+  --dd-ink: #24180f;
+  --dd-ink-soft: #45392d;
+  --dd-muted: #5e5044;
+  --dd-bg: #e4d3bf;
   --dd-backdrop:
-    radial-gradient(900px 520px at 78% 70%, rgba(45, 212, 191, 0.16), transparent 62%),
-    radial-gradient(800px 480px at 12% 8%, rgba(56, 189, 248, 0.16), transparent 60%);
+    radial-gradient(900px 520px at 78% 70%, rgba(150, 104, 62, 0.16), transparent 62%),
+    radial-gradient(800px 480px at 12% 8%, rgba(255, 242, 222, 0.6), transparent 60%);
   /* Opaque card colour, for things drawn on top of a card; cards themselves are glass. */
-  --dd-card: #f8fafc;
-  --dd-glass: rgba(255, 255, 255, 0.72);
-  --dd-glass-line: rgba(15, 23, 42, 0.08);
-  --dd-line: #e2e8f0;
-  --dd-shadow: 0 18px 40px -22px rgba(15, 23, 42, 0.28), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --dd-card: #f8f0e5;
+  --dd-glass: rgba(255, 249, 240, 0.74);
+  --dd-glass-line: rgba(84, 56, 30, 0.14);
+  --dd-line: #dac8b1;
+  --dd-shadow: 0 18px 40px -22px rgba(74, 46, 20, 0.32), 0 1px 3px rgba(74, 46, 20, 0.07);
+  /* The thin scroll bar thumb, shown only while the pointer is over what scrolls. */
+  --dd-scroll: rgba(94, 70, 48, 0.4);
 
   /* Change colours: added, removed, changed. */
-  --dd-add: #16a34a;
+  --dd-add: #166534;
   --dd-add-bg: #dcfce7;
-  --dd-del: #dc2626;
+  --dd-del: #b91c1c;
   --dd-del-bg: #fee2e2;
-  --dd-mod: #0288d1;
+  --dd-mod: #035e8f;
   --dd-mod-bg: #e0f2fe;
 
   --dd-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -42,6 +51,9 @@
   --dd-on-accent: #04110f;
   --dd-ink: #f1f5f9;
   --dd-ink-soft: #cbd5e1;
+  --dd-brand-ink: #4fc3f7;
+  --dd-brand-red: #ef4444;
+  --dd-warn: #f59e0b;
   --dd-muted: #64748b;
   --dd-bg: #05080f;
   --dd-backdrop:
@@ -53,6 +65,7 @@
   --dd-glass-line: rgba(148, 163, 184, 0.12);
   --dd-line: rgba(148, 163, 184, 0.14);
   --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --dd-scroll: rgba(148, 163, 184, 0.3);
   --dd-add: #4ade80;
   --dd-add-bg: rgba(74, 222, 128, 0.14);
   --dd-del: #f87171;
@@ -66,6 +79,38 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Scroll bars everywhere: no track, just a thin faint thumb that appears while the pointer
+   is over the area that scrolls, so a scrolling panel never shows a wide empty bar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: var(--dd-scroll) transparent;
+}
+
+/* Browsers without scrollbar-color (older Safari) use these instead. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--dd-scroll);
 }
 
 html,

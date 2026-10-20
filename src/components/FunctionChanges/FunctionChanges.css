@@ -302,7 +302,7 @@
 }
 
 .fn__ai-tradeoffs h5 {
-  color: #f59e0b;
+  color: var(--dd-warn);
 }
 
 .fn__ai-check {

@@ -5,15 +5,22 @@ import type { FileChange } from "../../api/types";
 
 export type Point = { x: number; y: number };
 
+// Theme variables (Constellation.css), so day and night each get colours that read well.
+// Use them in style props: SVG's fill and stroke attributes can't read variables.
 export const STATUS_COLOR: Record<FileChange["status"], string> = {
-  added: "#4ade80",
-  deleted: "#f87171",
-  modified: "#f5c76b",
-  renamed: "#c084fc",
+  added: "var(--cn-added)",
+  deleted: "var(--cn-deleted)",
+  modified: "var(--cn-modified)",
+  renamed: "var(--cn-renamed)",
 };
 export const STATUS: Record<FileChange["status"], string> = { added: "New", deleted: "Gone", modified: "Edited", renamed: "Moved" };
 // A file this branch didn't touch.
-export const QUIET = "#5eead4";
+export const QUIET = "var(--cn-quiet)";
+
+export function bezier(from: Point, to: Point) {
+  const bend = Math.max(40, (to.x - from.x) * 0.55);
+  return `M ${from.x} ${from.y} C ${from.x + bend} ${from.y}, ${to.x - bend} ${to.y}, ${to.x} ${to.y}`;
+}
 
 export function useSize(ref: RefObject<HTMLElement | null>) {
   const [size, setSize] = useState({ width: 0, height: 0 });

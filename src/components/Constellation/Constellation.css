@@ -1,618 +1,348 @@
-/* The constellation screen: parts list, sky and details panel on one dark console. It is
-   always dark, in the light theme too, like the splash. */
+/* The constellation is a night sky in the dark theme and a sunlit sky chart in the light
+   one (see the end of this file). The colours the drawing code uses are these variables. */
 .cn {
   --cn-ink: #e8f1f2;
-  --cn-soft: #a7bcc0;
-  --cn-muted: #66828a;
-  --cn-gold: #f5c76b;
+  --cn-soft: #9fb4b8;
+  --cn-muted: #5f7a7f;
+  --cn-gold: #6bc9f5;
   --cn-teal: #5eead4;
-  --cn-violet: #c69ae8;
-  --cn-pink: #e58aa8;
-  --cn-panel: rgba(12, 30, 34, 0.72);
-  --cn-raise: rgba(255, 255, 255, 0.035);
-  --cn-line: rgba(140, 220, 210, 0.13);
-  --cn-line-strong: rgba(140, 220, 210, 0.28);
+  --cn-violet: #9aa2e8;
+  --cn-pink: #8ae5dc;
+  --cn-glass: rgba(10, 17, 34, 0.6);
+  --cn-glass-line: rgba(140, 220, 210, 0.16);
+  /* Files: new, gone, edited, moved, untouched; and a folder's twig. */
+  --cn-added: #4ade80;
+  --cn-deleted: #f87171;
+  --cn-modified: #4fc3f7;
+  --cn-renamed: #c084fc;
+  --cn-quiet: #5eead4;
+  --cn-twig: #8fd9cf;
+  /* The sun, a part's orb, a changed part's orb: light side to shadow side. */
+  --cn-core-1: #eaf8ff;
+  --cn-core-2: #88d4f7;
+  --cn-core-3: #1c739b;
+  --cn-orb-1: #e9ebff;
+  --cn-orb-2: #9aa2e8;
+  --cn-orb-3: #3a428f;
+  --cn-hot-1: #f0fffe;
+  --cn-hot-2: #8ae5dc;
+  --cn-hot-3: #2a7a72;
+  --cn-halo: #6bc9f5;
+  --cn-halo-strength: 0.5;
+  --cn-halo-cool: #8b96fa;
+  --cn-halo-cool-strength: 0.32;
+  --cn-sun-halo-1: #a6e3ff;
+  --cn-sun-halo-2: #6bc9f5;
+  --cn-fan-1: #6bc9f5;
+  --cn-fan-2: #8fd9cf;
   position: relative;
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr) 340px;
-  gap: 12px;
-  min-height: 560px;
-  padding: 12px;
+  min-height: 520px;
+  overflow: hidden;
+  /* Never scrollable, even by focus: the daytime sun rays reach past the edges. */
+  overflow: clip;
   border-radius: 22px;
-  background: radial-gradient(ellipse 120% 90% at 50% 40%, #0a2629, #041110 70%);
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 44%, rgba(34, 98, 96, 0.6), transparent 70%),
+    radial-gradient(ellipse 90% 80% at 50% 50%, #0a142d, #040813 60%, #010205 100%);
   color: var(--cn-ink);
   box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(120, 200, 190, 0.08);
   isolation: isolate;
-  font-size: 13px;
-}
-
-.cn button {
-  font: inherit;
-}
-
-.cn h4 {
-  margin: 6px 2px 0;
-  color: var(--cn-muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-}
-
-/* Side panels. */
-.cn-rail,
-.cn-inspector {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  padding: 14px;
-  overflow-y: auto;
-  border: 1px solid var(--cn-line);
-  border-radius: 16px;
-  background: var(--cn-panel);
-  backdrop-filter: blur(16px);
-  scrollbar-width: thin;
-  scrollbar-color: rgba(140, 220, 210, 0.2) transparent;
-  animation: cn-rise 500ms ease 200ms both;
-}
-
-.cn-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  border: 1px solid var(--cn-line);
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.25);
-  color: var(--cn-muted);
-}
-
-.cn-search:focus-within {
-  border-color: rgba(94, 234, 212, 0.55);
-  color: var(--cn-teal);
-}
-
-.cn-search input {
-  flex: 1;
-  min-width: 0;
-  height: 34px;
-  border: none;
-  outline: none;
-  background: none;
-  color: var(--cn-ink);
-  font: inherit;
-}
-
-.cn-search input::placeholder {
-  color: var(--cn-muted);
-}
-
-.cn-rail__filters {
-  display: flex;
-  gap: 6px;
-}
-
-.cn-chip {
-  padding: 5px 10px;
-  border: 1px solid var(--cn-line);
-  border-radius: 999px;
-  background: none;
-  color: var(--cn-soft);
-  font-size: 12px !important;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
-}
-
-.cn-chip:hover:not(:disabled) {
-  border-color: var(--cn-line-strong);
-  color: var(--cn-ink);
-}
-
-.cn-chip--on {
-  border-color: rgba(94, 234, 212, 0.5);
-  background: rgba(94, 234, 212, 0.14);
-  color: var(--cn-ink);
-}
-
-.cn-chip:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-/* Rows used in every list on the screen. */
-.cn-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.cn-list__row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 9px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: none;
-  color: var(--cn-ink);
-  text-align: left;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-
-.cn-list__row:hover,
-.cn-list__row--hover {
-  background: rgba(94, 234, 212, 0.08);
-}
-
-.cn-list__row--on {
-  border-color: rgba(245, 199, 107, 0.55);
-  background: rgba(245, 199, 107, 0.1);
-}
-
-.cn-list__row--still {
-  cursor: default;
-  background: var(--cn-raise);
-}
-
-.cn-list__row--still:hover {
-  background: var(--cn-raise);
-}
-
-.cn-list__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.cn-list__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cn-list__label--mono {
-  font-family: var(--dd-mono);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.cn-list__row--hot .cn-list__label {
-  color: #fff3d6;
-}
-
-.cn-list__sub {
-  overflow: hidden;
-  color: var(--cn-muted);
-  font-family: var(--dd-mono);
-  font-size: 10.5px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cn-badge {
-  flex: none;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  color: var(--cn-soft);
-  font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.cn-badge--gold {
-  background: rgba(245, 199, 107, 0.14);
-  color: var(--cn-gold);
-}
-
-.cn-dot {
-  display: inline-block;
-  flex: none;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fbe9ff, var(--cn-violet) 50%, #5a3a8f);
-}
-
-.cn-dot--hot {
-  background: radial-gradient(circle at 35% 35%, #fff0f4, var(--cn-pink) 50%, #7a2a4c);
-  box-shadow: 0 0 0 1.5px rgba(245, 199, 107, 0.8), 0 0 8px rgba(245, 199, 107, 0.6);
-}
-
-.cn-dot--sun {
-  background: radial-gradient(circle at 35% 35%, #fffbea, var(--cn-gold) 50%, #9b6a1c);
-  box-shadow: 0 0 8px var(--cn-gold);
-}
-
-.cn-dot--file {
-  width: 7px;
-  height: 7px;
-  background: var(--cn-teal);
-}
-
-.cn-dot--lit {
-  background: var(--cn-gold);
-  box-shadow: 0 0 6px var(--cn-gold);
-}
-
-.cn-meter {
-  flex: 0 0 54px;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.cn-meter span {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--cn-teal), var(--cn-violet));
-}
-
-.cn-add {
-  color: #4ade80;
-}
-
-.cn-del {
-  color: #f87171;
-}
-
-/* The sky, in the middle. */
-.cn-stage {
-  position: relative;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  border: 1px solid var(--cn-line);
-  border-radius: 16px;
-  background:
-    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(36, 104, 102, 0.55), transparent 70%),
-    radial-gradient(ellipse 100% 90% at 50% 50%, #08272a, #031110 70%, #010504);
   user-select: none;
 }
 
-.cn-sky {
+.cn__graph {
   position: absolute;
   inset: 0;
   cursor: grab;
   touch-action: none;
+  transition: opacity 600ms ease, transform 800ms cubic-bezier(0.3, 0.6, 0.2, 1), filter 700ms ease;
 }
 
-.cn-sky:active {
+.cn__graph:active {
   cursor: grabbing;
 }
 
-.cn-sky__world--fly {
-  transition: transform 820ms cubic-bezier(0.3, 0.7, 0.15, 1);
+/* Diving in: the sky rushes past toward the part that was picked. */
+.cn--focused .cn__graph {
+  opacity: 0.07;
+  transform: scale(2.6);
+  filter: blur(4px);
+  pointer-events: none;
 }
 
-.cn-sky__drift {
+.cn__stars circle {
+  fill: #cfe9e6;
+}
+
+/* The whole sky breathes, very slowly, so it never sits dead still. */
+.cn__drift {
   transform-box: view-box;
   animation: cn-drift 26s ease-in-out 2s infinite alternate;
 }
 
-.cn-sky__stars circle {
-  fill: #cfe9e6;
+.cn__dim {
+  opacity: 0.14;
+  transition: opacity 200ms ease;
 }
 
-.cn-sky__faded {
-  opacity: 0.2;
-  transition: opacity 250ms ease;
-}
-
-.cn-sky__sun {
-  cursor: pointer;
-}
-
-.cn-sky__sun-ball {
+/* The sun: it flashes open first, throws out dust, then the parts fly out of it. */
+.cn__core-ball {
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-core 1000ms cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
 }
 
-.cn-sky__sun-halo {
+.cn__core-halo {
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-fade 900ms ease both, cn-halo 5s ease-in-out 1s infinite;
 }
 
-.cn-sky__sun-ticks {
+.cn__core-ticks {
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-fade 700ms ease 350ms both, cn-spin 60s linear infinite;
 }
 
-.cn-sky__sun-ticks line {
-  stroke: #ffe3a3;
+.cn__core-ticks line {
+  stroke: #a3e2ff;
   stroke-width: 1.1;
   stroke-linecap: round;
   opacity: 0.8;
 }
 
-.cn-sky__sun-ring {
+.cn__core-ring {
   fill: none;
   stroke: var(--cn-gold);
   stroke-opacity: 0.35;
+  stroke-width: 1;
   stroke-dasharray: 1 4;
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-fade 600ms ease 400ms both, cn-spin 40s linear reverse infinite;
 }
 
-.cn-sky__sun-name,
-.cn-sky__sun-count,
-.cn-sky__name,
-.cn-sky__share-text,
-.cn-sky__twig-label {
-  font-family: var(--dd-font);
-  pointer-events: none;
-  paint-order: stroke;
-  stroke: #031110;
-}
-
-.cn-sky__sun-name {
+.cn__core-name {
   fill: var(--cn-ink);
-  font-size: calc(17px / var(--k, 1));
+  font-family: var(--dd-font);
+  font-size: 17px;
   font-weight: 650;
-  stroke-width: calc(4px / var(--k, 1));
+  paint-order: stroke;
+  stroke: #040813;
+  stroke-width: 4px;
   animation: cn-fade 600ms ease 600ms both;
 }
 
-.cn-sky__sun-count {
+.cn__core-count {
   fill: var(--cn-gold);
-  font-size: calc(11.5px / var(--k, 1));
-  stroke-width: calc(3px / var(--k, 1));
+  font-family: var(--dd-font);
+  font-size: 11.5px;
+  paint-order: stroke;
+  stroke: #040813;
+  stroke-width: 3px;
   animation: cn-fade 600ms ease 700ms both;
 }
 
-.cn-sky__grain {
+.cn__grain {
   fill: #b8fff2;
   opacity: 0;
   animation: cn-grain 1600ms cubic-bezier(0.1, 0.7, 0.3, 1) both;
 }
 
-.cn-sky__grain--gold {
-  fill: #ffe2a0;
+.cn__grain--gold {
+  fill: #a0e1ff;
 }
 
-.cn-sky__ray {
-  stroke: #fff2c8;
+.cn__ray {
+  stroke: #c8eeff;
   stroke-width: 1.6;
   stroke-linecap: round;
   opacity: 0;
   animation: cn-ray 900ms ease-out 120ms both;
 }
 
-.cn-sky__beam,
-.cn-sky__beam-glow,
-.cn-sky__edge {
+.cn__beam,
+.cn__beam-glow {
   fill: none;
   stroke-dasharray: 1;
   animation: cn-draw 700ms ease-out both;
 }
 
-.cn-sky__beam {
-  stroke: rgba(245, 210, 140, 0.3);
+.cn__beam {
+  stroke: rgba(140, 212, 245, 0.34);
+  stroke-width: 1;
 }
 
-.cn-sky__beam--hot {
-  stroke: rgba(255, 228, 170, 0.9);
+.cn__beam--hot {
+  stroke: rgba(170, 228, 255, 0.9);
   stroke-width: 1.6;
 }
 
-.cn-sky__beam-glow {
-  stroke: rgba(245, 199, 107, 0.08);
+.cn__beam-glow {
+  stroke: rgba(107, 201, 245, 0.1);
   stroke-width: 5;
   filter: url(#cn-beam);
 }
 
-.cn-sky__beam-glow--hot {
-  stroke: rgba(245, 199, 107, 0.38);
+.cn__beam-glow--hot {
+  stroke: rgba(107, 201, 245, 0.4);
   stroke-width: 8;
 }
 
-.cn-sky__edge {
+.cn__edge {
+  fill: none;
   stroke: rgba(94, 234, 212, 0.32);
-  animation-duration: 900ms;
+  stroke-dasharray: 1;
+  animation: cn-draw 900ms ease-out both;
   transition: stroke 200ms ease;
 }
 
-.cn-sky__edge--lit {
+.cn__edge--lit {
   stroke: rgba(94, 234, 212, 0.95);
 }
 
-.cn-sky__comet circle {
+.cn__comet circle {
   fill: #c9fff5;
 }
 
-.cn-sky__comet--gold circle {
-  fill: #ffe7a8;
+.cn__comet--gold circle {
+  fill: #a8e3ff;
 }
 
-.cn-sky__node {
+.cn__node {
   cursor: pointer;
   outline: none;
   animation: cn-burst 950ms cubic-bezier(0.16, 0.9, 0.3, 1.15) both;
 }
 
-.cn-sky__tree {
+.cn__tree {
   animation: cn-fade 700ms ease both;
 }
 
-.cn-sky__orb {
+.cn__orb {
+  transition: transform 200ms ease;
   transform-box: fill-box;
   transform-origin: center;
-  transition: transform 200ms ease;
 }
 
-.cn-sky__node:hover .cn-sky__orb,
-.cn-sky__node:focus-visible .cn-sky__orb,
-.cn-sky__node--open .cn-sky__orb {
-  transform: scale(1.15);
+.cn__node:hover .cn__orb,
+.cn__node:focus-visible .cn__orb {
+  transform: scale(1.18);
 }
 
-.cn-sky__shine {
+.cn__node:focus-visible .cn__node-ring {
+  stroke: var(--cn-teal);
+  stroke-opacity: 1;
+}
+
+.cn__shine {
   fill: rgba(255, 255, 255, 0.55);
   pointer-events: none;
 }
 
-.cn-sky__ring {
+.cn__node-ring {
   fill: none;
-  stroke: #e7d6ff;
+  stroke: #d6daff;
   stroke-opacity: 0.35;
+  stroke-width: 1;
   stroke-dasharray: 1.5 3;
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-spin 18s linear infinite;
 }
 
-.cn-sky__ring--hot {
+.cn__node-ring--hot {
   stroke: var(--cn-gold);
   stroke-opacity: 0.85;
 }
 
-.cn-sky__node:focus-visible .cn-sky__ring,
-.cn-sky__node--open .cn-sky__ring {
-  stroke: var(--cn-teal);
-  stroke-opacity: 1;
-  stroke-width: 1.4;
-  stroke-dasharray: none;
-}
-
-.cn-sky__twig {
+.cn__twig {
   stroke: rgba(160, 230, 220, 0.28);
   stroke-width: 0.8;
 }
 
-.cn-sky__twig--lit {
-  stroke: rgba(245, 210, 140, 0.6);
+.cn__twig--lit {
+  stroke: rgba(140, 212, 245, 0.6);
 }
 
-.cn-sky__leaf {
+.cn__leaf {
   transform-box: fill-box;
   transform-origin: center;
   animation: cn-twinkle 3.6s ease-in-out infinite;
 }
 
-.cn-sky__leaf-pad {
-  fill: transparent;
-}
-
-.cn-sky__leaf-hit {
-  cursor: pointer;
-}
-
-.cn-sky__leaf-hit:hover .cn-sky__leaf {
-  stroke: #fff;
-  stroke-width: 1;
-}
-
-.cn-sky__leaf-ring {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 1.2;
-}
-
-/* Labels keep their size on screen however far the sky is zoomed. */
-.cn-sky__twig-label {
+.cn__twig-label {
   fill: var(--cn-soft);
-  font-size: calc(9px / var(--k, 1));
-  stroke-width: calc(2.5px / var(--k, 1));
+  font-family: var(--dd-font);
+  font-size: 9px;
+  pointer-events: none;
 }
 
-.cn-sky__twig-label--lit {
+.cn__twig-label--lit {
   fill: var(--cn-gold);
   font-weight: 700;
 }
 
-.cn-sky__twig-label--open {
-  fill: var(--cn-ink);
-  font-size: calc(11px / var(--k, 1));
-}
-
-/* The close-up tree grows out of the orb. */
-.cn-sky__tree--open {
-  animation: cn-unfold 500ms cubic-bezier(0.2, 0.8, 0.2, 1.1) both;
-}
-
-.cn-sky__name,
-.cn-sky__share-text {
+.cn__name,
+.cn__share-text {
   text-anchor: middle;
+  font-family: var(--dd-font);
+  pointer-events: none;
 }
 
-.cn-sky__name {
+.cn__name {
   fill: var(--cn-ink);
-  font-size: calc(12.5px / var(--k, 1));
+  font-size: 12.5px;
   font-weight: 650;
-  stroke-width: calc(3px / var(--k, 1));
+  paint-order: stroke;
+  stroke: #040813;
+  stroke-width: 3px;
 }
 
-.cn-sky__share {
-  fill: rgba(8, 28, 30, 0.85);
+.cn__share {
+  fill: rgba(8, 15, 30, 0.85);
   stroke: rgba(140, 220, 210, 0.22);
   stroke-width: 0.8;
 }
 
-.cn-sky__share--hot {
-  stroke: rgba(245, 199, 107, 0.7);
+.cn__share--hot {
+  stroke: rgba(107, 201, 245, 0.7);
 }
 
-.cn-sky__share-text {
+.cn__share-text {
   fill: var(--cn-soft);
   font-size: 9px;
   font-weight: 700;
-  stroke: none;
 }
 
-.cn-sky__node--hot .cn-sky__share-text {
+.cn__node--hot .cn__share-text {
   fill: var(--cn-gold);
 }
 
-/* Floating controls over the sky. */
-.cn-tools {
+/* Glass pieces floating over the sky: toolbar, legend and stats bar. */
+.cn__tools,
+.cn__legend,
+.cn__bar {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  pointer-events: none;
-  animation: cn-rise 500ms ease 900ms both;
+  border: 1px solid var(--cn-glass-line);
+  background: var(--cn-glass);
+  backdrop-filter: blur(14px);
+  transition: opacity 300ms ease;
 }
 
-.cn-tools > * {
-  pointer-events: auto;
-}
-
-.cn-tools__group,
-.cn-tools__parts {
+.cn__tools {
+  top: 14px;
+  left: 50%;
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--cn-line);
-  border-radius: 11px;
-  background: var(--cn-panel);
-  backdrop-filter: blur(12px);
+  padding: 4px;
+  border-radius: 12px;
+  transform: translateX(-50%);
+  animation: cn-rise-x 600ms ease 1.1s both;
 }
 
-.cn-tools__group > button:not(.cn-chip) {
+.cn__tools button {
   display: grid;
   place-items: center;
   width: 30px;
@@ -621,15 +351,20 @@
   border-radius: 8px;
   background: none;
   color: var(--cn-ink);
-  font-size: 17px !important;
+  font-size: 17px;
   cursor: pointer;
 }
 
-.cn-tools__group > button:not(.cn-chip):hover {
+.cn__tools button:hover:not(:disabled) {
   background: rgba(94, 234, 212, 0.14);
 }
 
-.cn-tools__group > span {
+.cn__tools button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cn__tools span {
   min-width: 44px;
   color: var(--cn-soft);
   font-size: 11.5px;
@@ -637,457 +372,978 @@
   text-align: center;
 }
 
-.cn-tools__group .cn-chip {
-  border-color: transparent;
-}
-
-.cn-tools__parts {
-  display: none;
-  gap: 6px;
-  padding: 6px 12px;
-  color: var(--cn-ink);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.cn-hover {
-  position: absolute;
-  z-index: 4;
+.cn__legend {
+  left: 16px;
+  bottom: 16px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  min-width: 190px;
-  padding: 10px 12px;
-  border: 1px solid var(--cn-line-strong);
-  border-radius: 12px;
-  background: rgba(8, 26, 29, 0.92);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.8);
-  color: var(--cn-soft);
-  font-size: 12px;
-  transform: translateY(-50%);
-  pointer-events: none;
-  animation: cn-pop 150ms ease both;
-}
-
-.cn-hover--left {
-  transform: translate(-100%, -50%);
-}
-
-.cn-hover strong {
-  color: var(--cn-ink);
-  font-size: 13.5px;
-}
-
-.cn-hover__path {
-  color: var(--cn-muted);
-  font-family: var(--dd-mono);
-  font-size: 11px;
-}
-
-.cn-hover__hot {
-  color: var(--cn-gold);
-  font-weight: 600;
-}
-
-.cn-hover em {
-  margin-top: 2px;
-  color: var(--cn-teal);
-  font-size: 11px;
-  font-style: normal;
-}
-
-.cn-legend {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
+  gap: 6px;
   margin: 0;
-  padding: 7px 12px;
-  border: 1px solid var(--cn-line);
-  border-radius: 10px;
-  background: var(--cn-panel);
-  backdrop-filter: blur(12px);
+  padding: 12px 14px;
+  border-radius: 14px;
   color: var(--cn-soft);
   font-size: 11px;
   list-style: none;
-  animation: cn-rise 500ms ease 1s both;
+  animation: cn-rise 600ms ease 1.2s both;
 }
 
-.cn-legend li {
+.cn__legend li {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
-.cn-legend__line {
-  width: 14px;
+.cn__legend-title {
+  color: var(--cn-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cn__key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.cn__key--sun {
+  background: radial-gradient(circle at 35% 35%, #eaf8ff, var(--cn-gold) 50%, #1c739b);
+  box-shadow: 0 0 0 2px rgba(163, 226, 255, 0.25), 0 0 8px var(--cn-gold);
+}
+
+.cn__key--orb {
+  background: radial-gradient(circle at 35% 35%, #e9ebff, var(--cn-violet) 50%, #3a428f);
+}
+
+.cn__key--hot {
+  background: radial-gradient(circle at 35% 35%, #f0fffe, var(--cn-pink) 50%, #2a7a72);
+  box-shadow: 0 0 0 1.5px var(--cn-gold);
+}
+
+.cn__key--line {
+  width: 16px;
   height: 2px;
   border-radius: 2px;
   background: var(--cn-teal);
   box-shadow: 0 0 6px var(--cn-teal);
 }
 
-.cn-hint {
-  margin: 0 4px 0 auto;
-  color: var(--cn-muted);
-  font-size: 11.5px;
+.cn__key--dot {
+  width: 7px;
+  height: 7px;
+  margin-right: -4px;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.cn__key--dot:last-of-type {
+  margin-right: 0;
+}
+
+.cn__bar {
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  max-width: calc(100% - 32px);
+  padding: 8px 10px;
+  border-radius: 18px;
+  box-shadow: 0 0 46px -14px rgba(94, 234, 212, 0.45), inset 0 1px 0 rgba(140, 240, 225, 0.25);
+  transform: translateX(-50%);
+  animation: cn-rise-x 600ms ease 1.3s both;
+}
+
+/* A thin line of light along the bar's top edge. */
+.cn__bar::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(140, 255, 235, 0.9), transparent);
+}
+
+.cn--focused .cn__bar,
+.cn--focused .cn__legend,
+.cn--focused .cn__tools {
+  opacity: 0;
   pointer-events: none;
 }
 
-/* The details panel. */
-.cn-inspector__body {
+.cn__stat {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  animation: cn-slide 350ms ease both;
+  gap: 2px;
+  padding: 3px 16px;
+  border-right: 1px solid var(--cn-glass-line);
+  white-space: nowrap;
 }
 
-.cn-inspector__head {
+.cn__stat strong {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.cn-inspector__head h3,
-.cn-inspector__part h3 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 650;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
+.cn__stat strong svg {
+  color: var(--cn-teal);
 }
 
-.cn-inspector__head code,
-.cn-inspector__part code {
+.cn__stat-label {
   color: var(--cn-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.cn__stat--gold strong,
+.cn__stat--gold strong svg {
+  color: var(--cn-gold);
+}
+
+.cn__hint {
+  margin: 0;
+  padding: 0 10px 0 14px;
+  color: var(--cn-teal);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cn__add {
+  color: #4ade80;
+}
+
+.cn__del {
+  color: #f87171;
+}
+
+/* Zoomed into one part. */
+.cn-focus {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cn-focus__stage {
+  position: absolute;
+  inset: 0;
+  transition: transform 700ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.cn-focus__lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+}
+
+.cn-focus__line {
+  fill: none;
+  stroke: rgba(107, 201, 245, 0.3);
+  stroke-width: 1.2;
+  stroke-dasharray: 1;
+  animation: cn-draw 650ms ease-out both;
+}
+
+.cn-focus__line--lit {
+  stroke: rgba(150, 222, 255, 0.95);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 4px rgba(107, 201, 245, 0.8));
+}
+
+.cn-focus__line--fan {
+  stroke-width: 1;
+}
+
+.cn-focus__tip {
+  fill: #a8e3ff;
+  animation: cn-fade 300ms ease both;
+}
+
+.cn-focus__spark {
+  fill: #d0f0ff;
+}
+
+/* Where you are: ← Constellation › part › card › file. Each step but the last goes back to it. */
+.cn-focus__crumbs {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  animation: cn-fade 400ms ease 300ms both;
+}
+
+.cn-focus__crumbs > * {
+  pointer-events: auto;
+}
+
+.cn-focus__back {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cn-glass-line);
+  border-radius: 999px;
+  background: var(--cn-glass);
+  backdrop-filter: blur(12px);
+  color: var(--cn-ink);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cn-focus__back:hover {
+  border-color: rgba(94, 234, 212, 0.5);
+}
+
+.cn-focus__crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 14px;
+  list-style: none;
+  border: 1px solid var(--cn-glass-line);
+  border-radius: 999px;
+  background: var(--cn-glass);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+}
+
+.cn-focus__crumbs li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.cn-focus__crumbs li + li::before {
+  content: "›";
+  margin: 0 8px;
+  color: var(--cn-muted);
+}
+
+.cn-focus__crumbs li button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: rgba(232, 241, 242, 0.62);
+  font: inherit;
+  cursor: pointer;
+}
+
+.cn-focus__crumbs li button:hover {
+  color: var(--cn-ink);
+  text-decoration: underline;
+}
+
+.cn-focus__crumbs [aria-current] {
+  overflow: hidden;
+  color: var(--cn-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cn-focus__orb {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 124px;
+  transform: translate(calc(-50% + var(--fx, 0px)), calc(-50% + var(--fy, 0px))) scale(0.3);
+  opacity: 0.3;
+  transition: transform 800ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 500ms ease;
+}
+
+.cn-focus--arrived .cn-focus__orb {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+}
+
+/* A soft disc of light behind the orb, like the video's spotlight. */
+.cn-focus__aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(60, 140, 140, 0.28), rgba(20, 33, 64, 0.12) 45%, transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.cn-focus__ball {
+  position: relative;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #f2f3ff, var(--cn-violet) 42%, #3b2c7a 82%);
+  box-shadow: 0 0 60px -6px rgba(154, 162, 232, 0.7), inset -10px -14px 30px rgba(20, 10, 60, 0.6);
+}
+
+.cn-focus__orb--hot .cn-focus__ball {
+  background: radial-gradient(circle at 36% 32%, #f4fffe, var(--cn-pink) 42%, #1f6a62 84%);
+  box-shadow: 0 0 70px -4px rgba(138, 229, 220, 0.75), inset -10px -14px 30px rgba(10, 60, 55, 0.55);
+}
+
+/* Two rings of fine hairs around the ball, turning opposite ways. */
+.cn-focus__ball::before,
+.cn-focus__ball::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(200, 245, 235, 0.6) 0 1deg, transparent 1deg 4deg);
+  -webkit-mask: radial-gradient(circle, transparent 60%, #000 61%, #000 70%, transparent 71%);
+  mask: radial-gradient(circle, transparent 60%, #000 61%, #000 70%, transparent 71%);
+}
+
+.cn-focus__ball::before {
+  inset: -22px;
+  animation: cn-spin 40s linear infinite;
+}
+
+.cn-focus__ball::after {
+  inset: -40px;
+  opacity: 0.4;
+  background: repeating-conic-gradient(rgba(154, 162, 232, 0.8) 0 0.6deg, transparent 0.6deg 7deg);
+  animation: cn-spin 70s linear reverse infinite;
+}
+
+/* The title hangs below the ball without moving the ball off the line's start. */
+.cn-focus__title {
+  position: absolute;
+  top: calc(100% + 30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 220px;
+  text-align: center;
+}
+
+.cn-focus__title strong {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.cn-focus__title code {
+  color: var(--cn-soft);
   font-family: var(--dd-mono);
   font-size: 11.5px;
   overflow-wrap: anywhere;
 }
 
-.cn-inspector__eyebrow {
+.cn-focus__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 3px 9px;
+  border: 1px solid var(--cn-glass-line);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--cn-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cn-focus__ratio {
+  display: flex;
+  width: 34px;
+  height: 6px;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.cn-focus__ratio b:first-child {
+  background: #4ade80;
+}
+
+.cn-focus__ratio b:last-child {
+  background: #f87171;
+}
+
+.cn-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  height: 60px;
+  padding: 0 14px;
+  border: 1px solid var(--cn-glass-line);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(22, 33, 60, 0.85), rgba(8, 14, 27, 0.8));
+  backdrop-filter: blur(10px);
+  color: var(--cn-ink);
+  text-align: left;
+  cursor: pointer;
+  animation: cn-card 550ms cubic-bezier(0.2, 0.8, 0.2, 1.1) both;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.cn-card strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 21px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cn-card strong svg {
   color: var(--cn-teal);
+}
+
+.cn-card span {
+  color: var(--cn-soft);
+  font-size: 11px;
+}
+
+.cn-card:hover:not(:disabled) {
+  border-color: rgba(94, 234, 212, 0.45);
+}
+
+.cn-card:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.cn-card--hot strong,
+.cn-card--hot strong svg {
+  color: var(--cn-gold);
+}
+
+.cn-card--on {
+  border-color: rgba(150, 222, 255, 0.9);
+  background: linear-gradient(135deg, rgba(34, 86, 110, 0.7), rgba(18, 22, 32, 0.82));
+  box-shadow: 0 0 30px -4px rgba(107, 201, 245, 0.65), inset 0 0 0 1px rgba(107, 201, 245, 0.35);
+}
+
+.cn-focus__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-focus__list li {
+  position: absolute;
+  animation: cn-row 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  /* No transition here: scrolling moves rows every frame, in step with their lines. */
+}
+
+/* The row under the pointer comes out of the fan: bigger, with its whole name. */
+.cn-focus:not(.cn-focus--narrow) .cn-focus__list li:hover {
+  z-index: 4;
+  opacity: 1 !important;
+}
+
+.cn-focus:not(.cn-focus--narrow) .cn-row {
+  transform-origin: left center;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 180ms ease, background 180ms ease;
+}
+
+.cn-focus:not(.cn-focus--narrow) .cn-row:hover {
+  width: max-content;
+  min-width: 100%;
+  max-width: 560px;
+  transform: translateX(14px) scale(1.14);
+  background: rgba(20, 36, 66, 0.95);
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.7), 0 0 22px -6px rgba(94, 234, 212, 0.7);
+}
+
+.cn-focus:not(.cn-focus--narrow) .cn-row:hover .cn-row__label {
+  overflow: visible;
+  color: #f2fbff;
+  text-overflow: clip;
+}
+
+/* The curved scroll bar beside a long list: drag or click it, or use the wheel. */
+.cn-focus__bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+  animation: cn-fade 400ms ease 500ms both;
+}
+
+.cn-focus__track,
+.cn-focus__thumb,
+.cn-focus__grip {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.cn-focus__track {
+  stroke: rgba(148, 197, 214, 0.16);
+  stroke-width: 4;
+}
+
+.cn-focus__thumb {
+  stroke: #6bc9f5;
+  stroke-width: 5;
+  filter: drop-shadow(0 0 5px rgba(107, 201, 245, 0.8));
+}
+
+.cn-focus__grip {
+  stroke: transparent;
+  stroke-width: 22;
+  pointer-events: stroke;
+  cursor: grab;
+}
+
+.cn-focus__grip:active {
+  cursor: grabbing;
+}
+
+.cn-focus__count {
+  fill: var(--cn-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.cn-focus__note {
+  position: absolute;
+  margin: 0;
+  color: var(--cn-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cn-focus--narrow .cn-focus__note {
+  position: static;
+}
+
+.cn-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(10, 17, 34, 0.5);
+  color: var(--cn-ink);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cn-row:hover,
+.cn-row--on {
+  border-color: rgba(94, 234, 212, 0.5);
+  background: rgba(20, 33, 62, 0.78);
+}
+
+.cn-row--on {
+  box-shadow: 0 0 20px -6px rgba(94, 234, 212, 0.6);
+}
+
+.cn-row--hot .cn-row__label {
+  color: #def5ff;
+}
+
+.cn-row i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.cn-row__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cn-soft);
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-row__badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--cn-muted);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cn-row__badge--add {
+  color: #4ade80;
+}
+
+.cn-row__badge--del {
+  color: #f87171;
+}
+
+.cn-row__badge--gold {
+  color: var(--cn-gold);
+}
+
+.cn-panel {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  overflow-y: auto;
+  border: 1px solid rgba(140, 220, 210, 0.2);
+  border-radius: 22px;
+  background: linear-gradient(160deg, rgba(26, 39, 70, 0.74), rgba(6, 11, 22, 0.86));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), 0 0 50px -20px rgba(94, 234, 212, 0.4), inset 0 1px 0 rgba(160, 240, 230, 0.15);
+  animation: cn-panel 550ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.cn-panel__close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none;
+  background: none;
+  color: var(--cn-soft);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cn-panel__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cn-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cn-panel__eyebrow svg {
+  color: var(--cn-gold);
+}
+
+.cn-panel h3 {
+  margin: -2px 0 0;
+  padding-right: 20px;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.cn-panel h4 {
+  margin: 4px 0 0;
+  color: var(--cn-soft);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.cn-inspector__back {
-  align-self: flex-start;
-  padding: 4px 10px 4px 8px;
-  border: 1px solid var(--cn-line);
-  border-radius: 999px;
-  background: none;
-  color: var(--cn-soft);
-  font-size: 12px !important;
-  font-weight: 600;
-  cursor: pointer;
+.cn-panel__path {
+  margin-top: -6px;
+  color: var(--cn-muted);
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
 }
 
-.cn-inspector__back:hover {
-  border-color: var(--cn-line-strong);
-  color: var(--cn-ink);
-}
-
-.cn-inspector__part {
+.cn-panel__actions {
   display: flex;
   align-items: center;
-  gap: 14px;
-}
-
-.cn-inspector__part p {
-  margin: 3px 0 0;
-  color: var(--cn-soft);
-  font-size: 12.5px;
-}
-
-.cn-inspector__orb {
-  position: relative;
-  flex: none;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 36% 32%, #fbf2ff, var(--cn-violet) 42%, #3b2c7a 82%);
-  box-shadow: 0 0 30px -4px rgba(198, 154, 232, 0.7);
-}
-
-.cn-inspector__orb--hot {
-  background: radial-gradient(circle at 36% 32%, #fff4f7, var(--cn-pink) 42%, #6a1f40 84%);
-  box-shadow: 0 0 30px -4px rgba(229, 138, 168, 0.75);
-}
-
-.cn-inspector__orb::before {
-  content: "";
-  position: absolute;
-  inset: -9px;
-  border-radius: 50%;
-  background: repeating-conic-gradient(rgba(200, 245, 235, 0.6) 0 1.2deg, transparent 1.2deg 5deg);
-  -webkit-mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
-  mask: radial-gradient(circle, transparent 62%, #000 63%, #000 72%, transparent 73%);
-  animation: cn-spin 40s linear infinite;
-}
-
-.cn-inspector__note {
-  margin: 0;
-  padding: 2px;
-  color: var(--cn-muted);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.cn-inspector__open {
-  padding: 9px 14px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #5eead4, #2bb3a3);
-  color: #032421;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.cn-inspector__open:hover {
-  filter: brightness(1.08);
-}
-
-.cn-tiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 0;
-}
-
-.cn-tiles__tile {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 12px;
-  border: 1px solid var(--cn-line);
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--cn-glass-line);
   border-radius: 12px;
-  background: var(--cn-raise);
+  background: rgba(0, 0, 0, 0.22);
 }
 
-.cn-tiles__tile dt {
-  color: var(--cn-muted);
+.cn-panel__status {
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
   font-size: 11px;
+  font-weight: 700;
 }
 
-.cn-tiles__tile dd {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 0;
-  font-size: 17px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.cn-tiles__tile dd svg {
-  flex: none;
-  color: var(--cn-teal);
-}
-
-.cn-tiles__tile--gold dd,
-.cn-tiles__tile--gold dd svg {
-  color: var(--cn-gold);
-}
-
-.cn-tabs {
-  /* Five tabs don't fit one row of the panel: three on top, two below. */
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 2px;
-  padding: 3px;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.28);
-  scrollbar-width: none;
-}
-
-.cn-tabs__tab {
-  display: flex;
-  grid-column: span 2;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 6px 4px;
-  white-space: nowrap;
-  border: none;
-  border-radius: 8px;
-  background: none;
-  color: var(--cn-soft);
-  font-size: 12px !important;
+.cn-panel__open {
+  padding: 7px 12px;
+  border: 1px solid rgba(94, 234, 212, 0.4);
+  border-radius: 9px;
+  background: rgba(94, 234, 212, 0.12);
+  color: var(--cn-ink);
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.cn-tabs__tab:nth-child(n + 4) {
-  grid-column: span 3;
+.cn-panel__open:hover {
+  background: rgba(94, 234, 212, 0.24);
 }
 
-.cn-tabs__tab span {
-  color: var(--cn-muted);
-  font-size: 10.5px;
-}
-
-.cn-tabs__tab:hover {
-  color: var(--cn-ink);
-}
-
-.cn-tabs__tab--on {
-  background: rgba(94, 234, 212, 0.16);
-  color: var(--cn-ink);
-}
-
-.cn-tabs__tab--on span {
-  color: var(--cn-teal);
-}
-
-.cn-rate {
+/* The big card with the line count and the bars, like the video's "rate" card. */
+.cn-panel__rate {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   padding: 14px 16px;
   border-radius: 14px;
-  background: linear-gradient(120deg, rgba(20, 12, 14, 0.75), rgba(90, 30, 40, 0.42));
+  background: linear-gradient(120deg, rgba(12, 20, 19, 0.75), rgba(30, 48, 90, 0.42));
   box-shadow: inset 0 0 0 1px rgba(255, 160, 160, 0.12);
 }
 
-.cn-rate > div:first-child {
+.cn-panel__rate > div:first-child {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.cn-rate strong {
-  font-size: 26px;
+.cn-panel__rate strong {
+  font-size: 28px;
   font-weight: 650;
   line-height: 1.1;
   white-space: nowrap;
 }
 
-.cn-rate__label {
+.cn-panel__rate-label {
+  color: var(--cn-ink);
   font-size: 12px;
   font-weight: 600;
 }
 
-.cn-rate__sub {
+.cn-panel__rate-sub {
   color: var(--cn-muted);
   font-size: 10.5px;
 }
 
-.cn-rate__spark {
+.cn-panel__spark {
   display: flex;
-  flex: 1;
   align-items: flex-end;
   gap: 2px;
-  max-width: 140px;
-  height: 50px;
+  flex: 1;
+  max-width: 150px;
+  height: 52px;
 }
 
-.cn-rate__spark span {
+.cn-panel__spark span {
   flex: 1;
   border-radius: 1px;
-  background: rgba(255, 220, 190, 0.16);
+  background: rgba(255, 220, 190, 0.18);
   transform-origin: bottom;
   animation: cn-grow 600ms ease both;
 }
 
-.cn-rate__spark .cn-rate__bar--on {
-  background: linear-gradient(180deg, #ffe7c0, #e08a5a);
+.cn-panel__spark .cn-panel__spark-on {
+  background: linear-gradient(180deg, #c0ebff, #e08a5a);
 }
 
-.cn-list__row--still .cn-list__label {
-  font-weight: 500;
+.cn-panel__note {
+  margin: 0;
+  color: var(--cn-soft);
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
-.cn-change {
-  color: var(--cn-gold);
+.cn-panel__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0;
+}
+
+.cn-panel__tile {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--cn-glass-line);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.cn-panel__tile dd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.cn-panel__tile dd svg {
+  color: var(--cn-soft);
+}
+
+.cn-panel__tile dt {
+  color: var(--cn-muted);
+  font-size: 10.5px;
+}
+
+.cn-panel__fns {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cn-panel__fns li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.cn-panel__fns li.cn-panel__fn--on {
+  border-color: rgba(107, 201, 245, 0.6);
+}
+
+.cn-panel__fns code {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cn-panel__change {
   font-size: 11px;
   font-weight: 700;
+  color: var(--cn-gold);
 }
 
-.cn-change--added {
+.cn-panel__change--added {
   color: #4ade80;
 }
 
-.cn-change--deleted {
+.cn-panel__change--deleted {
   color: #f87171;
 }
 
-/* Narrower screens: the parts list folds away behind a "Parts" button over the sky. */
-@media (max-width: 1700px) {
-  .cn {
-    grid-template-columns: minmax(0, 1fr) 320px;
-  }
-
-  .cn-rail {
-    position: absolute;
-    top: 64px;
-    left: 24px;
-    bottom: 24px;
-    z-index: 5;
-    width: 260px;
-    box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.9);
-    opacity: 0;
-    transform: translateX(-16px);
-    pointer-events: none;
-    visibility: hidden;
-    transition: opacity 200ms ease, transform 200ms ease, visibility 0s linear 200ms;
-    animation: none;
-  }
-
-  .cn--rail-open .cn-rail {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-    visibility: visible;
-    transition: opacity 200ms ease, transform 200ms ease;
-  }
-
-  .cn-tools__parts {
-    display: flex;
-  }
+/* Too narrow for the fan: the same pieces, one under another. */
+.cn-focus--narrow {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 64px 16px 16px;
+  overflow-y: auto;
 }
 
-@media (max-width: 1100px) {
-  .cn-hint {
-    display: none;
-  }
+.cn-focus--narrow .cn-focus__stage {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-/* Phones: the sky on top, the details under it, and the page scrolls. */
+.cn-focus--narrow .cn-focus__orb {
+  position: static;
+  flex-direction: row;
+  gap: 18px;
+  width: auto;
+  transform: none;
+  opacity: 1;
+}
+
+.cn-focus--narrow .cn-focus__aura {
+  display: none;
+}
+
+.cn-focus--narrow .cn-focus__ball {
+  width: 64px;
+  height: 64px;
+  flex: none;
+}
+
+.cn-focus--narrow .cn-focus__ball::before {
+  inset: -10px;
+}
+
+.cn-focus--narrow .cn-focus__ball::after {
+  display: none;
+}
+
+.cn-focus--narrow .cn-focus__title {
+  position: static;
+  align-items: flex-start;
+  width: auto;
+  margin-left: 10px;
+  text-align: left;
+}
+
+.cn-focus--narrow .cn-focus__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cn-focus--narrow .cn-card,
+.cn-focus--narrow .cn-focus__list li,
+.cn-focus--narrow .cn-panel {
+  position: static;
+}
+
+.cn-focus--narrow .cn-focus__list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
 @media (max-width: 760px) {
-  .cn {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 8px;
+  .cn__bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    width: calc(100% - 24px);
+    bottom: 12px;
+    border-radius: 14px;
   }
 
-  .cn-stage {
-    height: 62vh;
-    min-height: 420px;
+  .cn__stat {
+    padding: 2px 8px;
+    border-right: none;
   }
 
-  .cn-inspector {
-    overflow: visible;
+  .cn__stat strong {
+    font-size: 15px;
   }
 
-  .cn-rail {
-    top: 56px;
-    left: 16px;
-    right: 16px;
-    bottom: auto;
-    width: auto;
-    max-height: 56vh;
+  .cn__stat-label {
+    font-size: 9.5px;
   }
 
-  .cn-legend {
-    display: none;
+  .cn__hint {
+    flex-basis: 100%;
+    padding-top: 4px;
+    font-size: 12px;
+    text-align: center;
   }
 }
 
@@ -1157,10 +1413,10 @@
 
 @keyframes cn-drift {
   from {
-    transform: rotate(-0.6deg);
+    transform: rotate(-0.8deg) scale(1);
   }
   to {
-    transform: rotate(0.6deg);
+    transform: rotate(0.8deg) scale(1.015);
   }
 }
 
@@ -1195,27 +1451,35 @@
 @keyframes cn-rise {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
 }
 
-@keyframes cn-slide {
+@keyframes cn-rise-x {
   from {
     opacity: 0;
-    transform: translateX(14px);
+    transform: translate(-50%, 16px);
   }
 }
 
-@keyframes cn-unfold {
+@keyframes cn-card {
   from {
     opacity: 0;
-    transform: scale(0.5);
+    transform: translateX(-60px) scale(0.9);
   }
 }
 
-@keyframes cn-pop {
+@keyframes cn-row {
   from {
     opacity: 0;
+    transform: translateX(-50px);
+  }
+}
+
+@keyframes cn-panel {
+  from {
+    opacity: 0;
+    transform: translateX(50px) scale(0.97);
   }
 }
 
@@ -1225,7 +1489,387 @@
   }
 }
 
+/* ------------------------------------------------------------------------------------
+   Daytime: the light theme's sky, in the same coffee and cream as the rest of the light
+   theme. A sunlit chart: the project a golden sun throwing slow-turning shafts of light,
+   faint orbit rings like a star atlas, and porcelain planets with soft shadows.
+   ------------------------------------------------------------------------------------ */
+:root[data-theme="light"] .cn {
+  /* Text tones all read at 4.5:1 or more on the light sky and the cream glass. */
+  --cn-ink: #24180f;
+  --cn-soft: #45392d;
+  --cn-muted: #5e5044;
+  --cn-gold: #9a4508;
+  --cn-teal: #0b5f59;
+  --cn-violet: #4f46e5;
+  --cn-pink: #0f766e;
+  --cn-glass: rgba(255, 250, 243, 0.86);
+  --cn-glass-line: rgba(84, 56, 30, 0.16);
+  --cn-added: #15803d;
+  --cn-deleted: #b91c1c;
+  --cn-modified: #035e8f;
+  --cn-renamed: #7e22ce;
+  --cn-quiet: #0b5f59;
+  --cn-twig: #2f6f5f;
+  --cn-core-1: #fffbea;
+  --cn-core-2: #ffcb47;
+  --cn-core-3: #f07b12;
+  --cn-orb-1: #ffffff;
+  --cn-orb-2: #b4bdfd;
+  --cn-orb-3: #4f46e5;
+  --cn-hot-1: #ffffff;
+  --cn-hot-2: #7ee7da;
+  --cn-hot-3: #0f766e;
+  --cn-halo: #2dd4bf;
+  --cn-halo-strength: 0.34;
+  --cn-halo-cool: #818cf8;
+  --cn-halo-cool-strength: 0.22;
+  --cn-sun-halo-1: #ffe9a8;
+  --cn-sun-halo-2: #ffb347;
+  --cn-fan-1: #0b7a70;
+  --cn-fan-2: #a0703f;
+  --cn-text-halo: rgba(255, 250, 243, 0.95);
+  /* Coffee and cream: latte at the top, cream in the middle where the parts sit, a
+     deeper coffee at the horizon; the sun's glow kept close to it, and fine orbit rings. */
+  background:
+    radial-gradient(circle at 50% 47%, rgba(255, 200, 100, 0.4) 0, rgba(255, 220, 150, 0.16) 8%, transparent 20%),
+    repeating-radial-gradient(circle at 50% 47%, transparent 0 79px, rgba(11, 95, 89, 0.09) 79px 80px),
+    linear-gradient(180deg, #e5d0b6 0%, #f0e3d1 40%, #f6ecdf 68%, #e8d3b9 100%);
+  box-shadow: 0 30px 60px -34px rgba(74, 46, 20, 0.45), inset 0 0 0 1px rgba(84, 56, 30, 0.12);
+}
+
+/* Faint shafts of sunlight turning slowly around the sun, fading well before the parts. */
+:root[data-theme="light"] .cn::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 47%, rgba(255, 214, 130, 0.28) 0deg 3deg, transparent 3deg 18deg);
+  -webkit-mask: radial-gradient(circle at 50% 47%, #000 2%, rgba(0, 0, 0, 0.35) 9%, transparent 20%);
+  mask: radial-gradient(circle at 50% 47%, #000 2%, rgba(0, 0, 0, 0.35) 9%, transparent 20%);
+  animation: cn-spin 160s linear infinite;
+}
+
+/* Soft clouds drifting across, slower than anything else. */
+:root[data-theme="light"] .cn::after {
+  content: "";
+  position: absolute;
+  inset: 0 -30%;
+  pointer-events: none;
+  /* Two or three clouds along the top edge only, away from the parts and labels. */
+  background:
+    radial-gradient(ellipse 12% 4% at 14% 9%, rgba(255, 250, 243, 0.85), transparent 70%),
+    radial-gradient(ellipse 8% 3% at 20% 7%, rgba(255, 250, 243, 0.8), transparent 70%),
+    radial-gradient(ellipse 14% 4.5% at 76% 8%, rgba(255, 250, 243, 0.75), transparent 70%);
+  filter: blur(5px);
+  animation: cn-clouds 90s ease-in-out infinite alternate;
+}
+
+@keyframes cn-clouds {
+  from {
+    transform: translateX(-6%);
+  }
+  to {
+    transform: translateX(6%);
+  }
+}
+
+/* Daytime stars: faint ink dots on the chart, still twinkling. */
+:root[data-theme="light"] .cn__stars circle {
+  fill: #6b4a2e;
+}
+
+/* Fewer and fainter than by night: a chart, not a starfield. */
+:root[data-theme="light"] .cn__stars {
+  opacity: 0.45;
+}
+
+:root[data-theme="light"] .cn__core-ticks line {
+  stroke: #f59e0b;
+}
+
+:root[data-theme="light"] .cn__core-ring {
+  stroke: #f59e0b;
+  stroke-opacity: 0.6;
+}
+
+:root[data-theme="light"] .cn__core-ball {
+  filter: drop-shadow(0 0 18px rgba(255, 170, 40, 0.85));
+}
+
+:root[data-theme="light"] .cn__core-name,
+:root[data-theme="light"] .cn__core-count,
+:root[data-theme="light"] .cn__name {
+  stroke: var(--cn-text-halo);
+}
+
+:root[data-theme="light"] .cn__core-count {
+  fill: #b45309;
+}
+
+:root[data-theme="light"] .cn__grain {
+  fill: #ffb020;
+}
+
+:root[data-theme="light"] .cn__grain--gold,
+:root[data-theme="light"] .cn__comet--gold circle {
+  fill: #f59e0b;
+}
+
+:root[data-theme="light"] .cn__ray {
+  stroke: #ffc94d;
+}
+
+:root[data-theme="light"] .cn__comet circle {
+  fill: #0d9488;
+}
+
+:root[data-theme="light"] .cn__beam {
+  stroke: rgba(11, 95, 89, 0.5);
+  stroke-width: 1.2;
+}
+
+:root[data-theme="light"] .cn__beam--hot {
+  stroke: rgba(2, 132, 199, 0.85);
+}
+
+:root[data-theme="light"] .cn__beam-glow {
+  stroke: rgba(11, 95, 89, 0.05);
+}
+
+/* By day the glow stays a soft halo, so the line itself carries the colour. */
+:root[data-theme="light"] .cn__beam-glow--hot {
+  stroke: rgba(11, 95, 89, 0.14);
+}
+
+:root[data-theme="light"] .cn__edge {
+  stroke: rgba(13, 107, 100, 0.5);
+}
+
+:root[data-theme="light"] .cn__edge--lit {
+  stroke: rgba(13, 148, 136, 0.95);
+}
+
+/* Planets: porcelain, lit from the top left, casting a soft shadow on the sky. */
+:root[data-theme="light"] .cn__orb {
+  stroke: rgba(30, 41, 90, 0.28);
+  stroke-width: 0.8;
+  filter: drop-shadow(0 6px 8px rgba(30, 41, 90, 0.3));
+}
+
+:root[data-theme="light"] .cn__shine {
+  fill: rgba(255, 250, 243, 0.85);
+}
+
+:root[data-theme="light"] .cn__node-ring {
+  stroke: #4f46e5;
+  stroke-opacity: 0.55;
+}
+
+:root[data-theme="light"] .cn__twig {
+  stroke: rgba(13, 110, 100, 0.3);
+}
+
+:root[data-theme="light"] .cn__twig--lit {
+  stroke: rgba(2, 132, 199, 0.65);
+}
+
+:root[data-theme="light"] .cn__share {
+  fill: #ffffff;
+  stroke: rgba(11, 95, 89, 0.3);
+}
+
+/* Names a little bolder by day, so they hold their own against the bright sky. */
+:root[data-theme="light"] .cn__name {
+  font-weight: 700;
+  stroke-width: 4px;
+}
+
+:root[data-theme="light"] .cn__core-name {
+  stroke-width: 5px;
+}
+
+:root[data-theme="light"] .cn__share--hot {
+  stroke: rgba(13, 148, 136, 0.7);
+}
+
+:root[data-theme="light"] .cn__tools button:hover:not(:disabled) {
+  background: rgba(13, 148, 136, 0.12);
+}
+
+:root[data-theme="light"] .cn__key--sun {
+  background: radial-gradient(circle at 35% 35%, #fffbea, #ffcb47 50%, #f07b12);
+  box-shadow: 0 0 0 2px rgba(255, 200, 80, 0.3), 0 0 8px rgba(255, 170, 40, 0.8);
+}
+
+:root[data-theme="light"] .cn__key--orb {
+  background: radial-gradient(circle at 35% 35%, #fff, #b4bdfd 50%, #4f46e5);
+}
+
+:root[data-theme="light"] .cn__key--hot {
+  background: radial-gradient(circle at 35% 35%, #fff, #7ee7da 50%, #0f766e);
+}
+
+:root[data-theme="light"] .cn__bar,
+:root[data-theme="light"] .cn__tools,
+:root[data-theme="light"] .cn__legend,
+:root[data-theme="light"] .cn-focus__crumbs ol,
+:root[data-theme="light"] .cn-focus__back {
+  box-shadow: 0 12px 30px -16px rgba(74, 46, 20, 0.4), inset 0 1px 0 rgba(255, 250, 243, 0.9);
+}
+
+:root[data-theme="light"] .cn__bar::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 180, 60, 0.9), transparent);
+}
+
+:root[data-theme="light"] .cn__add,
+:root[data-theme="light"] .cn-row__badge--add,
+:root[data-theme="light"] .cn-panel__change--added {
+  color: #166534;
+}
+
+:root[data-theme="light"] .cn__del,
+:root[data-theme="light"] .cn-row__badge--del,
+:root[data-theme="light"] .cn-panel__change--deleted {
+  color: #b91c1c;
+}
+
+/* Inside a part, by day. */
+:root[data-theme="light"] .cn--focused .cn__graph {
+  opacity: 0.12;
+}
+
+:root[data-theme="light"] .cn-focus__line {
+  stroke: rgba(2, 132, 199, 0.28);
+}
+
+:root[data-theme="light"] .cn-focus__line--lit {
+  stroke: rgba(2, 132, 199, 0.9);
+  filter: drop-shadow(0 0 3px rgba(14, 165, 233, 0.5));
+}
+
+:root[data-theme="light"] .cn-focus__tip {
+  fill: #0284c7;
+}
+
+:root[data-theme="light"] .cn-focus__spark {
+  fill: #f59e0b;
+}
+
+:root[data-theme="light"] .cn-focus__back:hover,
+:root[data-theme="light"] .cn-card:hover:not(:disabled) {
+  border-color: rgba(13, 148, 136, 0.5);
+}
+
+:root[data-theme="light"] .cn-focus__crumbs li button {
+  color: #3d5a68;
+}
+
+:root[data-theme="light"] .cn-focus__aura {
+  background: radial-gradient(circle, rgba(255, 214, 120, 0.55), rgba(255, 236, 190, 0.25) 45%, transparent 70%);
+}
+
+:root[data-theme="light"] .cn-focus__ball {
+  background: radial-gradient(circle at 36% 32%, #ffffff, #b4bdfd 42%, #4f46e5 86%);
+  box-shadow: 0 22px 40px -14px rgba(49, 46, 129, 0.55), 0 0 50px -10px rgba(129, 140, 248, 0.6), inset -10px -14px 30px rgba(49, 46, 129, 0.35);
+}
+
+:root[data-theme="light"] .cn-focus__orb--hot .cn-focus__ball {
+  background: radial-gradient(circle at 36% 32%, #ffffff, #7ee7da 42%, #0f766e 86%);
+  box-shadow: 0 22px 40px -14px rgba(15, 118, 110, 0.55), 0 0 50px -10px rgba(45, 212, 191, 0.6), inset -10px -14px 30px rgba(6, 78, 59, 0.3);
+}
+
+:root[data-theme="light"] .cn-focus__ball::after {
+  background: repeating-conic-gradient(rgba(79, 70, 229, 0.45) 0 0.8deg, transparent 0.8deg 6deg);
+}
+
+:root[data-theme="light"] .cn-focus__pill,
+:root[data-theme="light"] .cn-row__badge,
+:root[data-theme="light"] .cn-panel__actions,
+:root[data-theme="light"] .cn-panel__tile,
+:root[data-theme="light"] .cn-panel__fns li {
+  background: rgba(84, 56, 30, 0.06);
+}
+
+:root[data-theme="light"] .cn-card {
+  background: linear-gradient(135deg, rgba(255, 250, 243, 0.92), rgba(250, 241, 228, 0.82));
+  box-shadow: 0 12px 26px -16px rgba(74, 46, 20, 0.45);
+}
+
+:root[data-theme="light"] .cn-card--on {
+  border-color: rgba(2, 132, 199, 0.7);
+  background: linear-gradient(135deg, rgba(240, 227, 208, 0.95), rgba(255, 250, 243, 0.9));
+  box-shadow: 0 0 26px -6px rgba(14, 165, 233, 0.55), inset 0 0 0 1px rgba(2, 132, 199, 0.3);
+}
+
+:root[data-theme="light"] .cn-row {
+  background: rgba(255, 250, 243, 0.78);
+  box-shadow: 0 4px 12px -8px rgba(74, 46, 20, 0.35);
+}
+
+:root[data-theme="light"] .cn-row--on {
+  border-color: rgba(13, 148, 136, 0.55);
+  background: rgba(236, 253, 250, 0.95);
+  box-shadow: 0 0 18px -6px rgba(13, 148, 136, 0.5);
+}
+
+:root[data-theme="light"] .cn-row--hot .cn-row__label {
+  color: #0b3a4a;
+}
+
+:root[data-theme="light"] .cn-focus:not(.cn-focus--narrow) .cn-row:hover {
+  background: #ffffff;
+  box-shadow: 0 14px 30px -10px rgba(74, 46, 20, 0.45), 0 0 0 1px rgba(13, 148, 136, 0.35);
+}
+
+:root[data-theme="light"] .cn-focus:not(.cn-focus--narrow) .cn-row:hover .cn-row__label {
+  color: #06202c;
+}
+
+:root[data-theme="light"] .cn-focus__track {
+  stroke: rgba(84, 56, 30, 0.12);
+}
+
+:root[data-theme="light"] .cn-focus__thumb {
+  stroke: #0284c7;
+  filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.5));
+}
+
+:root[data-theme="light"] .cn-panel {
+  border-color: rgba(84, 56, 30, 0.14);
+  background: linear-gradient(160deg, rgba(255, 250, 243, 0.94), rgba(250, 242, 231, 0.9));
+  box-shadow: 0 30px 60px -24px rgba(74, 46, 20, 0.5), 0 0 40px -20px rgba(45, 212, 191, 0.4);
+}
+
+:root[data-theme="light"] .cn-panel__open {
+  border-color: rgba(13, 148, 136, 0.45);
+  background: rgba(13, 148, 136, 0.1);
+}
+
+:root[data-theme="light"] .cn-panel__open:hover {
+  background: rgba(13, 148, 136, 0.2);
+}
+
+:root[data-theme="light"] .cn-panel__rate {
+  background: linear-gradient(120deg, rgba(255, 247, 237, 0.9), rgba(240, 227, 208, 0.8));
+  box-shadow: inset 0 0 0 1px rgba(234, 88, 12, 0.14);
+}
+
+:root[data-theme="light"] .cn-panel__spark span {
+  background: rgba(234, 88, 12, 0.14);
+}
+
+:root[data-theme="light"] .cn-panel__spark .cn-panel__spark-on {
+  background: linear-gradient(180deg, #38bdf8, #f97316);
+}
+
+:root[data-theme="light"] .cn-panel__fns li.cn-panel__fn--on {
+  border-color: rgba(2, 132, 199, 0.55);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .cn::before,
+  .cn::after,
   .cn *,
   .cn *::before,
   .cn *::after {

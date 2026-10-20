@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import ClaudeSignIn from "../ClaudeSignIn/ClaudeSignIn";
+import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import type { AiStatus, FunctionDetail, FunctionExplanation, UnitSide } from "../../api/types";
 import "./FunctionChanges.css";
 
 // A file's change told function by function: what each one looked like before, what it
 // looks like now, the facts git can show (new inputs, new calls, more decisions), what
-// its author wrote about it, and, on request, Claude's take on what the change improves
+// its author wrote about it, and, on request, an AI's take on what the change improves
 // and what it costs.
 
 type Props = {
@@ -75,7 +75,7 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
   const unexplained = functions.filter((item) => !item.explanation);
   const explainAll = async () => {
     setExplaining(true);
-    // One at a time: each is a separate Claude run, and the first answers show sooner.
+    // One at a time: each is a separate AI run, and the first answers show sooner.
     for (const item of unexplained) {
       try {
         setExplanation(item.name, await explain(item.name));
@@ -100,7 +100,7 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
         </ul>
         {ai?.available && ai.signed_in !== false && unexplained.length > 1 && (
           <button className="fns__explain-all" onClick={explainAll} disabled={explaining}>
-            {explaining ? "Claude is explaining…" : `Explain all ${unexplained.length} with Claude`}
+            {explaining ? `${ai.name} is explaining…` : `Explain all ${unexplained.length} with ${ai.name}`}
           </button>
         )}
       </div>
@@ -298,7 +298,7 @@ function Explanation(props: {
   if (explanation) {
     return (
       <section className="fn__ai">
-        <span className="fn__ai-label">Claude's explanation</span>
+        <span className="fn__ai-label">In plain English</span>
         <p className="fn__ai-summary">{explanation.summary}</p>
         <p>{explanation.change}</p>
         <div className="fn__ai-lists">
@@ -332,10 +332,8 @@ function Explanation(props: {
     );
   }
   if (!props.ai) return null;
-  if (!props.ai.available) {
-    return <p className="fn__ai-off">{props.ai.detail ?? "Claude Code isn't available, so there's no explanation."}</p>;
-  }
-  if (props.ai.signed_in === false) return <ClaudeSignIn onSignedIn={props.onSignedIn} />;
+  // Not ready (not installed, not running, signed out): how to get it ready, right here.
+  if (!props.ai.available || props.ai.signed_in === false) return <ClaudeSetup ai={props.ai} onRefresh={props.onSignedIn} />;
   const working = state === "working" || props.busy;
   const run = () => {
     setState("working");
@@ -347,7 +345,7 @@ function Explanation(props: {
   return (
     <div className="fn__ai-ask">
       <button onClick={run} disabled={working}>
-        {working ? "Claude is reading the code…" : "Explain with Claude"}
+        {working ? `${props.ai.name} is reading the code…` : `Explain with ${props.ai.name}`}
       </button>
       <span>
         {state !== "idle" && state !== "working"
