@@ -1877,3 +1877,8 @@
     transition: none !important;
   }
 }
+
+/* Wide, the fan scrolls under a finger itself (Focus.tsx), so the browser mustn't pan instead. */
+.cn-focus:not(.cn-focus--narrow) .cn-focus__stage {
+  touch-action: none;
+}

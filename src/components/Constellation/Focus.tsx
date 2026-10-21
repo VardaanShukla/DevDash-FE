@@ -212,9 +212,31 @@ export default function Focus(props: Props) {
       window.clearTimeout(settle);
       settle = window.setTimeout(() => scrollRef.current(Math.round(goal.current)), 140);
     };
+    // A finger dragged over the part scrolls it too: up moves the list on, as on a phone.
+    let touch: { y: number; from: number } | null = null;
+    const onDown = (event: PointerEvent) => {
+      if (event.pointerType !== "touch" || (event.target as Element).closest("button, a, .cn-focus__bar")) return;
+      touch = { y: event.clientY, from: goal.current };
+    };
+    const onMove = (event: PointerEvent) => {
+      if (!touch || event.pointerType !== "touch") return;
+      scrollRef.current(touch.from + (touch.y - event.clientY) / (ROW_H + ROW_GAP));
+    };
+    const onUp = () => {
+      if (touch) scrollRef.current(Math.round(goal.current));
+      touch = null;
+    };
     el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
     return () => {
       el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
       window.clearTimeout(settle);
     };
   }, [scrolls, card]);

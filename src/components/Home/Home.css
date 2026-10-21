@@ -14,7 +14,6 @@
   gap: 18px;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
 }
 
 .home__section {
@@ -308,15 +307,91 @@
   gap: 12px 24px;
 }
 
-.home__hello h2 {
-  margin: 0;
-  font-size: 24px;
-  letter-spacing: -0.01em;
+/* The greeting: a small sky for the time of day, "Good afternoon, name", then the date
+   and the one thing that most needs you. */
+.home__greet {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 
-.home__hello > div > span {
-  color: var(--dd-muted);
-  font-size: 13px;
+.home__sky {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.home__sky--morning {
+  background: linear-gradient(160deg, #fbbf6a, #f0763c);
+}
+
+.home__sky--afternoon {
+  background: linear-gradient(160deg, #38bdf8, #0e7490);
+}
+
+.home__sky--evening {
+  background: linear-gradient(160deg, #f97a5a, #9d3c78);
+}
+
+.home__sky--night {
+  background: linear-gradient(160deg, #4f46e5, #1e1b4b);
+}
+
+.home__hello h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.home__name {
+  color: var(--dd-accent);
+}
+
+.home__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+  margin: 3px 0 0;
+  color: var(--dd-ink-soft);
+  font-size: 13.5px;
+}
+
+.home__mood {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+button.home__mood {
+  cursor: pointer;
+}
+
+button.home__mood:hover {
+  text-decoration: underline;
+}
+
+.home__mood--risk {
+  color: var(--dd-del);
+}
+
+.home__mood--warn {
+  color: var(--dd-mod);
+}
+
+.home__mood--calm {
+  color: var(--dd-add);
 }
 
 .home__stats {

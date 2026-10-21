@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
-import type { AiProvider, AiStatus, PreferenceChange, Preferences } from "../../api/types";
+import type { AiProvider, AiStatus, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
@@ -75,6 +75,8 @@ export default function Settings({ prefs, onPrefs, onResetShortcuts, username, p
         </section>
 
         <Account username={username} passwordSet={passwordSet} onSignOut={onSignOut} onPasswordSet={onPasswordSet} />
+
+        <Recording />
 
         <section className="card settings__section">
           <h2>AI for explanations</h2>
@@ -314,6 +316,54 @@ function Account({ username, passwordSet, onSignOut, onPasswordSet }: {
         {message && <p className={`settings__message${message.ok ? "" : " settings__message--error"}`}>{message.text}</p>}
         <p className="settings__note">Forgot it? Run <code>devdash password</code> in a terminal to set a new one.</p>
       </form>
+    </section>
+  );
+}
+
+const EVENTS: [string, string][] = [
+  ["user-prompt-submit", "A prompt started"],
+  ["pre-tool-use", "An AI edit"],
+  ["stop", "A prompt finished"],
+  ["post-commit", "A commit"],
+];
+
+// Whether the hooks that record AI changes have been called lately, and how many failed,
+// so a prompt missing from AI changes can be told apart from one that failed to record.
+function Recording() {
+  const [health, setHealth] = useState<RecordingHealth | null>(null);
+  useEffect(() => {
+    api.recordingHealth().then(setHealth, () => {});
+  }, []);
+  if (!health) return null;
+  return (
+    <section className="card settings__section">
+      <h2>Recording</h2>
+      <p className="settings__note">
+        When your AI tool and git last told DevDash about something. A prompt only shows in AI changes if its tool
+        ran DevDash's hooks: Claude Code (terminal, editor extensions, the desktop app's Code tab), Codex and
+        Antigravity do; plain chats and Cowork don't.
+      </p>
+      <ul className="settings__health">
+        {EVENTS.map(([event, label]) => (
+          <li key={event}>
+            <span>{label}</span>
+            <span className="settings__note">{health.last_call[event] ? new Date(health.last_call[event]).toLocaleString() : "never"}</span>
+          </li>
+        ))}
+      </ul>
+      {health.errors > 0 ? (
+        <p className="settings__message settings__message--error">
+          {health.errors} hook error{health.errors === 1 ? "" : "s"} in the last {health.days} days
+          {health.last_error && (
+            <>
+              , the latest {new Date(health.last_error.at).toLocaleString()} ({health.last_error.event}): {health.last_error.detail}
+            </>
+          )}
+          . Details in <code>{health.error_log}</code>.
+        </p>
+      ) : (
+        <p className="settings__note">No hook errors in the last {health.days} days. Every call is listed in <code>{health.hook_log}</code>.</p>
+      )}
     </section>
   );
 }

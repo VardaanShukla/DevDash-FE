@@ -224,6 +224,7 @@ function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: str
           <span className="digest__repo">{change.repo.name}</span>
           {change.branch && <code>{change.branch}</code>}
           <span>{time(change.at)}</span>
+          {change.tool && <span className="digest__tool">{change.tool}</span>}
           {change.origin === "cloud" ? (
             <span className="digest__cloud" title="A commit with an AI co-author, found on this branch. No hook saw it being made, so the commit message stands in for the prompt.">
               From a cloud session

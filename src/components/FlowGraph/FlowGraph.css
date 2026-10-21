@@ -326,3 +326,9 @@
   fill: var(--dd-muted);
   font-size: 11px;
 }
+
+.flow__label-tie {
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  opacity: 0.6;
+}

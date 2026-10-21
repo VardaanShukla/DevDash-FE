@@ -10,7 +10,7 @@ export type Repo = {
   ai: AiToolId | null;
 };
 
-export type AiToolId = "claude";
+export type AiToolId = "claude" | "codex" | "antigravity";
 
 export type AiTool = {
   id: string;
@@ -308,6 +308,20 @@ export type ProjectCard = {
   branches: number;
 };
 
+// How recording has gone lately, from the hook logs.
+export type RecordingHealth = {
+  errors: number;
+  days: number;
+  last_error: { at: string; event: string; detail: string } | null;
+  // Event (user-prompt-submit, pre-tool-use, stop, post-commit) -> when a hook last called it.
+  last_call: Record<string, string>;
+  error_log: string;
+  hook_log: string;
+};
+
+// A project found in a folder `devdash init` remembered, not added yet.
+export type Candidate = { path: string; name: string; folder: string };
+
 export type AuthStatus = { password_set: boolean; signed_in: boolean; username?: string };
 
 // The dashboard's settings, kept by the backend so every browser gets them.
@@ -356,6 +370,8 @@ export type DigestChange = {
   // prompt: recorded by the Claude Code hooks. commit: an AI-co-authored commit made here.
   // cloud: a Claude co-authored commit found on a branch, made where no hook ran (a cloud session).
   origin: "prompt" | "commit" | "cloud";
+  // The AI tool the prompt went to (Claude, Codex or Antigravity); null for commits.
+  tool: string | null;
   at: string;
   commit: { sha: string; message: string; count: number } | null;
   files: DigestFile[];

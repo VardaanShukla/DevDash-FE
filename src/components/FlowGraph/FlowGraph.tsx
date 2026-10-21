@@ -197,32 +197,23 @@ export default function FlowGraph({ flow, head, branches, onPick, compact, onOpe
             );
           })}
 
-          {nodes.map((node) => {
-            // Branch names sit right of their newest commit. Finished branches (merged,
-            // or deleted on GitHub) are named only in the dot's tooltip, to keep it calm.
-            const names = node.commit.branches.filter((name) => name === head || !merged.has(name));
-            let x = node.x + 12;
-            return names.map((name) => {
-              const text = name.length > 24 ? `${name.slice(0, 23)}…` : name;
-              const w = text.length * 6.6 + 16;
-              const left = x;
-              x += w + 4;
-              const clickable = local.has(name) && name !== head;
-              return (
-                <g
-                  key={name}
-                  className={`flow__label${name === head ? " flow__label--head" : ""}${clickable ? " flow__label--link" : ""}`}
-                  onClick={clickable ? () => onPick(name) : undefined}
-                  style={{ animationDelay: `${(parseFloat(delay(node.x)) + 0.3).toFixed(2)}s` }}
-                >
-                  <title>{clickable ? `Open ${name}` : name}</title>
-                  <rect x={left} y={node.y - 9} width={w} height={18} rx={9} stroke={color(node.seg)} />
-                  <text x={left + w / 2} y={node.y + 4} textAnchor="middle">
-                    {text}
-                  </text>
-                </g>
-              );
-            });
+          {placeLabels(nodes, head, merged, height).map(({ node, name, text, left, y, w }) => {
+            const clickable = local.has(name) && name !== head;
+            return (
+              <g
+                key={name}
+                className={`flow__label${name === head ? " flow__label--head" : ""}${clickable ? " flow__label--link" : ""}`}
+                onClick={clickable ? () => onPick(name) : undefined}
+                style={{ animationDelay: `${(parseFloat(delay(node.x)) + 0.3).toFixed(2)}s` }}
+              >
+                <title>{clickable ? `Open ${name}` : name}</title>
+                {y !== node.y && <line className="flow__label-tie" x1={node.x} y1={node.y} x2={left} y2={y} stroke={color(node.seg)} />}
+                <rect x={left} y={y - 9} width={w} height={18} rx={9} stroke={color(node.seg)} />
+                <text x={left + w / 2} y={y + 4} textAnchor="middle">
+                  {text}
+                </text>
+              </g>
+            );
           })}
           {fill &&
             dateTicks(nodes).map((tick) => (
@@ -261,6 +252,33 @@ export default function FlowGraph({ flow, head, branches, onPick, compact, onOpe
 }
 
 // A date under the first commit of each day, skipping any that would crowd the last one.
+type Placed = { node: Node; name: string; text: string; left: number; y: number; w: number };
+
+// Branch names sit right of their newest commit. Finished branches (merged, or deleted on
+// GitHub) are named only in the dot's tooltip, to keep it calm. A name that would cover
+// another moves up or down a row, tied to its dot by a line; with no free row it's left to
+// the dot's tooltip, so names never overlap.
+function placeLabels(nodes: Node[], head: string, merged: Set<string>, height: number): Placed[] {
+  const placed: Placed[] = [];
+  const overlaps = (left: number, y: number, w: number) =>
+    placed.some((p) => left < p.left + p.w + 4 && p.left < left + w + 4 && Math.abs(p.y - y) < 20);
+  for (const node of nodes) {
+    let x = node.x + 12;
+    for (const name of node.commit.branches.filter((n) => n === head || !merged.has(n))) {
+      const text = name.length > 24 ? `${name.slice(0, 23)}…` : name;
+      const w = text.length * 6.6 + 16;
+      const y = [0, -22, 22, -44, 44]
+        .map((offset) => node.y + offset)
+        .find((row) => row >= 10 && row <= height - 10 && !overlaps(x, row, w));
+      if (y !== undefined) {
+        placed.push({ node, name, text, left: x, y, w });
+        if (y === node.y) x += w + 4;
+      }
+    }
+  }
+  return placed;
+}
+
 function dateTicks(nodes: Node[]) {
   const ticks: { x: number; label: string }[] = [];
   let lastDay = "";

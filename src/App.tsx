@@ -458,6 +458,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           repos={repos}
           todos={todos}
           onTodos={setTodos}
+          username={auth.username}
           repoId={repoId}
           head={head}
           version={`${repos.length}:${repoId}:${revision}`}
