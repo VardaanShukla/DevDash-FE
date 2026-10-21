@@ -45,7 +45,9 @@ export default function Constellation({ map, files, project, onOpenFile }: Props
   const still = useReducedMotion();
   const core = centre(size.width, size.height);
 
-  // Zoom toward the pointer. React's wheel listener is passive, so this one is added by hand.
+  // A mouse wheel zooms toward the pointer; a trackpad's two-finger scroll moves the map and
+  // its pinch (which browsers send as a wheel with Ctrl) zooms. React's wheel listener is
+  // passive, so this one is added by hand.
   useEffect(() => {
     const el = box.current;
     if (!el || focus) return;
@@ -53,7 +55,12 @@ export default function Constellation({ map, files, project, onOpenFile }: Props
       if ((event.target as HTMLElement).closest(".cn__bar, .cn__legend, .cn__tools")) return;
       event.preventDefault();
       const rect = el.getBoundingClientRect();
-      setView((v) => zoomAt(v, { x: event.clientX - rect.left, y: event.clientY - rect.top }, Math.exp(-event.deltaY * 0.0015)));
+      const at = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      // Trackpads scroll in small pixel steps, often sideways too; wheels in lines or big notches.
+      const trackpad = event.deltaMode === 0 && (event.deltaX !== 0 || Math.abs(event.deltaY) < 50);
+      if (event.ctrlKey) setView((v) => zoomAt(v, at, Math.exp(-event.deltaY * 0.01)));
+      else if (trackpad) setView((v) => ({ ...v, x: v.x - event.deltaX, y: v.y - event.deltaY }));
+      else setView((v) => zoomAt(v, at, Math.exp(-event.deltaY * 0.0015)));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);

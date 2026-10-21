@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiError } from "../../api/client";
-import type { AiStatus, AiTool, AiToolId, Repo } from "../../api/types";
+import type { AiStatus, AiTool, AiToolId, Candidate, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import "./AddProject.css";
 
@@ -40,7 +40,11 @@ export default function AddProject({ onClose, onAdded }: Props) {
     checkStatus();
   }, [checkStatus]);
 
+  // Projects in folders `devdash init` remembered, to pick instead of typing.
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+
   useEffect(() => {
+    api.candidates().then(setCandidates, () => {});
     api.aiTools().then((list) => setTools([NO_AI, ...list])).catch(() => {});
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -77,6 +81,25 @@ export default function AddProject({ onClose, onAdded }: Props) {
           />
           <small>The full path on this computer. ~ means your home folder.</small>
         </label>
+
+        {candidates.length > 0 && (
+          <div className="candidates">
+            <span className="candidates__label">Found in your folders</span>
+            <div className="candidates__list">
+              {candidates.map((candidate) => (
+                <button
+                  type="button"
+                  key={candidate.path}
+                  className={`candidates__item${path === candidate.path ? " candidates__item--picked" : ""}`}
+                  title={candidate.path}
+                  onClick={() => setPath(candidate.path)}
+                >
+                  {candidate.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <fieldset className="tools">
           <legend>AI tool you use here</legend>

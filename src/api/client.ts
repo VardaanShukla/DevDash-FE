@@ -3,6 +3,8 @@ import type {
   AiStatus,
   AiProvider,
   AuthStatus,
+  Candidate,
+  RecordingHealth,
   PreferenceChange,
   Preferences,
   AiTool,
@@ -85,6 +87,8 @@ export const api = {
   setAi: (repoId: number, ai: AiToolId | null) => request<Repo>(`/api/repos/${repoId}/ai`, "PUT", { ai }),
   setup: (repoId: number) => get<{ steps: SetupStep[] }>(`/api/repos/${repoId}/setup`).then((r) => r.steps),
   aiTools: () => get<AiTool[]>("/api/ai-tools"),
+  candidates: () => get<Candidate[]>("/api/repos/candidates"),
+  recordingHealth: () => get<RecordingHealth>("/api/recording/health"),
   branches: (repoId: number) => get<Branches>(`/api/repos/${repoId}/branches`),
   sync: (repoId: number) => request<Sync>(`/api/repos/${repoId}/sync`, "POST", {}),
   state: (repoId: number, uncommitted: boolean) =>

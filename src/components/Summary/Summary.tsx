@@ -17,7 +17,8 @@ type Props = {
 };
 
 export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }: Props) {
-  const [explanation, setExplanation] = useState(summary.explanation);
+  // An answer with no overview would leave the box empty: treated as no answer, so it can be asked again.
+  const [explanation, setExplanation] = useState(summary.explanation?.overview?.trim() ? summary.explanation : null);
   const [state, setState] = useState<"idle" | "working" | string>("idle");
   const history = summary.history;
   const languageFiles = summary.languages.reduce((sum, l) => sum + l.files, 0);
@@ -28,8 +29,10 @@ export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }:
     setState("working");
     explain().then(
       (result) => {
-        setExplanation(result);
-        setState("idle");
+        if (result.overview?.trim()) {
+          setExplanation(result);
+          setState("idle");
+        } else setState("The AI's answer left out the description. Try again, or pick another model in Settings.");
       },
       (e: Error) => setState(e.message),
     );
@@ -72,7 +75,10 @@ export default function Summary({ summary, ai, explain, onSignedIn, onOpenMap }:
               <p className="summary__overview">{summary.readme.intro}</p>
             </>
           ) : (
-            <p className="summary__muted">This project has no readme that says what it is.</p>
+            <p className="summary__muted">
+              This project has no readme that says what it is
+              {summary.revision === "(not committed yet)" ? ", and nothing is committed yet: this is read from its folder." : "."}
+            </p>
           )}
           {!explanation && ai && (!ai.available || ai.signed_in === false) && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
           {!explanation && ai?.available && ai.signed_in !== false && (

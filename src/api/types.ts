@@ -308,6 +308,20 @@ export type ProjectCard = {
   branches: number;
 };
 
+// How recording has gone lately, from the hook logs.
+export type RecordingHealth = {
+  errors: number;
+  days: number;
+  last_error: { at: string; event: string; detail: string } | null;
+  // Event (user-prompt-submit, pre-tool-use, stop, post-commit) -> when a hook last called it.
+  last_call: Record<string, string>;
+  error_log: string;
+  hook_log: string;
+};
+
+// A project found in a folder `devdash init` remembered, not added yet.
+export type Candidate = { path: string; name: string; folder: string };
+
 export type AuthStatus = { password_set: boolean; signed_in: boolean; username?: string };
 
 // The dashboard's settings, kept by the backend so every browser gets them.

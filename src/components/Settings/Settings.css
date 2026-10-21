@@ -521,3 +521,26 @@
   color: var(--dd-ink-soft);
   font-size: 12.5px;
 }
+
+/* Recording: when each kind of hook last ran. */
+.settings__health {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings__health li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--dd-line);
+  font-size: 13px;
+}
+
+.settings__message code {
+  font-family: var(--dd-mono);
+  word-break: break-all;
+}

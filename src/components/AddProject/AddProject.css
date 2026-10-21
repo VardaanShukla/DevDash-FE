@@ -164,3 +164,38 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Projects found in folders `devdash init` remembered: one click fills the path. */
+.candidates {
+  display: grid;
+  gap: 6px;
+}
+
+.candidates__label {
+  color: var(--dd-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.candidates__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.candidates__item {
+  padding: 5px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.candidates__item--picked {
+  border-color: var(--dd-accent);
+  background: var(--dd-accent-soft);
+}
