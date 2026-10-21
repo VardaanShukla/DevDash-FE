@@ -457,6 +457,14 @@
     height: auto;
   }
 
+  /* The screen scrolls here, not the page inside it: an inner box that could scroll but
+     has nothing to scroll would otherwise swallow the wheel and two-finger gestures. */
+  .screen > .home,
+  .screen > .settings,
+  .screen > .digest {
+    overflow-y: visible;
+  }
+
   .screen--changes > *,
   .screen--flow > *,
   .screen--constellation > * {
