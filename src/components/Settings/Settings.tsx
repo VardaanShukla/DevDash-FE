@@ -99,7 +99,8 @@ const BLURB: Record<AiProvider, string> = {
   claude: "Anthropic's Claude Code. Uses your Claude plan.",
   codex: "OpenAI's Codex CLI. Uses your ChatGPT plan.",
   ollama: "A model running on this computer. Free and private, but slower.",
-  antigravity: "Google's Antigravity CLI. Uses your Google account.",
+  antigravity:
+    "Google's Antigravity CLI. Uses your Google account. Experimental: the request goes on its command line, where other accounts on this computer can see it.",
 };
 const ORDER: AiProvider[] = ["claude", "codex", "ollama", "antigravity"];
 

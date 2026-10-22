@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
 import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
@@ -53,8 +53,12 @@ export default function App() {
   // Bumped on signing out, to play the splash again with the sign-in panel.
   const [round, setRound] = useState(0);
 
-  useEffect(() => {
+  // Before the first paint, so the splash starts in the right theme.
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = savedTheme();
+  }, []);
+
+  useEffect(() => {
     // When the backend can't be reached, the dashboard says so.
     api.auth().then(setAuth, () => setAuth({ password_set: true, signed_in: true }));
     const signedOut = () => {

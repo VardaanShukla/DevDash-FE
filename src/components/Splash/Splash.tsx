@@ -1,131 +1,102 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import "./Splash.css";
 
-// Code symbols spiral in from all over the screen and lock into a spinning globe, a
-// glowing lattice like a newly made element. The globe squeezes into a bright star, then
-// bursts outward as the logo pops in. Click or press any key to skip.
+// A funnel of fine, glowing threads turns slowly in the dark, each thread a ring of tiny
+// points that drifts and wavers, and the name rises into view in the middle of it. The camera
+// starts above the funnel and settles in front of it. Click or press any key to skip ahead.
 //
-// When this browser has to sign in, the story pauses once the globe has formed: the screen
-// splits, the sign-in panel slides in from the right and the globe moves into the dark left
-// half, still turning. After signing in the panel slides back out, the globe returns to the
-// middle, and the squeeze and the bang carry on into the dashboard.
-
-const GLYPHS = [
-  "</>", "{ }", "( )", "[ ]", "=>", ";", "&&", "||", "===", "!=", "+=", "++",
-  "0", "1", "#", "$", "//", "/*", "<>", "fn", "if", "def", "const", "%", "*", "?", ":", "@",
-];
+// When this browser has to sign in, the sign-in panel slides in from the right and the name
+// moves into the left half, the funnel following it. After signing in the panel slides back
+// out, the name returns to the middle and lifts away, the threads draw tight into the centre,
+// and the screen opens from that point onto the dashboard.
 
 // Milliseconds from the start.
-const GATHER_MS = 1500; // symbols reach the globe
-const HOLD_AT = 1900; // the globe has formed: wait here for signing in, if needed
+const FADE_IN_MS = 1800; // the funnel comes into view and the camera settles
+const READY_AT = 1900; // the name is in: wait here for signing in, if needed
+const LINGER_MS = 900; // how long the name stays when there's no signing in
 const SPLIT_MS = 750; // the sign-in panel slides in or out
-const SQUEEZE_AT = 2400; // globe starts squeezing into a star
-const BANG_AT = 2850; // star bursts, logo appears
-const BURST_MS = 1200; // burst fades out
-const LEAVE_AT = 4500; // splash starts fading
-const DONE_AT = 4900;
-const MAX_DELAY = 450; // symbols set off at slightly different times
-const SWIRL = Math.PI * 1.6; // how far each symbol turns around the centre on its way in
-const NODES = 110; // symbols joined by the lattice lines
-const LINKS_PER_NODE = 3;
-const TILT = 0.42; // globe leans towards the viewer
-const BLUE_RGB = "79, 195, 247";
-// The splash is always night sky, whatever the dashboard's theme.
-const INK = "#f1f5f9";
-const MUTED = "#64748b";
-// Below this width the sign-in panel covers the lower part and the globe sits above it.
+// Milliseconds from the start of the exit, once the panel is out.
+const WIND_AT = 150; // the threads start drawing into the centre
+const WIND_MS = 900;
+const OPEN_AT = 850; // the screen opens from the centre
+const OPEN_MS = 750;
+const THREADS = 46;
+const TILT = 1.12; // the camera looks down into the funnel
+const START_TILT = 0.45; // and starts from further above
+// Below this width the sign-in panel covers the lower part and the name sits above it.
 const NARROW = 760;
+const NAME = "DevDash";
 
-type Phase = "gather" | "holding" | "bang" | "leaving";
+type Phase = "intro" | "ready" | "holding" | "exit";
 
-type Particle = {
-  glyph: string;
-  color: string;
+// The colours of the points, from the theme: [r, g, b] triples and how they blend.
+type Palette = { dots: number[][]; blend: GlobalCompositeOperation; strength: number };
+
+const PALETTES: Record<"light" | "dark", Palette> = {
+  // Indigo and blue light on near black, the points adding up where threads cross.
+  dark: { dots: [[88, 92, 236], [118, 128, 255], [150, 160, 255], [196, 204, 255]], blend: "lighter", strength: 1 },
+  // Coffee ink on the latte page, a few teal.
+  light: { dots: [[92, 60, 32], [120, 82, 48], [64, 42, 24], [11, 95, 89]], blend: "source-over", strength: 0.8 },
+};
+
+// One thread of the funnel: a wavering ring of points.
+type Thread = {
+  ring: number; // 0 at the narrow end of the funnel, 1 at the rim
+  wobble: number; // how far it wavers, so threads cross and part
+  phase: number;
+  lean: number; // its plane tips a little, so the threads weave
+  speed: number; // drift along the thread per millisecond
+  color: number;
+};
+
+type Dot = {
+  thread: Thread;
+  a: number; // angle around the thread
+  jitter: number; // a hair off the thread
+  color: number;
   size: number;
-  // Start, in polar coordinates around the centre.
-  r0: number;
-  a0: number;
-  // Place on the globe, as a point on the unit sphere.
-  ux: number;
-  uy: number;
-  uz: number;
-  turn: number;
-  delay: number;
-  spin: number;
-  // Where it was drawn last, and how far towards the viewer (-1 to 1).
-  x: number;
-  y: number;
-  z: number;
-  vx: number;
-  vy: number;
-  rot: number;
-  vr: number;
+  bokeh: boolean; // a few soft, out-of-focus points
 };
 
 const random = (min: number, max: number) => min + Math.random() * (max - min);
 const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
-const easeOutCubic = (k: number) => 1 - (1 - k) ** 3;
+const easeInCubic = (k: number) => k * k * k;
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
 
-function makeParticles(width: number, height: number, colors: string[]): Particle[] {
-  const count = Math.round(Math.min(480, Math.max(260, (width * height) / 3500)));
-  const reach = Math.hypot(width, height) / 2;
-  // Spread evenly over the sphere (a Fibonacci lattice).
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  return Array.from({ length: count }, (_, i) => {
-    const uy = 1 - (2 * (i + 0.5)) / count;
-    const ring = Math.sqrt(1 - uy * uy);
+// Most threads crowd into a band part way up the funnel, the way the reference's light does.
+function makeThreads(): Thread[] {
+  return Array.from({ length: THREADS }, () => {
+    const band = Math.random() < 0.75;
     return {
-    ux: Math.cos(golden * i) * ring,
-    uy,
-    uz: Math.sin(golden * i) * ring,
-    glyph: GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
-    color: colors[Math.floor(Math.random() * colors.length)],
-    size: random(7, 13),
-    // Anywhere from the middle of the screen to just past its corners.
-    r0: reach * random(0.3, 1.15),
-    a0: random(0, Math.PI * 2),
-    turn: SWIRL * random(0.8, 1.2),
-    delay: random(0, MAX_DELAY),
-    spin: random(-4, 4),
-    x: 0,
-    y: 0,
-    z: 0,
-    vx: 0,
-    vy: 0,
-    rot: 0,
-    vr: 0,
+      ring: band ? 0.5 + (Math.random() + Math.random() - 1) * 0.22 : random(0.15, 1),
+      wobble: random(0.02, 0.09),
+      phase: random(0, Math.PI * 2),
+      lean: random(-0.14, 0.14),
+      speed: random(0.00005, 0.00012) * (Math.random() < 0.7 ? 1 : -0.5),
+      color: Math.random() < 0.3 ? 2 : Math.random() < 0.5 ? 1 : 0,
     };
   });
 }
 
-// Each lattice node joins its nearest neighbours on the sphere.
-function makeLinks(particles: Particle[]): [Particle, Particle][] {
-  // Nodes are spread through the list, so they cover the whole sphere.
-  const step = Math.max(1, Math.floor(particles.length / NODES));
-  const nodes = particles.filter((_, i) => i % step === 0);
-  const seen = new Set<string>();
-  const links: [Particle, Particle][] = [];
-  nodes.forEach((a, i) => {
-    nodes
-      .map((b, j) => ({ j, dot: a.ux * b.ux + a.uy * b.uy + a.uz * b.uz }))
-      .filter(({ j }) => j !== i)
-      .sort((m, n) => n.dot - m.dot)
-      .slice(0, LINKS_PER_NODE)
-      .forEach(({ j }) => {
-        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          links.push([a, nodes[j]]);
-        }
-      });
+function makeDots(width: number, height: number, threads: Thread[]): Dot[] {
+  const count = Math.round(Math.min(9000, Math.max(4000, (width * height) / 140)));
+  return Array.from({ length: count }, () => {
+    const thread = threads[Math.floor(Math.random() * threads.length)];
+    const bright = Math.random();
+    return {
+      thread,
+      a: random(0, Math.PI * 2),
+      jitter: (Math.random() - 0.5) * 0.014,
+      color: bright > 0.95 ? 3 : Math.max(thread.color, bright > 0.7 ? 2 : 1),
+      size: bright > 0.95 ? random(1.4, 2) : random(0.9, 1.4),
+      bokeh: Math.random() < 0.012,
+    };
   });
-  return links;
 }
 
 type Props = {
-  // Whether to wait for signing in once the globe has formed: null while not known yet
-  // (it waits), true to show the panel, false to carry on (after signing in, too).
+  // Whether to wait for signing in once the name is in: null while not known yet (it
+  // waits), true to show the panel, false to carry on (after signing in, too).
   hold: boolean | null;
   // The sign-in form, shown in the panel on the right.
   panel?: ReactNode;
@@ -136,7 +107,8 @@ export default function Splash({ hold, panel, onDone }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [phase, setPhase] = useState<Phase>("gather");
+  const [phase, setPhase] = useState<Phase>("intro");
+  const [skipped, setSkipped] = useState(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
   const holdRef = useRef(hold);
@@ -148,15 +120,24 @@ export default function Splash({ hold, panel, onDone }: Props) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext("2d")!;
+    const root = rootRef.current!;
     let finished = false;
     let frame = 0;
     const timers: number[] = [];
 
-    const root = rootRef.current!;
     // How far the panel is in, 0 to 1, and how far along the story is, in milliseconds.
-    // The story pauses at HOLD_AT while waiting to sign in and while the panel moves.
+    // The story pauses at READY_AT while waiting to sign in.
     let split = 0;
     let story = 0;
+    // When the exit started (the panel then has to leave first) and when the name lifted.
+    let exitAt = -1;
+    let liftAt = -1;
+    let phaseNow: Phase = "intro";
+    const moveTo = (next: Phase) => {
+      if (phaseNow === next) return;
+      phaseNow = next;
+      setPhase(next);
+    };
     const setSplit = (value: number) => {
       split = value;
       root.style.setProperty("--split", String(easeInOutCubic(split)));
@@ -170,43 +151,13 @@ export default function Splash({ hold, panel, onDone }: Props) {
     // Skipping jumps to the next resting point: the sign-in panel, or the dashboard.
     const skip = (event: Event) => {
       if (panelRef.current?.contains(event.target as Node)) return;
-      if (holdRef.current === false && split === 0) finish();
-      else if (story < HOLD_AT) {
-        story = HOLD_AT;
-        if (holdRef.current) setSplit(1);
-      }
+      if (story < READY_AT) {
+        story = READY_AT;
+        setSkipped(true);
+      } else if (holdRef.current === false && split === 0) finish();
     };
     window.addEventListener("keydown", skip);
     root.addEventListener("pointerdown", skip);
-    const cleanup = () => {
-      finished = true;
-      cancelAnimationFrame(frame);
-      timers.forEach(clearTimeout);
-      window.removeEventListener("keydown", skip);
-      root.removeEventListener("pointerdown", skip);
-    };
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // No motion: the panel is simply there until signed in, then the logo, then the dashboard.
-      let waited = false;
-      const check = () => {
-        if (finished) return;
-        if (holdRef.current === true) {
-          waited = true;
-          setSplit(1);
-          setPhase("holding");
-        } else if (holdRef.current === false) {
-          setSplit(0);
-          setPhase("bang");
-          timers.push(window.setTimeout(() => setPhase("leaving"), waited ? 500 : 900));
-          timers.push(window.setTimeout(finish, waited ? 900 : 1300));
-          return;
-        }
-        timers.push(window.setTimeout(check, 100));
-      };
-      check();
-      return cleanup;
-    }
 
     let width = 0;
     let height = 0;
@@ -221,302 +172,184 @@ export default function Splash({ hold, panel, onDone }: Props) {
     resize();
     window.addEventListener("resize", resize);
 
-    const blue = getComputedStyle(document.documentElement).getPropertyValue("--dd-blue").trim();
-    // No red here: red is kept for the logo's </>.
-    const particles = makeParticles(width, height, [blue, blue, INK, MUTED]);
+    const threads = makeThreads();
+    const dots = makeDots(width, height, threads);
 
-    const links = makeLinks(particles);
-
-    // Rotates a point on the unit sphere and projects it, with a little perspective.
-    const project = (ux: number, uy: number, uz: number, spin: number, radius: number, cx: number, cy: number) => {
-      const x1 = ux * Math.cos(spin) - uz * Math.sin(spin);
-      const z1 = ux * Math.sin(spin) + uz * Math.cos(spin);
-      const y2 = uy * Math.cos(TILT) - z1 * Math.sin(TILT);
-      const z2 = uy * Math.sin(TILT) + z1 * Math.cos(TILT);
-      const depth = 1 / (1 - z2 * 0.3);
-      return { x: cx + x1 * radius * depth, y: cy + y2 * radius * depth, z: z2, depth };
+    // Where the funnel sits and how big it is: centred, or beside (or above) the panel.
+    const place = () => {
+      const along = easeInOutCubic(split);
+      const narrow = width < NARROW;
+      const cx = narrow ? width / 2 : width / 2 - (width / 4) * along;
+      const cy = narrow ? height / 2 - height * 0.3 * along : height / 2 + height * 0.02;
+      const radius = Math.max(width * 0.5, height * 0.8) * (1 - 0.25 * along);
+      return { cx, cy, radius };
     };
 
-    // An orbit ring around the globe: a circle on a tilted plane, sampled and projected.
-    const orbit = (
-      cx: number, cy: number, radius: number, spin: number, lean: number, alpha: number, width: number,
-    ) => {
-      ctx.save();
-      ctx.strokeStyle = `rgba(${BLUE_RGB}, ${alpha})`;
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      for (let i = 0; i <= 72; i++) {
-        const a = (i / 72) * Math.PI * 2;
-        const point = project(Math.cos(a), Math.sin(a) * Math.sin(lean), Math.sin(a) * Math.cos(lean), spin, radius, cx, cy);
-        if (i === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
-      }
-      ctx.stroke();
-      ctx.restore();
-    };
+    // The whole picture at a moment. `intro` (0 to 1) brings the camera down from above,
+    // `wind` (0 to 1) draws every thread into the centre.
+    let turn = 0;
+    const draw = (intro: number, wind: number) => {
+      const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+      const palette = PALETTES[theme];
+      const fills = palette.dots.map(([r, g, b]) => `rgb(${r}, ${g}, ${b})`);
+      const { cx, cy: restY } = place();
+      const settle = easeInOutCubic(intro);
+      const tilt = START_TILT + (TILT - START_TILT) * settle;
+      // Seen from above at first, the funnel sits low on the screen.
+      const cy = restY + height * 0.22 * (1 - settle);
+      const pull = easeInCubic(wind);
+      const R = place().radius * (0.8 + 0.2 * settle) * (1 - 0.96 * pull);
+      const fade = clamp01(intro * 1.6);
+      const camera = 2.6;
+      const cosT = Math.cos(tilt);
+      const sinT = Math.sin(tilt);
+      // Where a point on a thread lands on the screen, and how sharp it is there.
+      const project = (thread: Thread, angle: number, jitter: number) => {
+        // The thread wavers in and out and up and down as the waves travel round it.
+        const wave = Math.sin(angle * 3 + thread.phase + turn * 0.0005);
+        const r = (0.16 + 0.84 * thread.ring) * (1 + thread.wobble * wave) + jitter;
+        const x = Math.cos(angle) * r;
+        const z = Math.sin(angle) * r;
+        // A funnel: the narrow end sinks away below the rim.
+        const y =
+          -0.55 * (1 - thread.ring) ** 1.6 + thread.lean * Math.sin(angle) * r +
+          thread.wobble * 0.4 * Math.cos(angle * 2 + thread.phase + turn * 0.0003);
+        const ty = y * cosT - z * sinT;
+        const tz = y * sinT + z * cosT;
+        const depth = camera / (camera + tz);
+        // In focus around the middle distance; nearer and farther points fade off.
+        const focus = 1 / (1 + Math.abs(tz) * 1.8);
+        return { x: cx + x * R * depth, y: cy - ty * R * depth, depth, focus };
+      };
+      const spinOf = (thread: Thread) => thread.speed * turn * (1 + 6 * pull);
+      ctx.clearRect(0, 0, width, height);
+      ctx.globalCompositeOperation = palette.blend;
 
-    const lattice = (alpha: number) => {
-      // A wide faint stroke under a thin bright one reads as a glow, without costly blur.
-      for (const [width, strength] of [[5, 0.15], [1.2, 0.85]] as const) {
-        ctx.save();
-        ctx.lineWidth = width;
-        for (const front of [false, true]) {
-          ctx.strokeStyle = `rgba(${BLUE_RGB}, ${alpha * strength * (front ? 1 : 0.4)})`;
-          ctx.beginPath();
-          for (const [a, b] of links) {
-            if (a.z + b.z > 0 !== front) continue;
-            ctx.moveTo(a.x, a.y);
-            ctx.lineTo(b.x, b.y);
-          }
-          ctx.stroke();
-        }
-        ctx.restore();
-      }
-    };
-
-    // The glowing triangle at the heart of the element.
-    const core = (cx: number, cy: number, size: number, rotation: number, alpha: number) => {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(rotation);
-      for (const [width, strength] of [[8, 0.18], [2, 0.9]] as const) {
-        ctx.strokeStyle = `rgba(${BLUE_RGB}, ${alpha * strength})`;
-        ctx.lineWidth = width;
-        ctx.lineJoin = "round";
+      // Each thread as a hairline, so the points read as strung along it.
+      ctx.lineWidth = 0.6;
+      for (const thread of threads) {
+        const spin = spinOf(thread);
+        ctx.strokeStyle = fills[thread.color];
+        ctx.globalAlpha = Math.min(1, palette.strength * fade * 0.16 * (1 + wind));
         ctx.beginPath();
-        for (let i = 0; i < 3; i++) {
-          const a = -Math.PI / 2 + (i * Math.PI * 2) / 3;
-          if (i === 0) ctx.moveTo(Math.cos(a) * size, Math.sin(a) * size);
-          else ctx.lineTo(Math.cos(a) * size, Math.sin(a) * size);
+        for (let i = 0; i <= 120; i++) {
+          const point = project(thread, spin + (i / 120) * Math.PI * 2, 0);
+          if (i === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
         }
-        ctx.closePath();
         ctx.stroke();
       }
-      ctx.restore();
-    };
 
-    // Each symbol and colour is drawn once to a small image and then stamped, which is far
-    // cheaper than laying out hundreds of strings of text every frame.
-    const SPRITE_SIZE = 40;
-    const sprites = new Map<string, HTMLCanvasElement>();
-    const sprite = (glyph: string, fill: string) => {
-      const key = `${glyph}|${fill}`;
-      let image = sprites.get(key);
-      if (!image) {
-        image = document.createElement("canvas");
-        const scale = Math.min(2, window.devicePixelRatio || 1);
-        const font = `700 ${SPRITE_SIZE}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-        ctx.font = font;
-        const textWidth = Math.ceil(ctx.measureText(glyph).width) + 8;
-        image.width = textWidth * scale;
-        image.height = SPRITE_SIZE * 1.4 * scale;
-        const sctx = image.getContext("2d")!;
-        sctx.scale(scale, scale);
-        sctx.font = font;
-        sctx.fillStyle = fill;
-        sctx.textAlign = "center";
-        sctx.textBaseline = "middle";
-        sctx.fillText(glyph, textWidth / 2, SPRITE_SIZE * 0.7);
-        sprites.set(key, image);
+      for (const dot of dots) {
+        const point = project(dot.thread, dot.a + spinOf(dot.thread), dot.jitter);
+        if (point.x < -30 || point.x > width + 30 || point.y < -30 || point.y > height + 30) continue;
+        const alpha = palette.strength * fade * (0.25 + 0.75 * point.focus) * (1 + wind);
+        ctx.fillStyle = fills[dot.color];
+        if (dot.bokeh) {
+          ctx.globalAlpha = Math.min(1, alpha * 0.12);
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, (2 + 7 * (1 - point.focus)) * point.depth, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.globalAlpha = Math.min(1, alpha);
+          const size = dot.size * point.depth;
+          ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+        }
       }
-      return image;
-    };
-
-    const drawGlyph = (p: Particle, x: number, y: number, rot: number, alpha: number, size = p.size) => {
-      const image = sprite(p.glyph, p.color);
-      const scale = size / SPRITE_SIZE / Math.min(2, window.devicePixelRatio || 1);
-      const w = image.width * scale;
-      const h = image.height * scale;
-      const dpr = window.devicePixelRatio || 1;
-      ctx.globalAlpha = alpha;
-      ctx.setTransform(dpr * Math.cos(rot), dpr * Math.sin(rot), -dpr * Math.sin(rot), dpr * Math.cos(rot), dpr * x, dpr * y);
-      ctx.drawImage(image, -w / 2, -h / 2, w, h);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.globalAlpha = 1;
-    };
-
-    const glow = (cx: number, cy: number, radius: number, alpha: number, hot = 0) => {
-      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-      // A white-hot centre, so the star reads as bright even on the light background.
-      if (hot > 0) gradient.addColorStop(0, `rgba(255, 255, 255, ${hot})`);
-      gradient.addColorStop(hot > 0 ? 0.18 : 0, `rgba(${BLUE_RGB}, ${alpha})`);
-      gradient.addColorStop(1, `rgba(${BLUE_RGB}, 0)`);
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    // Eight tapered rays, long on the axes and short on the diagonals.
-    const rays = (cx: number, cy: number, length: number, width: number, alpha: number, rotation: number) => {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(rotation);
-      for (let i = 0; i < 8; i++) {
-        const ray = i % 2 === 0 ? length : length * 0.5;
-        const gradient = ctx.createLinearGradient(0, 0, ray, 0);
-        gradient.addColorStop(0, `rgba(${BLUE_RGB}, ${alpha})`);
-        gradient.addColorStop(1, `rgba(${BLUE_RGB}, 0)`);
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.moveTo(0, -width);
-        ctx.lineTo(ray, 0);
-        ctx.lineTo(0, width);
-        ctx.closePath();
-        ctx.fill();
-        ctx.rotate(Math.PI / 4);
+      ctx.globalCompositeOperation = "source-over";
+      if (wind > 0) {
+        // The point everything draws into glows as it fills.
+        const [r, g, b] = palette.dots[theme === "light" ? 3 : 2];
+        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40 + 160 * wind);
+        glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.55 * pull})`);
+        glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, width, height);
       }
-      ctx.restore();
+      return { cx, cy };
     };
 
-    const start = performance.now();
-    let last = start;
-    let phaseRef: Phase = "gather";
-    // Whether the sign-in panel came in, this time.
-    let held = false;
-    let banged = false;
-    let left = false;
+    const cleanup = () => {
+      finished = true;
+      cancelAnimationFrame(frame);
+      timers.forEach(clearTimeout);
+      window.removeEventListener("keydown", skip);
+      window.removeEventListener("resize", resize);
+      root.removeEventListener("pointerdown", skip);
+    };
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      // No motion: a still funnel, the panel simply there until signed in, then a quick fade.
+      turn = 4000;
+      draw(1, 0);
+      const check = () => {
+        if (finished) return;
+        story = READY_AT;
+        if (holdRef.current === true) {
+          setSplit(1);
+          draw(1, 0);
+          moveTo("holding");
+        } else if (holdRef.current === false) {
+          setSplit(0);
+          moveTo("exit");
+          timers.push(window.setTimeout(finish, 400));
+          return;
+        }
+        timers.push(window.setTimeout(check, 100));
+      };
+      check();
+      return cleanup;
+    }
+
+    // A head start, so the threads are already wavering when they come into view.
+    turn = 3000;
+    let last = performance.now();
 
     const tick = (now: number) => {
       if (finished) return;
       const dt = Math.min(now - last, 32);
       last = now;
+      const hold = holdRef.current;
 
-      // The panel slides towards where it should be; the story waits at HOLD_AT for it.
-      const wantSplit = story >= HOLD_AT && holdRef.current === true ? 1 : 0;
+      // The panel slides towards where it should be.
+      const wantSplit = story >= READY_AT && hold === true && exitAt < 0 ? 1 : 0;
       if (split !== wantSplit) {
         setSplit(wantSplit > split ? Math.min(1, split + dt / SPLIT_MS) : Math.max(0, split - dt / SPLIT_MS));
       }
-      const waiting = holdRef.current !== false || split > 0;
-      if (waiting && split > 0) held = true;
-      // Straight into the squeeze once the panel is out: the globe has turned long enough.
-      if (!waiting && held && story < SQUEEZE_AT - 100) story = SQUEEZE_AT - 100;
-      if (story < HOLD_AT || !waiting) story = waiting ? Math.min(HOLD_AT, story + dt) : story + dt;
-      const holding = story >= HOLD_AT && split === 1;
-      if (holding !== (phaseRef === "holding") && story < BANG_AT) {
-        phaseRef = holding ? "holding" : "gather";
-        setPhase(phaseRef);
+      // The story waits at READY_AT until it's known whether to sign in, and while signing in.
+      if (story < READY_AT || hold === false) story += dt;
+      if (exitAt < 0 && hold === false && story >= READY_AT + (split > 0 ? 0 : LINGER_MS)) exitAt = now;
+      // The name lifts once the panel is out of the way.
+      if (exitAt >= 0 && liftAt < 0 && split === 0) {
+        liftAt = now;
+        moveTo("exit");
       }
+      if (exitAt < 0) moveTo(story < READY_AT ? "intro" : split === 1 ? "holding" : "ready");
 
-      // The real clock keeps the globe turning while the story waits.
-      const clock = now - start;
-      const t = story;
-      const along = easeInOutCubic(split);
-      const narrow = width < NARROW;
-      const globeRadius = Math.min(220, Math.max(100, Math.min(width, height) * 0.27));
-      // Centred, or in the middle of the dark part beside (or above) the panel.
-      const cx = narrow ? width / 2 : width / 2 - (width / 4) * along;
-      const cy = narrow ? height / 2 - (height / 2 - height * 0.18) * along : height / 2;
-      const fitted = narrow ? Math.min(globeRadius, height * 0.1) : Math.min(globeRadius, (width / 4) * 0.62);
-      const sized = globeRadius + (fitted - globeRadius) * along;
-      ctx.clearRect(0, 0, width, height);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
+      const intro = clamp01(story / FADE_IN_MS);
+      const out = liftAt >= 0 ? now - liftAt : 0;
+      const wind = clamp01((out - WIND_AT) / WIND_MS);
+      turn += dt;
+      const { cx, cy } = draw(intro, wind);
 
-      if (t < BANG_AT) {
-        // Lattice fades in as the symbols lock into place; the squeeze then crushes the globe.
-        const formed = clamp01((t - GATHER_MS * 0.8) / 600);
-        const squeeze = clamp01((t - SQUEEZE_AT) / (BANG_AT - SQUEEZE_AT));
-        const pressed = easeInOutCubic(squeeze);
-        const twinkle = 1 + 0.12 * Math.sin(clock / 35);
-        // Spins steadily, then faster and faster while it is squeezed.
-        const spin = clock * 0.0011 + pressed * pressed * 4;
-        const radius = sized * (1 - 0.97 * pressed);
-        const wire = formed * (1 - pressed);
-
-        glow(cx, cy, radius * 1.5 + 40 + pressed * 90 * twinkle, 0.12 + formed * 0.12 + pressed * 0.5, formed * 0.5);
-        for (const p of particles) {
-          const k = easeInOutCubic(clamp01((t - p.delay) / (GATHER_MS - p.delay)));
-          const target = project(p.ux, p.uy, p.uz, spin, radius, cx, cy);
-          // Spiral in: the radius shrinks while the angle turns onto the symbol's globe spot.
-          const tr = Math.hypot(target.x - cx, target.y - cy);
-          const ta = Math.atan2(target.y - cy, target.x - cx);
-          const r = p.r0 + (tr - p.r0) * k;
-          const a = ta - p.turn * (1 - k);
-          p.x = cx + Math.cos(a) * r;
-          p.y = cy + Math.sin(a) * r;
-          p.z = target.z * k;
-          p.rot = p.spin * (1 - k);
-        }
-        if (wire > 0) {
-          orbit(cx, cy, radius * 1.3, spin * 1.8, 1.25, 0.15 * wire, 6);
-          orbit(cx, cy, radius * 1.3, spin * 1.8, 1.25, 0.7 * wire, 1.6);
-          orbit(cx, cy, radius * 1.18, -spin * 1.4 + 1, 0.5, 0.15 * wire, 5);
-          orbit(cx, cy, radius * 1.18, -spin * 1.4 + 1, 0.5, 0.6 * wire, 1.2);
-          orbit(cx, cy, radius, spin, Math.PI / 2, 0.35 * wire, 1);
-          lattice(wire);
-          core(cx, cy, radius * 0.38, -spin * 0.8, wire);
-        }
-        // Back of the globe first, so nearer symbols cover farther ones.
-        particles.sort((m, n) => m.z - n.z);
-        for (const p of particles) {
-          const k = clamp01((t - p.delay) / (GATHER_MS - p.delay));
-          const near = 0.15 + 0.85 * ((p.z + 1) / 2);
-          const alpha = Math.min(1, 0.15 + k * 5) * (1 - formed * (1 - near)) * (1 - 0.6 * pressed);
-          const size = p.size * (1 - 0.35 * formed + 0.25 * formed * p.z) * (1 - 0.7 * pressed);
-          drawGlyph(p, p.x, p.y, p.rot, alpha, size);
-        }
-        if (squeeze > 0) {
-          // The star sits on top: rays, a second thinner set for sparkle, and a white-hot core.
-          rays(cx, cy, pressed * 260 * twinkle, 1 + pressed * 3, pressed, t / 900);
-          rays(cx, cy, pressed * 120 * (2 - twinkle), 0.5 + pressed, pressed * 0.7, t / 900 + Math.PI / 8);
-          glow(cx, cy, 16 + pressed * 26 * twinkle, 0.9 * pressed, pressed);
-        }
-      } else {
-        if (!banged) {
-          banged = true;
-          setPhase("bang");
-          for (const p of particles) {
-            const angle = Math.atan2(p.y - cy, p.x - cx) + random(-0.5, 0.5);
-            const speed = random(0.5, 2.2);
-            p.vx = Math.cos(angle) * speed;
-            p.vy = Math.sin(angle) * speed;
-            p.vr = random(-0.012, 0.012);
-          }
-        }
-        const s = (t - BANG_AT) / BURST_MS;
-        if (s < 1) {
-          // Flash, then a shockwave ring.
-          const flash = clamp01((t - BANG_AT) / 260);
-          if (flash < 1) glow(cx, cy, 80 + flash * 260, 0.7 * (1 - flash), 1 - flash);
-          ctx.save();
-          ctx.globalAlpha = 1 - s;
-          ctx.strokeStyle = blue;
-          ctx.lineWidth = 3 * (1 - s) + 0.5;
-          ctx.beginPath();
-          ctx.arc(cx, cy, easeOutCubic(s) * Math.hypot(width, height) * 0.55, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-
-          const friction = 0.9965 ** dt;
-          for (const p of particles) {
-            p.x += p.vx * dt;
-            p.y += p.vy * dt;
-            p.vx *= friction;
-            p.vy *= friction;
-            p.rot += p.vr * dt;
-            // They leave the star small and grow to full size as they fly.
-            const grow = 0.3 + 0.7 * easeOutCubic(clamp01((t - BANG_AT) / 250));
-            drawGlyph(p, p.x, p.y, p.rot, 1 - easeOutCubic(s) * 0.85 - s * 0.15, p.size * grow);
-          }
-        }
-        if (t >= LEAVE_AT && !left) {
-          left = true;
-          setPhase("leaving");
-        }
-        if (t >= DONE_AT) {
-          finish();
-          return;
-        }
+      // The screen opens from the centre onto the dashboard underneath.
+      const open = clamp01((out - OPEN_AT) / OPEN_MS);
+      if (open > 0) {
+        const hole = easeInCubic(open) * Math.hypot(width, height);
+        const mask = `radial-gradient(circle at ${cx}px ${cy}px, transparent ${hole}px, #000 ${hole + 80}px)`;
+        root.style.setProperty("mask-image", mask);
+        root.style.setProperty("-webkit-mask-image", mask);
+      }
+      if (open >= 1) {
+        finish();
+        return;
       }
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
 
-    return () => {
-      cleanup();
-      window.removeEventListener("resize", resize);
-    };
+    return cleanup;
   }, []);
 
   // The form takes the keyboard once the panel is in.
@@ -525,18 +358,23 @@ export default function Splash({ hold, panel, onDone }: Props) {
   }, [phase]);
 
   return (
-    <div ref={rootRef} className={`splash splash--${phase}`}>
+    <div ref={rootRef} className={`splash splash--${phase}${skipped ? " splash--skipped" : ""}`}>
       <canvas ref={canvasRef} className="splash__canvas" aria-hidden="true" />
-      <h1 className="splash__logo" aria-label="DevDash">
-        <span className="splash__dev">Dev</span>
-        <span className="splash__tag">&lt;/&gt;</span>
-        <span className="splash__dash">Dash</span>
-      </h1>
-      <div className="splash__brand" aria-hidden="true">
-        <span className="splash__dev">Dev</span>
-        <span className="splash__tag">&lt;/&gt;</span>
-        <span className="splash__dash">Dash</span>
-        <p>Every project, change and plan in one place.</p>
+      <div className="splash__title">
+        <h1 className="splash__name" aria-label={NAME}>
+          {[...NAME].map((letter, i) => (
+            <span
+              key={i}
+              className={`splash__letter${i >= 3 ? " splash__letter--dash" : ""}`}
+              style={{ "--i": i } as React.CSSProperties}
+              aria-hidden="true"
+            >
+              {letter}
+            </span>
+          ))}
+        </h1>
+        <span className="splash__rule" aria-hidden="true" />
+        <p className="splash__tagline">Every project, change and plan in one place</p>
       </div>
       <p className="splash__hint">Click or press any key to skip</p>
       {kept.current && (
