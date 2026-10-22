@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
-import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
+import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
-import Agenda from "./components/Agenda/Agenda";
 import Digest from "./components/Digest/Digest";
 import CommitList from "./components/CommitList/CommitList";
 import FileChanges from "./components/FileChanges/FileChanges";
@@ -11,7 +10,6 @@ import Help, { useSetup } from "./components/Help/Help";
 import Home from "./components/Home/Home";
 import Login from "./components/Login/Login";
 import Overview from "./components/Overview/Overview";
-import Constellation from "./components/Constellation/Constellation";
 import ProjectMap from "./components/ProjectMap/ProjectMap";
 import ProjectPanel from "./components/ProjectPanel/ProjectPanel";
 import RemoveProject from "./components/RemoveProject/RemoveProject";
@@ -20,7 +18,6 @@ import Sidebar from "./components/Sidebar/Sidebar";
 import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
 import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
-import Todos from "./components/Todos/Todos";
 import Splash from "./components/Splash/Splash";
 import { keyName, typing } from "./shortcuts";
 import "./App.css";
@@ -117,8 +114,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   const [flow, setFlow] = useState<Flow | null>(null);
   const [map, setMap] = useState<MapData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
-  // The to-do list, for My day and the count on its menu item.
-  const [todos, setTodos] = useState<Todo[]>([]);
   // Whether Claude Code is installed and signed in, to explain functions and the project.
   const [ai, setAi] = useState<AiStatus | null>(null);
   const refreshAi = useCallback(() => {
@@ -279,10 +274,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   }, [repoId, head, revision]);
 
   useEffect(refreshAi, [refreshAi]);
-
-  useEffect(() => {
-    api.todos().then(setTodos).catch(() => setTodos([]));
-  }, []);
 
   // Fetch from GitHub now and then, so merges and branches deleted there show up here.
   // Only remote-tracking refs change; the watcher below notices and reloads.
@@ -460,8 +451,8 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       return (
         <Home
           repos={repos}
-          todos={todos}
-          onTodos={setTodos}
+          prefs={prefs}
+          onPrefs={changePrefs}
           username={auth.username}
           repoId={repoId}
           head={head}
@@ -509,14 +500,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     if (error) return <Notice title="Something needs attention">{error}</Notice>;
     if (repoId === null) {
       return <Notice title="Pick a project">None of your projects' folders can be found. Add one, or remove the missing ones.</Notice>;
-    }
-    if (view === "planner") {
-      return (
-        <div className="planner">
-          <Todos items={todos} onItems={setTodos} repos={repos ?? []} repoId={repoId} head={head} />
-          <Agenda />
-        </div>
-      );
     }
     if (view === "summary") {
       return summary && repoId !== null && head !== null ? (
@@ -566,12 +549,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         ) : (
           <Notice title="Project map">Reading the project's folders…</Notice>
         );
-      case "constellation":
-        return map && map.areas.length > 0 ? (
-          <Constellation map={map} files={comparison.files} project={repo?.name ?? "Project"} onOpenFile={openFile} />
-        ) : (
-          <Notice title="Constellation">Reading the project's folders…</Notice>
-        );
       case "changes":
         return comparison.files.length === 0 ? (
           <Notice title="Nothing changed yet">
@@ -617,7 +594,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           badges={{
             changes: comparison?.files.length,
             commits: comparison?.commits.length,
-            planner: todos.filter((item) => !item.done_at && item.repo_id === repoId).length,
             help: setup.todo,
           }}
           project={
@@ -735,7 +711,7 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 }
 
 // Screens about one project; the breadcrumb names the project before them.
-const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "constellation", "changes", "commits", "planner", "help"]);
+const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "changes", "commits", "help"]);
 
 // Where you are: Home › project › screen › what's picked. Every step but the last goes back to it.
 function Breadcrumb({ crumbs }: { crumbs: { label: string; go?: () => void }[] }) {

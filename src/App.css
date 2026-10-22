@@ -466,8 +466,7 @@
   }
 
   .screen--changes > *,
-  .screen--flow > *,
-  .screen--constellation > * {
+  .screen--flow > * {
     height: calc(100dvh - 110px);
   }
 
@@ -512,11 +511,6 @@
 @media (max-width: 720px) {
   .screen {
     padding-bottom: 88px;
-  }
-
-  /* The sky and its details stack, and the page scrolls. */
-  .screen--constellation > * {
-    height: auto;
   }
 
   .clock {
@@ -572,16 +566,3 @@
   margin-top: 12px;
 }
 
-/* My day: the to-do list beside the calendar. */
-.planner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
-  min-height: 0;
-}
-
-@media (max-width: 1000px) {
-  .planner {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}

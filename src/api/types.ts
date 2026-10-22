@@ -262,18 +262,6 @@ export type Summary = {
   explanation: ProjectExplanation | null;
 };
 
-export type Todo = {
-  id: number;
-  text: string;
-  // null: not tied to a project.
-  repo_id: number | null;
-  // null: the whole project.
-  branch: string | null;
-  created_at: string;
-  // null while open.
-  done_at: string | null;
-};
-
 export type CalendarEvent = {
   title: string;
   // A date for all-day events, otherwise a time with its offset.
@@ -317,6 +305,14 @@ export type RecordingHealth = {
   last_call: Record<string, string>;
   error_log: string;
   hook_log: string;
+  // What needs fixing for recording to work, in plain sentences; empty when it all works.
+  problems: string[];
+  // Some of the problems are hooks that Repair reinstalls.
+  repairable: boolean;
+  // Prompts left open for hours by a session that ended; closed just now with what was recorded.
+  stuck: number;
+  // The AI tools some project records.
+  tools: string[];
 };
 
 // A project found in a folder `devdash init` remembered, not added yet.
@@ -334,7 +330,11 @@ export type Preferences = {
   shortcuts: Record<string, string>;
   // Which AI writes explanations, and the model picked for each (missing: its cheapest).
   ai: { provider: AiProvider; models: Partial<Record<AiProvider, string>> };
+  // Home's widgets in the order shown, and the ones hidden.
+  home: HomeLayout;
 };
+export type Widget = "ai" | "projects" | "branch" | "flow" | "map" | "calendar";
+export type HomeLayout = { order: Widget[]; hidden: Widget[] };
 // What a change sends: only the settings to change; for the AI, the provider and/or the
 // models of the AIs to change ("" goes back to that AI's default).
 export type PreferenceChange = Omit<Partial<Preferences>, "ai"> & {
@@ -384,7 +384,25 @@ export type DigestChange = {
 };
 export type Digest = {
   date: string;
-  claude: { prompts: number; files: number; functions: number; additions: number; deletions: number; risky: number; uncommitted: number };
+  // Undone changes stay in `changes` but are left out of these numbers (`undone` counts them).
+  // watched_files: changed while a prompt ran but not by its Edit or Write (shell commands, or you).
+  claude: {
+    prompts: number; files: number; functions: number; additions: number; deletions: number; risky: number; uncommitted: number;
+    undone: number; watched_files: number;
+  };
   you: { files: number; additions: number; deletions: number; commits: number };
   changes: DigestChange[];
+};
+
+// Whether DevDash starts when you sign in to this computer.
+export type Autostart = {
+  supported: boolean;
+  enabled: boolean;
+  // How this system starts it, in words.
+  method: string | null;
+  // It starts this install of DevDash; false after a reinstall, until turned on again.
+  current: boolean;
+  port: number | null;
+  // Needed before it can be turned on.
+  password_set: boolean;
 };

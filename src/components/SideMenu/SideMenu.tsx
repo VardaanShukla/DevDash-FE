@@ -5,20 +5,18 @@ import "./SideMenu.css";
 // Settings and Help at the bottom. Each item's shortcut key (set in Settings) shows in its
 // tooltip; App listens for the keys. On a phone it turns into a bar along the bottom.
 
-export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "constellation" | "changes" | "commits" | "planner" | "project" | "settings" | "help";
+export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
-  { id: "home", label: "Home", hint: "Your projects, the branch's changes, branch flow and map, to-dos and calendar", icon: <HomeIcon /> },
+  { id: "home", label: "Home", hint: "Your dashboard: AI changes today, projects, the branch and more. Customise it to show what you need", icon: <HomeIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
   { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
   { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon />, inMenu: false },
-  { id: "constellation", label: "Constellation", hint: "The project as a sky of parts: pick one to look inside", icon: <ConstellationIcon /> },
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
-  { id: "planner", label: "My day", hint: "Your to-dos and the week on your calendar", icon: <DayIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
   { id: "settings", label: "Settings", hint: "Theme, uncommitted work, your account and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
@@ -175,29 +173,6 @@ function DigestIcon() {
     <svg {...iconProps}>
       <path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" />
       <path d="M5 17h14M5 21h9" />
-    </svg>
-  );
-}
-
-function ConstellationIcon() {
-  return (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="2.5" />
-      <circle cx="5" cy="6" r="1.5" />
-      <circle cx="19" cy="5" r="1.5" />
-      <circle cx="18" cy="18" r="1.5" />
-      <circle cx="5" cy="18" r="1.5" />
-      <path d="M10.2 10.5 6.2 7M13.8 10.6l4-4.4M13.9 13.8l3 3M10.2 13.7l-4 3.4" />
-    </svg>
-  );
-}
-
-function DayIcon() {
-  return (
-    <svg {...iconProps}>
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
-      <path d="M8.5 15l2 2 4-4" />
     </svg>
   );
 }

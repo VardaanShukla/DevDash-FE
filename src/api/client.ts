@@ -4,6 +4,7 @@ import type {
   AiProvider,
   AuthStatus,
   Candidate,
+  Autostart,
   RecordingHealth,
   PreferenceChange,
   Preferences,
@@ -23,7 +24,6 @@ import type {
   SignIn,
   Summary,
   Sync,
-  Todo,
 } from "./types";
 
 // In dev, Vite forwards /api to `devdash serve` (see vite.config.ts).
@@ -80,6 +80,7 @@ export const api = {
   preferences: () => get<Preferences>("/api/preferences"),
   setPreferences: (changes: PreferenceChange) => request<Preferences>("/api/preferences", "PUT", changes),
   resetShortcuts: () => request<Preferences>("/api/preferences/reset-shortcuts", "POST", {}),
+  resetHome: () => request<Preferences>("/api/preferences/reset-home", "POST", {}),
   repos: () => get<Repo[]>("/api/repos"),
   addRepo: (path: string, ai: AiToolId | null) => request<Repo>("/api/repos", "POST", { path, ai }),
   // The server only takes JSON for changes, so even a delete sends an empty object.
@@ -89,6 +90,9 @@ export const api = {
   aiTools: () => get<AiTool[]>("/api/ai-tools"),
   candidates: () => get<Candidate[]>("/api/repos/candidates"),
   recordingHealth: () => get<RecordingHealth>("/api/recording/health"),
+  autostart: () => get<Autostart>("/api/autostart"),
+  setAutostart: (enabled: boolean) => request<Autostart>("/api/autostart", "PUT", { enabled }),
+  repairRecording: () => request<RecordingHealth>("/api/recording/repair", "POST", {}),
   branches: (repoId: number) => get<Branches>(`/api/repos/${repoId}/branches`),
   sync: (repoId: number) => request<Sync>(`/api/repos/${repoId}/sync`, "POST", {}),
   state: (repoId: number, uncommitted: boolean) =>
@@ -136,11 +140,6 @@ export const api = {
     request<{ change: string; undone_at: string | null }>("/api/digest/undo", "POST", { change }),
   putBackChange: (change: string) =>
     request<{ change: string; undone_at: string | null }>("/api/digest/put-back", "POST", { change }),
-  todos: () => get<Todo[]>("/api/todos"),
-  addTodo: (text: string, repoId: number | null, branch: string | null) =>
-    request<Todo>("/api/todos", "POST", { text, repo_id: repoId, branch }),
-  changeTodo: (id: number, change: { text?: string; done?: boolean }) => request<Todo>(`/api/todos/${id}`, "PATCH", change),
-  removeTodo: (id: number) => request<void>(`/api/todos/${id}`, "DELETE", {}),
   calendar: (days: number, refresh = false) => get<Agenda>(`/api/calendar?days=${days}${refresh ? "&refresh=true" : ""}`),
   connectCalendar: (url: string) => request<Agenda>("/api/calendar", "PUT", { url }),
   disconnectCalendar: () => request<void>("/api/calendar", "DELETE", {}),

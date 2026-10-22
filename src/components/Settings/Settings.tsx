@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api } from "../../api/client";
-import type { AiProvider, AiStatus, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
+import type { AiProvider, AiStatus, Autostart, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
@@ -75,6 +75,8 @@ export default function Settings({ prefs, onPrefs, onResetShortcuts, username, p
         </section>
 
         <Account username={username} passwordSet={passwordSet} onSignOut={onSignOut} onPasswordSet={onPasswordSet} />
+
+        <StartAtSignIn passwordSet={passwordSet} />
 
         <Recording />
 
@@ -324,9 +326,70 @@ function Account({ username, passwordSet, onSignOut, onPasswordSet }: {
 const EVENTS: [string, string][] = [
   ["user-prompt-submit", "A prompt started"],
   ["pre-tool-use", "An AI edit"],
+  ["post-tool-use", "A shell command finished"],
   ["stop", "A prompt finished"],
+  ["session-end", "A session ended"],
   ["post-commit", "A commit"],
 ];
+
+// Starting DevDash when you sign in to this computer, with the system's own per-user
+// mechanism. It needs a dashboard password, so the server that starts by itself is locked.
+function StartAtSignIn({ passwordSet }: { passwordSet: boolean }) {
+  const [state, setState] = useState<Autostart | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.autostart().then(setState, (e: Error) => setError(`Couldn't read the setting: ${e.message}`));
+  }, [passwordSet]);
+  // Never hidden: when it can't be read or isn't supported here, say so.
+  if (!state || !state.supported) {
+    return (
+      <section className="card settings__section">
+        <h2>Start at sign-in</h2>
+        <p className={error ? "settings__message settings__message--error" : "settings__note"}>
+          {error ?? (state ? "Starting at sign-in isn't supported on this system." : "Reading the setting…")}
+        </p>
+      </section>
+    );
+  }
+  const change = (enabled: boolean) => {
+    setBusy(true);
+    setError(null);
+    api
+      .setAutostart(enabled)
+      .then(setState, (e: Error) => setError(e.message))
+      .finally(() => setBusy(false));
+  };
+  const locked = !state.enabled && !state.password_set;
+  return (
+    <section className="card settings__section">
+      <h2>Start at sign-in</h2>
+      <label className="settings__switch">
+        <input type="checkbox" checked={state.enabled} disabled={busy || locked} onChange={(event) => change(event.target.checked)} />
+        <span className="settings__track" aria-hidden="true" />
+        <span>
+          <strong>Start DevDash when I sign in to this computer</strong>
+          <span className="settings__note">
+            {locked
+              ? "Set a dashboard password under Account first, so the dashboard that starts by itself is locked."
+              : `Uses your ${state.method}, for your account only and without admin rights. It listens on this computer only (127.0.0.1${
+                  state.port ? `:${state.port}` : ""
+                }) and takes effect from your next sign-in.`}
+          </span>
+        </span>
+      </label>
+      {state.enabled && !state.current && (
+        <p className="settings__message settings__message--error">
+          It's set to start an older install of DevDash.{" "}
+          <button className="settings__button settings__button--quiet" onClick={() => change(true)} disabled={busy}>
+            Update it
+          </button>
+        </p>
+      )}
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+    </section>
+  );
+}
 
 // Whether the hooks that record AI changes have been called lately, and how many failed,
 // so a prompt missing from AI changes can be told apart from one that failed to record.
@@ -352,6 +415,19 @@ function Recording() {
           </li>
         ))}
       </ul>
+      {health.problems.length > 0 && (
+        <div className="settings__message settings__message--error">
+          {health.problems.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+          {health.repairable && <button
+            className="settings__button"
+            onClick={() => api.repairRecording().then(setHealth, (e: Error) => setHealth({ ...health, problems: [e.message] }))}
+          >
+            Repair the hooks
+          </button>}
+        </div>
+      )}
       {health.errors > 0 ? (
         <p className="settings__message settings__message--error">
           {health.errors} hook error{health.errors === 1 ? "" : "s"} in the last {health.days} days
