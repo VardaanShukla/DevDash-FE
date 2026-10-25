@@ -16,7 +16,6 @@ export const SHORTCUTS: Shortcut[] = [
 
 // Keys that always do the same thing, shown for reference.
 export const FIXED: { keys: string; label: string }[] = [
-  { keys: "Esc", label: "Constellation: back one step (file, then part, then the whole sky)" },
   { keys: "Esc", label: "Close a dialog" },
   { keys: "Enter", label: "Open what's focused" },
 ];

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
-import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync, Todo } from "./api/types";
+import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
-import Agenda from "./components/Agenda/Agenda";
 import Digest from "./components/Digest/Digest";
 import CommitList from "./components/CommitList/CommitList";
 import FileChanges from "./components/FileChanges/FileChanges";
@@ -11,16 +11,14 @@ import Help, { useSetup } from "./components/Help/Help";
 import Home from "./components/Home/Home";
 import Login from "./components/Login/Login";
 import Overview from "./components/Overview/Overview";
-import Constellation from "./components/Constellation/Constellation";
 import ProjectMap from "./components/ProjectMap/ProjectMap";
 import ProjectPanel from "./components/ProjectPanel/ProjectPanel";
 import RemoveProject from "./components/RemoveProject/RemoveProject";
-import SideMenu, { VIEWS, type View } from "./components/SideMenu/SideMenu";
+import SideMenu, { SETTINGS_SECTIONS, VIEWS, settingsSectionLabel, type SettingsSection, type View } from "./components/SideMenu/SideMenu";
 import Sidebar from "./components/Sidebar/Sidebar";
 import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
 import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
-import Todos from "./components/Todos/Todos";
 import Splash from "./components/Splash/Splash";
 import { keyName, typing } from "./shortcuts";
 import "./App.css";
@@ -29,8 +27,16 @@ type Theme = "light" | "dark";
 
 // The view in the address bar (#changes), so a refresh or a shared link keeps it.
 function viewFromHash(): View {
-  const id = window.location.hash.slice(1);
+  const id = window.location.hash.slice(1).split("/")[0];
   return VIEWS.some((item) => item.id === id) ? (id as View) : "home";
+}
+
+// The part of Settings after it (#settings/ai/ollama); General when there's none.
+function sectionFromHash(): SettingsSection {
+  const [view, ...rest] = window.location.hash.slice(1).split("/");
+  const id = rest.join("/");
+  const known = SETTINGS_SECTIONS.some((part) => part.id === id || part.children?.some((child) => child.id === id));
+  return view === "settings" && known ? (id as SettingsSection) : "general";
 }
 
 // Remembered per browser; a blocked storage just means the default each time.
@@ -103,6 +109,7 @@ export default function App() {
 
 function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSignOut?: () => void; onAuthChange: () => void }) {
   const [view, setView] = useState<View>(viewFromHash);
+  const [section, setSection] = useState<SettingsSection>(sectionFromHash);
   const [theme, setTheme] = useState<Theme>(savedTheme);
   // Settings from the backend: theme, uncommitted work from the start, shortcut keys.
   const [prefs, setPrefs] = useState<Preferences | null>(null);
@@ -117,8 +124,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   const [flow, setFlow] = useState<Flow | null>(null);
   const [map, setMap] = useState<MapData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
-  // The to-do list, for My day and the count on its menu item.
-  const [todos, setTodos] = useState<Todo[]>([]);
   // Whether Claude Code is installed and signed in, to explain functions and the project.
   const [ai, setAi] = useState<AiStatus | null>(null);
   const refreshAi = useCallback(() => {
@@ -164,11 +169,15 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   };
 
   useEffect(() => {
-    if (window.location.hash.slice(1) !== view) history.replaceState(null, "", `#${view}`);
-    const onHash = () => setView(viewFromHash());
+    const wanted = view === "settings" ? `settings/${section}` : view;
+    if (window.location.hash.slice(1) !== wanted) history.replaceState(null, "", `#${wanted}`);
+    const onHash = () => {
+      setView(viewFromHash());
+      setSection(sectionFromHash());
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, [view]);
+  }, [view, section]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -279,10 +288,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   }, [repoId, head, revision]);
 
   useEffect(refreshAi, [refreshAi]);
-
-  useEffect(() => {
-    api.todos().then(setTodos).catch(() => setTodos([]));
-  }, []);
 
   // Fetch from GitHub now and then, so merges and branches deleted there show up here.
   // Only remote-tracking refs change; the watcher below notices and reloads.
@@ -437,6 +442,9 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     if (view === "settings") {
       return prefs ? (
         <Settings
+          section={section}
+          onSection={setSection}
+          standalone={!(repos && repos.length > 0)}
           prefs={prefs}
           onPrefs={changePrefs}
           onResetShortcuts={() => api.resetShortcuts().then(setPrefs)}
@@ -460,8 +468,8 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       return (
         <Home
           repos={repos}
-          todos={todos}
-          onTodos={setTodos}
+          prefs={prefs}
+          onPrefs={changePrefs}
           username={auth.username}
           repoId={repoId}
           head={head}
@@ -509,14 +517,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     if (error) return <Notice title="Something needs attention">{error}</Notice>;
     if (repoId === null) {
       return <Notice title="Pick a project">None of your projects' folders can be found. Add one, or remove the missing ones.</Notice>;
-    }
-    if (view === "planner") {
-      return (
-        <div className="planner">
-          <Todos items={todos} onItems={setTodos} repos={repos ?? []} repoId={repoId} head={head} />
-          <Agenda />
-        </div>
-      );
     }
     if (view === "summary") {
       return summary && repoId !== null && head !== null ? (
@@ -566,12 +566,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         ) : (
           <Notice title="Project map">Reading the project's folders…</Notice>
         );
-      case "constellation":
-        return map && map.areas.length > 0 ? (
-          <Constellation map={map} files={comparison.files} project={repo?.name ?? "Project"} onOpenFile={openFile} />
-        ) : (
-          <Notice title="Constellation">Reading the project's folders…</Notice>
-        );
       case "changes":
         return comparison.files.length === 0 ? (
           <Notice title="Nothing changed yet">
@@ -604,7 +598,11 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   if (repo && PROJECT_VIEWS.has(view)) crumbs.push({ label: repo.name, go: view === "summary" ? undefined : () => setView("summary") });
   // Home is already the first step.
   if (openedFrom && openedFrom !== "home" && view === "changes") crumbs.push({ label: label(openedFrom), go: () => setView(openedFrom) });
-  crumbs.push({ label: current.label });
+  // Settings › AI › Ollama: each step back up the folder.
+  const deeper = view === "settings" && section !== "general";
+  crumbs.push({ label: current.label, go: deeper ? () => setSection("general") : undefined });
+  if (deeper && section.startsWith("ai/")) crumbs.push({ label: "AI", go: () => setSection("ai") });
+  if (deeper) crumbs.push({ label: settingsSectionLabel(section) });
   if (picked && picked.view === view) crumbs.push({ label: picked.label });
 
   return (
@@ -613,11 +611,13 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         <SideMenu
           view={view}
           onView={setView}
+          settings={section}
+          onSettings={setSection}
+          aiInUse={prefs?.ai.provider}
           keys={viewKeys}
           badges={{
             changes: comparison?.files.length,
             commits: comparison?.commits.length,
-            planner: todos.filter((item) => !item.done_at && item.repo_id === repoId).length,
             help: setup.todo,
           }}
           project={
@@ -735,7 +735,7 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 }
 
 // Screens about one project; the breadcrumb names the project before them.
-const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "constellation", "changes", "commits", "planner", "help"]);
+const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "changes", "commits", "help"]);
 
 // Where you are: Home › project › screen › what's picked. Every step but the last goes back to it.
 function Breadcrumb({ crumbs }: { crumbs: { label: string; go?: () => void }[] }) {
@@ -883,9 +883,9 @@ function Welcome({ ai, onAiRefresh, onAdd, prefs, onPrefs }: {
         )}
       </div>
       <div className="welcome__actions">
-        <button className="button" onClick={onAdd}>
-          + Add your first project
-        </button>
+        <Button variant="gradient" size="lg" onClick={onAdd}>
+          Add your first project
+        </Button>
         {!ready && <span className="welcome__skip">No AI for now? Just add a project; you can connect one later.</span>}
       </div>
     </section>

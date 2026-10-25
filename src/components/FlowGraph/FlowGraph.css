@@ -79,7 +79,7 @@
 .flow__dot--ai {
   width: 7px;
   height: 7px;
-  background: #fbbf24;
+  background: var(--dd-ai);
 }
 
 .flow__scroller {
@@ -138,7 +138,7 @@
   opacity: 0;
   transform-box: fill-box;
   transform-origin: center;
-  animation: flow-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: flow-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   cursor: default;
 }
 
@@ -152,7 +152,7 @@
 }
 
 .flow__ai {
-  fill: #fbbf24;
+  fill: var(--dd-ai);
   stroke: var(--dd-card);
   stroke-width: 1.2;
 }
@@ -227,8 +227,8 @@
 }
 
 .flow__tip .flow__tip-tag--ai {
-  background: rgba(251, 191, 36, 0.16);
-  color: #d97706;
+  background: var(--dd-ai-bg);
+  color: var(--dd-warn);
 }
 
 .flow__hint {

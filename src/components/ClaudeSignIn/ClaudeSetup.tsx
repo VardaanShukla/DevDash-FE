@@ -40,6 +40,18 @@ export default function ClaudeSetup({ ai, onRefresh }: Props) {
     );
   }
 
+  // A model on your own server is connected in Settings → AI, by pasting its curl command.
+  if (ai.provider === "hosted" && (!ai.available || ai.signed_in === false)) {
+    return (
+      <div className="signin claude-setup--install">
+        <strong className="signin__title">{ai.server ? "Can't use your server's model" : "Connect your server's model"}</strong>
+        <p>{ai.server ? ai.detail : "Paste the curl command that reaches your model in Settings → AI."}</p>
+        {ai.server && <p className="claude-setup__note">Is the server running? Change its address or key in Settings → AI.</p>}
+        {checkAgain}
+      </div>
+    );
+  }
+
   if (!ai.available) {
     const commands = ai.install ?? [];
     const several = commands.length > 1;
@@ -94,13 +106,16 @@ export default function ClaudeSetup({ ai, onRefresh }: Props) {
       <span>
         <strong>
           {ai.name} is ready
-          {ai.account && ai.provider !== "ollama" ? ` · signed in${ai.account.includes("@") ? ` as ${ai.account}` : ` with your ${ai.account}`}` : ""}
+          {ai.account && ai.provider === "hosted" ? ` · on ${ai.account}` : ""}
+          {ai.account && ai.provider !== "ollama" && ai.provider !== "hosted" ? ` · signed in${ai.account.includes("@") ? ` as ${ai.account}` : ` with your ${ai.account}`}` : ""}
         </strong>
         <span className="claude-setup__line">
           {ai.signed_in === null
             ? `DevDash couldn't check its sign-in; the first explanation will tell. If it asks, run ${ai.login_command ?? "it"} in a terminal once.`
             : ai.provider === "ollama"
               ? "Runs on this computer: free and private, though slower than the online ones."
+              : ai.provider === "hosted"
+                ? "Runs on your own server: your code goes there, and nowhere else."
               : "DevDash can explain changes in plain English."}
         </span>
       </span>

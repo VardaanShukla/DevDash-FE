@@ -1,0 +1,39 @@
+/* Tailwind and the shadcn tokens. Preflight (Tailwind's reset) is left out on purpose: the
+   screens' own CSS was written against browser defaults, and the reset would change their
+   headings, lists and buttons. Tailwind's classes sit in layers, so a screen's own CSS still
+   wins wherever both set the same thing. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* `dark:` classes follow the theme switch in Settings, not the system setting. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* shadcn names, read from DevDash's own colours in styles/theme.css, so a pasted shadcn
+   component matches both themes without its own palette. */
+@theme inline {
+  --color-background: var(--dd-bg);
+  --color-foreground: var(--dd-ink);
+  --color-card: var(--dd-card);
+  --color-card-foreground: var(--dd-ink);
+  --color-popover: var(--dd-card);
+  --color-popover-foreground: var(--dd-ink);
+  --color-primary: var(--dd-accent);
+  --color-primary-foreground: var(--dd-on-accent);
+  --color-secondary: var(--dd-accent-soft);
+  --color-secondary-foreground: var(--dd-ink);
+  --color-muted: var(--dd-accent-soft);
+  --color-muted-foreground: var(--dd-muted);
+  --color-accent: var(--dd-accent-soft);
+  --color-accent-foreground: var(--dd-ink);
+  --color-destructive: var(--dd-del);
+  --color-border: var(--dd-line);
+  --color-input: var(--dd-line);
+  --color-ring: var(--dd-accent);
+  --color-glass: var(--dd-glass);
+  --color-glass-line: var(--dd-glass-line);
+  --font-sans: var(--dd-font);
+  --font-mono: var(--dd-mono);
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}

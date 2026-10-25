@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../../api/client";
-import type { BranchInfo, Comparison, Digest, Flow, ProjectCard, ProjectMap, Repo, Todo } from "../../api/types";
+import type {
+  BranchInfo, Comparison, Digest, Flow, HomeLayout, PreferenceChange, Preferences, ProjectCard, ProjectMap,
+  RecordingHealth, Repo, Widget,
+} from "../../api/types";
 import Agenda from "../Agenda/Agenda";
 import FlowGraph from "../FlowGraph/FlowGraph";
 import { languageColor, languageTotals, mapParts } from "../ProjectMap/ProjectMap";
 import type { View } from "../SideMenu/SideMenu";
-import Todos from "../Todos/Todos";
 import "./Home.css";
 
-// The start screen and the project's dashboard: every project at a glance; for the one
-// picked, what its branch changes, how its branches flow and the map of its parts; then
-// the to-do list and the calendar. Each section opens its full screen.
+// The start screen: a greeting with the one thing that most needs you, then the widgets
+// the person picked, in their order (Customise moves and hides them; the layout is kept in
+// their settings). AI today leads by default: what the AI changed and whether recording works.
 
 type Props = {
   repos: Repo[];
-  todos: Todo[];
-  onTodos: (update: (items: Todo[]) => Todo[]) => void;
   repoId: number | null;
   head: string | null;
   // Changes when any project might have, so the cards are read again.
@@ -25,6 +25,9 @@ type Props = {
   branches: BranchInfo[];
   flow: Flow | null;
   map: ProjectMap | null;
+  // The saved settings, for the layout; null while they load.
+  prefs: Preferences | null;
+  onPrefs: (changes: PreferenceChange) => Promise<void>;
   onPick: (repoId: number) => void;
   onOpen: (repoId: number) => void;
   onHeadChange: (head: string) => void;
@@ -36,12 +39,29 @@ type Props = {
   username?: string;
 };
 
+const WIDGET_NAMES: Record<Widget, string> = {
+  ai: "AI today",
+  projects: "Projects",
+  branch: "Branch changes",
+  flow: "Branch flow",
+  map: "Project map",
+  calendar: "Calendar",
+};
+const DEFAULT_LAYOUT: HomeLayout = { order: ["ai", "projects", "branch", "flow", "map", "calendar"], hidden: ["map", "calendar"] };
+
 export default function Home(props: Props) {
-  const { repos, todos, onTodos, repoId, head, version, onAdd, onDigest } = props;
+  const { repos, repoId, version, onAdd, onDigest } = props;
   const [cards, setCards] = useState<ProjectCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Today's Claude changes, for a line that leads to the digest.
+  // Today's AI changes and whether the hooks that record them work.
   const [digest, setDigest] = useState<Digest | null>(null);
+  const [health, setHealth] = useState<RecordingHealth | null>(null);
+  const [editing, setEditing] = useState(false);
+  // Shown at once while a change saves; the saved settings win when they arrive.
+  const [layout, setLayout] = useState<HomeLayout>(props.prefs?.home ?? DEFAULT_LAYOUT);
+  useEffect(() => {
+    if (props.prefs) setLayout(props.prefs.home);
+  }, [props.prefs]);
 
   useEffect(() => {
     let stale = false;
@@ -50,32 +70,79 @@ export default function Home(props: Props) {
       (e: Error) => !stale && setError(e.message),
     );
     api.digest().then((result) => !stale && setDigest(result), () => {});
+    api.recordingHealth().then((result) => !stale && setHealth(result), () => {});
     return () => {
       stale = true;
     };
   }, [version]);
 
-  const open = todos.filter((item) => !item.done_at);
-  const openFor = (id: number) => open.filter((item) => item.repo_id === id).length;
+  const save = (next: HomeLayout) => {
+    setLayout(next);
+    props.onPrefs({ home: next }).catch(() => {});
+  };
+  const move = (widget: Widget, by: number) => {
+    const order = [...layout.order];
+    const at = order.indexOf(widget);
+    const to = at + by;
+    if (to < 0 || to >= order.length) return;
+    [order[at], order[to]] = [order[to], order[at]];
+    save({ ...layout, order });
+  };
+  const toggle = (widget: Widget) =>
+    save({
+      ...layout,
+      hidden: layout.hidden.includes(widget) ? layout.hidden.filter((w) => w !== widget) : [...layout.hidden, widget],
+    });
+  const reset = () => api.resetHome().then((saved) => setLayout(saved.home), () => save(DEFAULT_LAYOUT));
+
   const uncommitted = (cards ?? []).reduce((sum, card) => sum + card.uncommitted, 0);
   const week = (cards ?? []).reduce((sum, card) => sum + card.commits_this_week, 0);
   const picked = repos.find((repo) => repo.id === repoId) ?? null;
   const moment = timeOfDay();
-  // One line on what most needs you right now, from real numbers: AI changes to check,
-  // then work not committed, then a quiet "all caught up".
+  // One line on what most needs you right now, from real numbers: recording that's broken,
+  // then AI changes to check, then work not committed, then a quiet "all caught up".
   const risky = digest?.claude.risky ?? 0;
   const aiToday = digest?.claude.prompts ?? 0;
-  const status: { text: string; tone: "risk" | "warn" | "calm"; go?: () => void } =
-    risky > 0
+  const broken = (health?.problems.length ?? 0) > 0;
+  const status: { text: string; tone: "risk" | "warn" | "calm"; go?: () => void } = broken
+    ? { text: "AI recording needs a fix", tone: "risk" }
+    : risky > 0
       ? { text: `${risky} AI ${risky === 1 ? "change needs" : "changes need"} a look`, tone: "risk", go: onDigest }
       : uncommitted > 0
         ? { text: `${uncommitted} ${uncommitted === 1 ? "file" : "files"} not committed yet`, tone: "warn" }
         : aiToday > 0
-          ? { text: `${aiToday} AI ${aiToday === 1 ? "change" : "changes"} today, nothing risky`, tone: "calm", go: onDigest }
+          ? { text: `${aiToday} AI ${aiToday === 1 ? "prompt" : "prompts"} today, nothing risky`, tone: "calm", go: onDigest }
           : { text: "All caught up", tone: "calm" };
 
+  const widgets: Record<Widget, () => ReactNode> = {
+    ai: () => <AiToday digest={digest} health={health} onHealth={setHealth} onDigest={onDigest} />,
+    projects: () => <Projects cards={cards} error={error} repoId={repoId} onAdd={onAdd} onPick={props.onPick} onOpen={props.onOpen} />,
+    branch: () => <BranchChanges {...props} project={picked?.name ?? null} />,
+    flow: () =>
+      props.flow && props.comparison && props.flow.commits.length > 1 ? (
+        <FlowGraph
+          flow={props.flow}
+          head={props.comparison.head}
+          branches={props.branches}
+          onPick={props.onHeadChange}
+          compact
+          onOpen={() => props.onView("flow")}
+        />
+      ) : (
+        <section className="card home__section">
+          <header className="card__header">
+            <h2 className="card__title">Branch flow</h2>
+          </header>
+          <p className="home__muted">{props.flow ? "Not enough history to draw yet." : "Reading the branches…"}</p>
+        </section>
+      ),
+    map: () => <MapPreview map={props.map} comparison={props.comparison} onView={props.onView} />,
+    calendar: () => <Agenda days={3} />,
+  };
+  const shown = layout.order.filter((w) => !layout.hidden.includes(w));
+
   return (
-    <div className="home">
+    <div className={`home${editing ? " home--editing" : ""}`}>
       <section className="home__hello">
         <div className="home__greet">
           <span className={`home__sky home__sky--${moment.part}`} aria-hidden="true">
@@ -86,7 +153,7 @@ export default function Home(props: Props) {
               {moment.words}
               {props.username && (
                 <>
-                  , <span className="home__name">{props.username}</span>
+                  , {props.username}
                 </>
               )}
             </h2>
@@ -107,124 +174,266 @@ export default function Home(props: Props) {
             </p>
           </div>
         </div>
-        <ul className="home__stats">
-          <Stat value={repos.length} label={repos.length === 1 ? "project" : "projects"} />
-          <Stat value={open.length} label={open.length === 1 ? "to-do open" : "to-dos open"} />
-          <Stat value={week} label={week === 1 ? "commit this week" : "commits this week"} />
-          <Stat value={uncommitted} label={uncommitted === 1 ? "file not committed" : "files not committed"} warn={uncommitted > 0} />
-          {digest && digest.claude.prompts > 0 && (
-            <li>
-              <button className={`home__stat home__claude${digest.claude.risky ? " home__claude--risk" : ""}`} onClick={onDigest}>
-                <strong>{digest.claude.risky || digest.claude.prompts}</strong>
-                <span>
-                  {digest.claude.risky
-                    ? `of today's ${digest.claude.prompts} AI changes need a look`
-                    : `AI ${digest.claude.prompts === 1 ? "change" : "changes"} today`}
-                </span>
-              </button>
-            </li>
+        <div className="home__tools">
+          <ul className="home__stats">
+            <Stat value={repos.length} label={repos.length === 1 ? "project" : "projects"} />
+            <Stat value={week} label={week === 1 ? "commit this week" : "commits this week"} />
+            <Stat value={uncommitted} label={uncommitted === 1 ? "file not committed" : "files not committed"} warn={uncommitted > 0} />
+          </ul>
+          {editing && (
+            <button className="home__tool" onClick={reset}>
+              Reset
+            </button>
           )}
-        </ul>
-      </section>
-
-      <section className="card home__projects">
-        <header>
-          <h3>Projects</h3>
-          <button className="home__link" onClick={onAdd}>
-            + Add
+          <button
+            className={`home__tool${editing ? " home__tool--on" : ""}`}
+            onClick={() => setEditing(!editing)}
+            aria-pressed={editing}
+            title="Pick which widgets Home shows, and their order"
+          >
+            {editing ? "Done" : "Customise"}
           </button>
-        </header>
-        {error && <p className="home__muted">{error}</p>}
-        {!cards && !error && <p className="home__muted">Reading your projects…</p>}
-        <ul>
-          {(cards ?? []).map((card) => (
-            <li key={card.id}>
-              <button
-                className={`project${card.id === repoId ? " project--current" : ""}`}
-                // One click shows the project here; a double click opens its summary.
-                onClick={() => props.onPick(card.id)}
-                onDoubleClick={() => props.onOpen(card.id)}
-                disabled={!card.exists}
-                title={`${card.path}\nClick to show it here, double-click to open its summary`}
-                aria-pressed={card.id === repoId}
-              >
-                <span className="project__top">
-                  <strong>{card.name}</strong>
-                  {card.branch && <code>{card.branch}</code>}
-                </span>
-                {!card.exists ? (
-                  <span className="project__warn">Folder missing: {card.path}</span>
-                ) : (
-                  <>
-                    <span className="project__facts">
-                      {card.ahead !== null && card.base && (
-                        <span>
-                          {card.ahead} commit{card.ahead === 1 ? "" : "s"} ahead of {card.base}
-                        </span>
-                      )}
-                      {card.uncommitted > 0 && (
-                        <span className="project__warn">
-                          {card.uncommitted} file{card.uncommitted === 1 ? "" : "s"} not committed
-                        </span>
-                      )}
-                      {openFor(card.id) > 0 && (
-                        <span className="project__todo">
-                          {openFor(card.id)} to-do{openFor(card.id) === 1 ? "" : "s"}
-                        </span>
-                      )}
-                      <span className="project__muted">
-                        {card.branches} branch{card.branches === 1 ? "" : "es"}
-                      </span>
-                    </span>
-                    {card.last_commit ? (
-                      <span className="project__last">
-                        <span>{card.last_commit.subject}</span>
-                        <em>
-                          {card.last_commit.author}, {ago(card.last_commit.at)}
-                        </em>
-                      </span>
-                    ) : (
-                      <span className="project__muted">No commits yet</span>
-                    )}
-                  </>
-                )}
-              </button>
-            </li>
-          ))}
-        </ul>
+        </div>
       </section>
 
-      <BranchChanges {...props} project={picked?.name ?? null} />
-
-      <div className="home__flow">
-        {props.flow && props.comparison && props.flow.commits.length > 1 ? (
-          <FlowGraph
-            flow={props.flow}
-            head={props.comparison.head}
-            branches={props.branches}
-            onPick={props.onHeadChange}
-            compact
-            onOpen={() => props.onView("flow")}
-          />
-        ) : (
-          <section className="card home__section">
-            <header className="card__header">
-              <h2 className="card__title">Branch flow</h2>
-            </header>
-            <p className="home__muted">{props.flow ? "Not enough history to draw yet." : "Reading the branches…"}</p>
-          </section>
-        )}
-      </div>
-
-      <MapPreview map={props.map} comparison={props.comparison} onView={props.onView} />
-
-      <div className="home__todos">
-        <Todos items={todos} onItems={onTodos} repos={repos} repoId={repoId} head={head} initialScope="all" />
-      </div>
-      <div className="home__calendar">
-        <Agenda days={3} />
-      </div>
+      {shown.length === 0 && !editing && (
+        <section className="card home__section widget--ai">
+          <p className="home__muted">Every widget is hidden. Press Customise to bring some back.</p>
+        </section>
+      )}
+      {layout.order.map((widget, at) => {
+        const hidden = layout.hidden.includes(widget);
+        if (hidden && !editing) return null;
+        const bar = editing && (
+          <span className="widget__bar" role="group" aria-label={`Arrange ${WIDGET_NAMES[widget]}`}>
+            <button onClick={() => move(widget, -1)} disabled={at === 0} title="Move up" aria-label={`Move ${WIDGET_NAMES[widget]} up`}>
+              ↑
+            </button>
+            <button
+              onClick={() => move(widget, 1)}
+              disabled={at === layout.order.length - 1}
+              title="Move down"
+              aria-label={`Move ${WIDGET_NAMES[widget]} down`}
+            >
+              ↓
+            </button>
+            <button onClick={() => toggle(widget)}>{hidden ? "Show" : "Hide"}</button>
+          </span>
+        );
+        return (
+          <div key={widget} className={`widget widget--${hidden ? "hidden" : widget}`} style={{ ["--i" as string]: at }}>
+            {hidden ? (
+              <div className="widget__ghost">
+                <span>{WIDGET_NAMES[widget]} is hidden</span>
+                {bar}
+              </div>
+            ) : (
+              <>
+                {bar}
+                {widgets[widget]()}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+// What the AI changed today, and whether the hooks that record it work. The numbers are the
+// digest's, which leave out undone changes; each bar is one prompt, its height the lines it
+// changed, red when it touched something risky. Any recording problem comes first, with a fix.
+function AiToday({ digest, health, onHealth, onDigest }: {
+  digest: Digest | null;
+  health: RecordingHealth | null;
+  onHealth: (health: RecordingHealth) => void;
+  onDigest: () => void;
+}) {
+  const [repairing, setRepairing] = useState(false);
+  const [repairError, setRepairError] = useState<string | null>(null);
+  const repair = () => {
+    setRepairing(true);
+    setRepairError(null);
+    api.repairRecording().then(onHealth, (e: Error) => setRepairError(e.message)).finally(() => setRepairing(false));
+  };
+  const claude = digest?.claude;
+  const changes = [...(digest?.changes ?? [])].reverse(); // oldest first, left to right
+  const most = Math.max(1, ...changes.map((c) => c.additions + c.deletions));
+  const recording = (health?.tools.length ?? 0) > 0;
+  const problems = health?.problems ?? [];
+  const lastCall = health ? Object.values(health.last_call).sort().pop() : undefined;
+  return (
+    <section className="card ai">
+      <header className="ai__head">
+        <h2 className="card__title">AI today</h2>
+        {health && (
+          <span className={`ai__live${problems.length || !recording ? " ai__live--warn" : ""}`}>
+            {!recording
+              ? "Not recording any project"
+              : problems.length
+                ? "Recording needs a fix"
+                : `Recording${lastCall ? ` · last hook ${ago(lastCall)}` : ""}`}
+          </span>
+        )}
+        <button className="card__link" onClick={onDigest}>
+          Every change ›
+        </button>
+      </header>
+      {problems.length > 0 && (
+        <div className="ai__problems" role="alert">
+          {problems.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+          {repairError && <p>{repairError}</p>}
+          {health?.repairable && (
+            <button className="home__tool" onClick={repair} disabled={repairing}>
+              {repairing ? "Repairing…" : "Repair the hooks"}
+            </button>
+          )}
+        </div>
+      )}
+      {!claude ? (
+        <p className="home__muted">Reading today's changes…</p>
+      ) : (
+        <>
+          <ul className="ai__numbers">
+            <li>
+              <strong>{claude.prompts}</strong>
+              <span>{claude.prompts === 1 ? "prompt that changed code" : "prompts that changed code"}</span>
+            </li>
+            <li>
+              <strong>
+                <b className="home__add">+{claude.additions.toLocaleString()}</b> <b className="home__del">−{claude.deletions.toLocaleString()}</b>
+              </strong>
+              <span>
+                lines in {claude.files} {claude.files === 1 ? "file" : "files"}
+              </span>
+            </li>
+            <li className={claude.risky ? "ai__risk" : undefined}>
+              <strong>{claude.risky}</strong>
+              <span>{claude.risky === 1 ? "needs a careful look" : "need a careful look"}</span>
+            </li>
+            <li>
+              <strong>{claude.uncommitted}</strong>
+              <span>not committed yet</span>
+            </li>
+          </ul>
+          <div className="ai__timeline">
+            {changes.length === 0 ? (
+              <p className="home__muted">No AI changes recorded today yet.</p>
+            ) : (
+              <div className="ai__bars" aria-label="Today's prompts, oldest first">
+                {changes.map((change, i) => {
+                  const lines = change.additions + change.deletions;
+                  return (
+                    <button
+                      key={change.id}
+                      className={`ai__bar${change.risky ? " ai__bar--risk" : ""}${change.undone_at ? " ai__bar--undone" : ""}`}
+                      onClick={onDigest}
+                      style={{ ["--i" as string]: i }}
+                      title={`${new Date(change.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} · ${
+                        change.repo.name
+                      }\n${change.prompt ?? "(prompt not captured)"}\n+${change.additions} −${change.deletions}${
+                        change.risky ? " · needs a look" : ""
+                      }${change.undone_at ? " · undone" : ""}`}
+                    >
+                      <b style={{ height: `${Math.max(4, (lines / most) * 100)}%` }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <ul className="ai__notes">
+              {claude.watched_files > 0 && (
+                <li>
+                  {claude.watched_files} {claude.watched_files === 1 ? "file was" : "files were"} changed by a shell command
+                  rather than the AI's edit tool, so it may include your own edits made at the same time.
+                </li>
+              )}
+              {claude.undone > 0 && (
+                <li>
+                  {claude.undone} undone {claude.undone === 1 ? "change is" : "changes are"} left out of these numbers.
+                </li>
+              )}
+              <li>Chats in the Claude app (Cowork) don't run hooks, so they show only once committed with an AI co-author.</li>
+            </ul>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+// Every project at a glance; a click shows it on Home, a double click opens its summary.
+function Projects({ cards, error, repoId, onAdd, onPick, onOpen }: {
+  cards: ProjectCard[] | null;
+  error: string | null;
+  repoId: number | null;
+  onAdd: () => void;
+  onPick: (repoId: number) => void;
+  onOpen: (repoId: number) => void;
+}) {
+  return (
+    <section className="card home__projects">
+      <header>
+        <h3>Projects</h3>
+        <button className="home__link" onClick={onAdd}>
+          + Add
+        </button>
+      </header>
+      {error && <p className="home__muted">{error}</p>}
+      {!cards && !error && <p className="home__muted">Reading your projects…</p>}
+      <ul>
+        {(cards ?? []).map((card) => (
+          <li key={card.id}>
+            <button
+              className={`project${card.id === repoId ? " project--current" : ""}`}
+              onClick={() => onPick(card.id)}
+              onDoubleClick={() => onOpen(card.id)}
+              disabled={!card.exists}
+              title={`${card.path}\nClick to show it here, double-click to open its summary`}
+              aria-pressed={card.id === repoId}
+            >
+              <span className="project__top">
+                <strong>{card.name}</strong>
+                {card.branch && <code>{card.branch}</code>}
+              </span>
+              {!card.exists ? (
+                <span className="project__warn">Folder missing: {card.path}</span>
+              ) : (
+                <>
+                  <span className="project__facts">
+                    {card.ahead !== null && card.base && (
+                      <span>
+                        {card.ahead} commit{card.ahead === 1 ? "" : "s"} ahead of {card.base}
+                      </span>
+                    )}
+                    {card.uncommitted > 0 && (
+                      <span className="project__warn">
+                        {card.uncommitted} file{card.uncommitted === 1 ? "" : "s"} not committed
+                      </span>
+                    )}
+                    <span className="project__muted">
+                      {card.branches} branch{card.branches === 1 ? "" : "es"}
+                    </span>
+                  </span>
+                  {card.last_commit ? (
+                    <span className="project__last">
+                      <span>{card.last_commit.subject}</span>
+                      <em>
+                        {card.last_commit.author}, {ago(card.last_commit.at)}
+                      </em>
+                    </span>
+                  ) : (
+                    <span className="project__muted">No commits yet</span>
+                  )}
+                </>
+              )}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -341,14 +550,9 @@ function MapPreview({ map, comparison, onView }: { map: ProjectMap | null; compa
     <section className="card home__section home__map">
       <header className="card__header">
         <h2 className="card__title">Project map</h2>
-        <span className="home__links">
-          <button className="card__link" onClick={() => onView("constellation")}>
-            Constellation ›
-          </button>
-          <button className="card__link" onClick={() => onView("map")}>
-            Full map ›
-          </button>
-        </span>
+        <button className="card__link" onClick={() => onView("map")}>
+          Full map ›
+        </button>
       </header>
       {!map ? (
         <p className="home__muted">Reading the project's folders…</p>

@@ -13,12 +13,17 @@
   min-width: 0;
 }
 
+/* The template's glass bar: blurred page behind it, one hairline under it. */
 .topbar {
   display: flex;
   flex: none;
   align-items: center;
   gap: 16px;
-  padding: 18px 24px 14px;
+  margin-bottom: 18px;
+  padding: 16px 24px 14px;
+  border-bottom: 1px solid var(--dd-glass-line);
+  background: var(--dd-glass);
+  backdrop-filter: blur(12px);
 }
 
 .topbar__title {
@@ -76,8 +81,10 @@
 
 .topbar__title h1 {
   margin: 0;
-  font-size: 22px;
-  letter-spacing: -0.01em;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
 }
 
 .topbar__title p {
@@ -151,6 +158,12 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.theme-button:hover {
+  border-color: var(--dd-line);
+  color: var(--dd-ink);
 }
 
 .switcher__label {
@@ -370,8 +383,10 @@
 
 .welcome h1 {
   margin: 0;
-  font-size: 28px;
-  letter-spacing: -0.02em;
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1.1;
 }
 
 .welcome > p {
@@ -466,8 +481,7 @@
   }
 
   .screen--changes > *,
-  .screen--flow > *,
-  .screen--constellation > * {
+  .screen--flow > * {
     height: calc(100dvh - 110px);
   }
 
@@ -512,11 +526,6 @@
 @media (max-width: 720px) {
   .screen {
     padding-bottom: 88px;
-  }
-
-  /* The sky and its details stack, and the page scrolls. */
-  .screen--constellation > * {
-    height: auto;
   }
 
   .clock {
@@ -568,20 +577,15 @@
   }
 }
 
+/* Still shows it is syncing, just without the blinking. */
+@media (prefers-reduced-motion: reduce) {
+  .sync__dot--running {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
 .notice .select {
   margin-top: 12px;
 }
 
-/* My day: the to-do list beside the calendar. */
-.planner {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
-  min-height: 0;
-}
-
-@media (max-width: 1000px) {
-  .planner {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}

@@ -2,6 +2,9 @@ import type {
   Agenda,
   AiStatus,
   AiProvider,
+  HostedConnect,
+  OllamaState,
+  OllamaUsage,
   AuthStatus,
   Candidate,
   RecordingHealth,
@@ -23,7 +26,6 @@ import type {
   SignIn,
   Summary,
   Sync,
-  Todo,
 } from "./types";
 
 // In dev, Vite forwards /api to `devdash serve` (see vite.config.ts).
@@ -73,6 +75,7 @@ export const api = {
   auth: () => get<AuthStatus>("/api/auth"),
   logIn: (username: string, password: string) =>
     request<AuthStatus>("/api/auth/login", "POST", { username, password }),
+  setUsername: (username: string, current: string) => request<AuthStatus>("/api/auth/username", "PUT", { username, current }),
   logOut: () => request<AuthStatus>("/api/auth/logout", "POST", {}),
   // Leave the username out to keep the current one.
   setPassword: (username: string | undefined, password: string, current?: string) =>
@@ -80,6 +83,7 @@ export const api = {
   preferences: () => get<Preferences>("/api/preferences"),
   setPreferences: (changes: PreferenceChange) => request<Preferences>("/api/preferences", "PUT", changes),
   resetShortcuts: () => request<Preferences>("/api/preferences/reset-shortcuts", "POST", {}),
+  resetHome: () => request<Preferences>("/api/preferences/reset-home", "POST", {}),
   repos: () => get<Repo[]>("/api/repos"),
   addRepo: (path: string, ai: AiToolId | null) => request<Repo>("/api/repos", "POST", { path, ai }),
   // The server only takes JSON for changes, so even a delete sends an empty object.
@@ -89,6 +93,7 @@ export const api = {
   aiTools: () => get<AiTool[]>("/api/ai-tools"),
   candidates: () => get<Candidate[]>("/api/repos/candidates"),
   recordingHealth: () => get<RecordingHealth>("/api/recording/health"),
+  repairRecording: () => request<RecordingHealth>("/api/recording/repair", "POST", {}),
   branches: (repoId: number) => get<Branches>(`/api/repos/${repoId}/branches`),
   sync: (repoId: number) => request<Sync>(`/api/repos/${repoId}/sync`, "POST", {}),
   state: (repoId: number, uncommitted: boolean) =>
@@ -123,6 +128,17 @@ export const api = {
     }),
   ai: () => get<AiStatus>("/api/ai"),
   aiProviders: () => get<AiStatus[]>("/api/ai/providers"),
+  ollama: () => get<OllamaState>("/api/ollama"),
+  // confirm: the person said yes to DevDash asking for their password (the Linux service).
+  ollamaStart: (confirm = false) => request<OllamaState>("/api/ollama/start", "POST", { confirm }),
+  ollamaStop: (confirm = false) => request<OllamaState>("/api/ollama/stop", "POST", { confirm }),
+  ollamaUsage: () => get<OllamaUsage>("/api/ollama/usage"),
+  ollamaPull: (name: string) => request<OllamaState>("/api/ollama/pull", "POST", { name }),
+  ollamaLoad: (name: string) => request<OllamaState>("/api/ollama/load", "POST", { name }),
+  ollamaUnload: (name: string) => request<OllamaState>("/api/ollama/unload", "POST", { name }),
+  ollamaRemove: (name: string) => request<OllamaState>("/api/ollama/remove", "POST", { name }),
+  connectHosted: (connection: HostedConnect) => request<AiStatus>("/api/ai/hosted", "POST", connection),
+  forgetHosted: () => request<AiStatus>("/api/ai/hosted", "DELETE", {}),
   signIn: (provider: AiProvider = "claude") => request<SignIn>("/api/ai/sign-in", "POST", { provider }),
   signInStatus: () => get<SignIn>("/api/ai/sign-in"),
   signInCode: (code: string) => request<SignIn>("/api/ai/sign-in/code", "POST", { code }),
@@ -136,11 +152,6 @@ export const api = {
     request<{ change: string; undone_at: string | null }>("/api/digest/undo", "POST", { change }),
   putBackChange: (change: string) =>
     request<{ change: string; undone_at: string | null }>("/api/digest/put-back", "POST", { change }),
-  todos: () => get<Todo[]>("/api/todos"),
-  addTodo: (text: string, repoId: number | null, branch: string | null) =>
-    request<Todo>("/api/todos", "POST", { text, repo_id: repoId, branch }),
-  changeTodo: (id: number, change: { text?: string; done?: boolean }) => request<Todo>(`/api/todos/${id}`, "PATCH", change),
-  removeTodo: (id: number) => request<void>(`/api/todos/${id}`, "DELETE", {}),
   calendar: (days: number, refresh = false) => get<Agenda>(`/api/calendar?days=${days}${refresh ? "&refresh=true" : ""}`),
   connectCalendar: (url: string) => request<Agenda>("/api/calendar", "PUT", { url }),
   disconnectCalendar: () => request<void>("/api/calendar", "DELETE", {}),

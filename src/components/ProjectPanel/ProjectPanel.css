@@ -34,10 +34,6 @@
   font-size: 12px;
 }
 
-.button--outline {
-  border: 1px solid var(--dd-line);
-}
-
 .panel__note {
   margin: 0;
   font-size: 12px;

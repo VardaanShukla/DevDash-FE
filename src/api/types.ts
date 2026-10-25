@@ -201,8 +201,24 @@ export type FunctionDetail = {
   explanation: FunctionExplanation | null;
 };
 
-// An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama) or Antigravity.
-export type AiProvider = "claude" | "codex" | "ollama" | "antigravity";
+// An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama), Antigravity,
+// or a model on your own server (hosted).
+export type AiProvider = "claude" | "codex" | "ollama" | "antigravity" | "hosted";
+
+// The server a hosted model is on, as DevDash shows it: never the key itself.
+export type HostedServer = {
+  url: string;
+  // OpenAI-style /v1/chat/completions (vLLM, llama.cpp, LM Studio), or Ollama's /api/chat.
+  style: "openai" | "ollama";
+  // The key's last four characters, "set", or null when there's none.
+  key: string | null;
+  headers: string[];
+  // Plain http to another computer: code goes over the network unencrypted.
+  unencrypted: boolean;
+};
+
+// Connecting a hosted model: the pasted curl command (read, never run), or the parts typed in.
+export type HostedConnect = { curl?: string; url?: string; key?: string; model?: string };
 export type AiModel = { id: string; label: string; note: string };
 
 export type AiStatus = {
@@ -224,6 +240,49 @@ export type AiStatus = {
   detail: string | null;
   // Claude Code's official installers for this computer, when it isn't installed.
   install?: { shell: string; command: string }[];
+  // hosted only: the connected server.
+  server?: HostedServer | null;
+};
+
+// Ollama on this computer, run from Settings → AI → Ollama.
+export type OllamaModel = {
+  name: string;
+  size: number; // bytes on disk
+  parameters: string | null; // e.g. "3.1B"
+  family: string | null;
+  loaded: boolean; // in memory now, so it answers at once
+  until: string | null; // when it's unloaded if unused
+};
+export type OllamaPull = { name: string; status: string; completed: number; total: number; error: string | null; done: boolean };
+export type OllamaState = {
+  installed: boolean;
+  running: boolean;
+  version: string | null;
+  host: string;
+  // Started from DevDash.
+  started_here: boolean;
+  // What runs it: Start and Stop go through the same thing. "service" is the Linux systemd
+  // service, which takes an administrator's password.
+  managed_by: "devdash" | "service" | "app" | "command" | null;
+  // Start and Stop ask for your password (the page asks for your OK first).
+  needs_admin: boolean;
+  // On this computer. An Ollama that OLLAMA_HOST points elsewhere is started and stopped there.
+  local: boolean;
+  models: OllamaModel[];
+  pulls: OllamaPull[];
+  install: { shell: string; command: string }[];
+};
+
+// What a local model costs the computer, for the chart on the Ollama page.
+export type OllamaUsage = {
+  // Empty when there's no GPU DevDash can read: the CPU is shown instead.
+  gpus: { name: string; percent: number; memory_used: number; memory_total: number }[];
+  cpu: number | null;
+  cores: number;
+  memory: { used: number; total: number } | null;
+  // Loaded in memory now, with the share on the GPU (0-1), as `ollama ps` shows it.
+  models: { name: string; size: number; on_gpu: number }[];
+  note: string | null;
 };
 
 export type SignIn = { state: "idle" | "waiting" | "signed_in" | "failed"; url: string | null; detail: string | null };
@@ -260,18 +319,6 @@ export type Summary = {
     branches: number;
   };
   explanation: ProjectExplanation | null;
-};
-
-export type Todo = {
-  id: number;
-  text: string;
-  // null: not tied to a project.
-  repo_id: number | null;
-  // null: the whole project.
-  branch: string | null;
-  created_at: string;
-  // null while open.
-  done_at: string | null;
 };
 
 export type CalendarEvent = {
@@ -317,6 +364,14 @@ export type RecordingHealth = {
   last_call: Record<string, string>;
   error_log: string;
   hook_log: string;
+  // What needs fixing for recording to work, in plain sentences; empty when it all works.
+  problems: string[];
+  // Some of the problems are hooks that Repair reinstalls.
+  repairable: boolean;
+  // Prompts left open for hours by a session that ended; closed just now with what was recorded.
+  stuck: number;
+  // The AI tools some project records.
+  tools: string[];
 };
 
 // A project found in a folder `devdash init` remembered, not added yet.
@@ -334,7 +389,11 @@ export type Preferences = {
   shortcuts: Record<string, string>;
   // Which AI writes explanations, and the model picked for each (missing: its cheapest).
   ai: { provider: AiProvider; models: Partial<Record<AiProvider, string>> };
+  // Home's widgets in the order shown, and the ones hidden.
+  home: HomeLayout;
 };
+export type Widget = "ai" | "projects" | "branch" | "flow" | "map" | "calendar";
+export type HomeLayout = { order: Widget[]; hidden: Widget[] };
 // What a change sends: only the settings to change; for the AI, the provider and/or the
 // models of the AIs to change ("" goes back to that AI's default).
 export type PreferenceChange = Omit<Partial<Preferences>, "ai"> & {
@@ -384,7 +443,13 @@ export type DigestChange = {
 };
 export type Digest = {
   date: string;
-  claude: { prompts: number; files: number; functions: number; additions: number; deletions: number; risky: number; uncommitted: number };
+  // Undone changes stay in `changes` but are left out of these numbers (`undone` counts them).
+  // watched_files: changed while a prompt ran but not by its Edit or Write (shell commands, or you).
+  claude: {
+    prompts: number; files: number; functions: number; additions: number; deletions: number; risky: number; uncommitted: number;
+    undone: number; watched_files: number;
+  };
   you: { files: number; additions: number; deletions: number; commits: number };
   changes: DigestChange[];
 };
+

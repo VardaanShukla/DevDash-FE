@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { api, ApiError } from "../../api/client";
 import type { AiTool, AiToolId, Repo } from "../../api/types";
 import "./ProjectPanel.css";
@@ -60,14 +61,14 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
         </label>
       )}
       {repo.ai ? (
-        <button className="button button--ghost button--outline" onClick={() => choose(null)} disabled={busy}>
+        <Button variant="outline" onClick={() => choose(null)} disabled={busy}>
           {busy ? "Saving…" : "Stop recording AI changes"}
-        </button>
+        </Button>
       ) : (
         tools.length <= 1 && (
-          <button className="button" onClick={() => choose("claude")} disabled={busy}>
+          <Button variant="gradient" onClick={() => choose("claude")} disabled={busy}>
             {busy ? "Saving…" : "Record AI changes"}
-          </button>
+          </Button>
         )
       )}
       {repo.ai === "codex" && <p className="panel__note">In Codex, type /hooks once and trust DevDash's hooks.</p>}

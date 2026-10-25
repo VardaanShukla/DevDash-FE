@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { api } from "../../api/client";
-import type { AiProvider, AiStatus, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
+import { ApiError, api } from "../../api/client";
+import type { AiProvider, AiStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
+import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
 
@@ -10,6 +11,11 @@ import "./Settings.css";
 // browser you sign in from gets the same.
 
 type Props = {
+  // The part of Settings on screen, picked in the side menu, and picking another.
+  section: SettingsSection;
+  onSection: (section: SettingsSection) => void;
+  // No side menu on screen (no project yet): Settings' parts are picked at its top.
+  standalone?: boolean;
   prefs: Preferences;
   onPrefs: (changes: PreferenceChange) => Promise<void>;
   onResetShortcuts: () => Promise<void>;
@@ -23,86 +29,758 @@ type Props = {
   onAiRefresh: () => void;
 };
 
-export default function Settings({ prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh }: Props) {
+export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh }: Props) {
   // An AI can be installed, signed in or out outside DevDash: look again on opening Settings.
   useEffect(() => onAiRefresh(), [onAiRefresh]);
+  const [list, setList] = useState<AiStatus[] | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
+  const loadAis = useCallback(() => {
+    api.aiProviders().then(
+      (found) => (setList(found), setListError(null)),
+      (e: Error) => setListError(e.message),
+    );
+  }, []);
+  const onAi = section === "ai" || section.startsWith("ai/");
+  useEffect(() => {
+    if (onAi) loadAis();
+  }, [onAi, loadAis, ai]);
+  const refreshAis = () => {
+    loadAis();
+    onAiRefresh();
+  };
+
+  const page = () => {
+    switch (section) {
+      case "general":
+        return <Account username={username} passwordSet={passwordSet} onSignOut={onSignOut} onPasswordSet={onPasswordSet} />;
+      case "appearance":
+        return <Appearance prefs={prefs} onPrefs={onPrefs} />;
+      case "recording":
+        return <Recording />;
+      case "shortcuts":
+        return <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />;
+      case "ai":
+        return <AiOverview list={list} error={listError} prefs={prefs} onOpen={onSection} />;
+      default:
+        return (
+          <AiPage
+            key={section}
+            provider={section.slice(3) as AiProvider}
+            status={list?.find((p) => p.provider === section.slice(3)) ?? null}
+            prefs={prefs}
+            onPrefs={onPrefs}
+            onRefresh={refreshAis}
+          />
+        );
+    }
+  };
 
   return (
-    <div className="settings">
-      <div className="settings__column">
-        <section className="card settings__section">
-          <h2>Appearance</h2>
-          <p className="settings__note">How DevDash looks in every browser you sign in from.</p>
-          <div className="settings__themes" role="radiogroup" aria-label="Theme">
-            {(["dark", "light"] as const).map((theme) => (
-              <button
-                key={theme}
-                role="radio"
-                aria-checked={prefs.theme === theme}
-                className={`settings__theme settings__theme--${theme}${prefs.theme === theme ? " settings__theme--on" : ""}`}
-                onClick={() => onPrefs({ theme })}
-              >
-                <span className="settings__preview" aria-hidden="true">
-                  <i />
-                  <b />
-                  <b />
-                  <b />
-                </span>
-                <strong>{theme === "dark" ? "Dark" : "Light"}</strong>
-                <span>{theme === "dark" ? "Deep navy, glowing night sky" : "Latte and cream, sunlit sky"}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+    <div className={`settings${standalone ? " settings--standalone" : ""}`}>
+      {/* With no side menu (no project yet, or a phone), Settings' parts are picked here. */}
+      <label className="settings__jump">
+        <span>Settings</span>
+        <select className="select" value={section} onChange={(event) => onSection(event.target.value as SettingsSection)}>
+          {SETTINGS_SECTIONS.flatMap((part) => [
+            <option key={part.id} value={part.id}>
+              {part.label}
+            </option>,
+            ...(part.children ?? []).map((child) => (
+              <option key={child.id} value={child.id}>
+                {`${part.label}: ${child.label}`}
+              </option>
+            )),
+          ])}
+        </select>
+      </label>
+      {page()}
+    </div>
+  );
+}
 
-        <section className="card settings__section">
-          <h2>Changes</h2>
-          <label className="settings__switch">
-            <input
-              type="checkbox"
-              checked={prefs.uncommitted === true}
-              onChange={(event) => onPrefs({ uncommitted: event.target.checked })}
-            />
-            <span className="settings__track" aria-hidden="true" />
-            <span>
-              <strong>Show uncommitted work from the start</strong>
-              <span className="settings__note">
-                Changes, This branch and the map include edits you haven't committed yet, every time DevDash opens. You
-                can still turn it on or off for a while with Uncommitted work at the top.
+function Appearance({ prefs, onPrefs }: { prefs: Preferences; onPrefs: Props["onPrefs"] }) {
+  return (
+    <div className="settings__pair">
+      <section className="card settings__section">
+        <h2>Theme</h2>
+        <div className="settings__themes" role="radiogroup" aria-label="Theme">
+          {(["dark", "light"] as const).map((theme) => (
+            <button
+              key={theme}
+              role="radio"
+              aria-checked={prefs.theme === theme}
+              className={`settings__theme settings__theme--${theme}${prefs.theme === theme ? " settings__theme--on" : ""}`}
+              onClick={() => onPrefs({ theme })}
+            >
+              <span className="settings__preview" aria-hidden="true">
+                <i />
+                <b />
+                <b />
+                <b />
               </span>
+              <strong>{theme === "dark" ? "Dark" : "Light"}</strong>
+              <span>{theme === "dark" ? "Black glass, white ink" : "Latte and cream, sunlit sky"}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card settings__section">
+        <h2>Changes</h2>
+        <label className="settings__switch">
+          <input
+            type="checkbox"
+            checked={prefs.uncommitted === true}
+            onChange={(event) => onPrefs({ uncommitted: event.target.checked })}
+          />
+          <span className="settings__track" aria-hidden="true" />
+          <span>
+            <strong>Show uncommitted work from the start</strong>
+            <span className="settings__note">
+              Changes, This branch and the map include edits you haven't committed yet, every time DevDash opens. You
+              can still turn it on or off for a while with Uncommitted work at the top.
             </span>
-          </label>
-        </section>
+          </span>
+        </label>
+      </section>
+    </div>
+  );
+}
 
-        <Account username={username} passwordSet={passwordSet} onSignOut={onSignOut} onPasswordSet={onPasswordSet} />
+// Every AI in one list: whether it's ready, and which writes explanations now. Each opens
+// its own page, with its setup and model.
+function AiOverview({ list, error, prefs, onOpen }: {
+  list: AiStatus[] | null;
+  error: string | null;
+  prefs: Preferences;
+  onOpen: (section: SettingsSection) => void;
+}) {
+  return (
+    <section className="card settings__section">
+      <h2>AI for explanations</h2>
+      <p className="settings__note">The AI that writes Explain and Summary. Each answer is saved, so it's asked for once.</p>
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+      <ul className="ai-list">
+        {ORDER.map((id) => {
+          const p = list?.find((item) => item.provider === id);
+          const state = badgeState(id, p);
+          const inUse = prefs.ai.provider === id;
+          return (
+            <li key={id}>
+              <button type="button" className="ai-list__row" onClick={() => onOpen(`ai/${id}` as SettingsSection)}>
+                <span className="ai-list__name">
+                  <strong>{p?.name ?? id}</strong>
+                  <span>{inUse && p?.model ? `${BLURB[id]} Model: ${p.model}.` : BLURB[id]}</span>
+                </span>
+                {inUse && <span className="ai-list__inuse">In use</span>}
+                <span className={`ai-picker__state ai-picker__state--${state}`} title={p?.detail ?? undefined}>
+                  {BADGE[state]}
+                </span>
+                <svg className="ai-list__go" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
 
-        <Recording />
+function badgeState(id: AiProvider, p: AiStatus | undefined | null): keyof typeof BADGE {
+  if (!p) return "checking";
+  if (!p.available) return id === "hosted" ? "connect" : "setup";
+  return p.signed_in === false ? "signin" : "ready";
+}
 
-        <section className="card settings__section">
-          <h2>AI for explanations</h2>
-          <p className="settings__note">
-            Pick the AI that writes DevDash's plain-English explanations, and its model. Smaller models use fewer tokens:
-            each AI starts on its cheapest model. Explanations are saved, so each is asked for once.
-            Recording what your AI coding tool changes is separate: connect it per project under Projects.
-          </p>
-          <AiPicker prefs={prefs} onPrefs={onPrefs} onActiveChange={onAiRefresh} active={ai} />
-        </section>
+// One AI's page: whether it writes explanations, getting it ready, and its model.
+function AiPage({ provider, status, prefs, onPrefs, onRefresh }: {
+  provider: AiProvider;
+  status: AiStatus | null;
+  prefs: Preferences;
+  onPrefs: Props["onPrefs"];
+  onRefresh: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const inUse = prefs.ai.provider === provider;
+  const state = badgeState(provider, status);
+  const use = () => onPrefs({ ai: { provider } }).then(onRefresh, (e: Error) => setError(e.message));
+
+  return (
+    <section className="card settings__section">
+      <div className="settings__head">
+        <span className="ai-page__title">
+          <h2>{status?.name ?? provider}</h2>
+          <span className={`ai-picker__state ai-picker__state--${state}`}>{BADGE[state]}</span>
+        </span>
+        {inUse ? (
+          <span className="ai-list__inuse">Writes explanations</span>
+        ) : (
+          <button className="settings__button" onClick={use}>
+            Use for explanations
+          </button>
+        )}
+      </div>
+      <p className="settings__note">{CAVEAT[provider] ?? BLURB[provider]}</p>
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+      {status?.available && (
+        <ModelPicker
+          ai={status}
+          chosen={prefs.ai.models[provider] ?? ""}
+          onPick={(model) => onPrefs({ ai: { models: { [provider]: model } } }).then(onRefresh, (e: Error) => setError(e.message))}
+        />
+      )}
+      {provider === "ollama" ? (
+        <OllamaManager onChange={onRefresh} />
+      ) : provider === "hosted" ? (
+        <HostedSetup ai={status} onConnected={onRefresh} />
+      ) : (
+        <ClaudeSetup ai={status} onRefresh={onRefresh} />
+      )}
+    </section>
+  );
+}
+
+// Models worth starting with, smallest first. Sizes are Ollama's download sizes.
+const SUGGESTED = [
+  { name: "qwen2.5:3b", size: "1.9 GB", note: "Small and quick. Enough for explanations." },
+  { name: "llama3.2:3b", size: "2.0 GB", note: "Meta's small model." },
+  { name: "qwen2.5-coder:7b", size: "4.7 GB", note: "Reads code better. Wants about 8 GB of memory." },
+];
+
+function bytes(count: number): string {
+  if (count >= 1e9) return `${(count / 1e9).toFixed(1)} GB`;
+  if (count >= 1e6) return `${Math.round(count / 1e6)} MB`;
+  return `${Math.round(count / 1e3)} KB`;
+}
+
+// Ollama run from the page: start or stop it, download models, and load one into memory
+// (Run) or free it (Stop), as `ollama run` and `ollama stop` do.
+function OllamaManager({ onChange }: { onChange: () => void }) {
+  const [state, setState] = useState<OllamaState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // The action under way, such as "start" or "load:qwen2.5:3b".
+  const [busy, setBusy] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
+  // Start or Stop waiting for your OK, because Linux will ask for your password.
+  const [asking, setAsking] = useState<Switch | null>(null);
+  const load = useCallback(() => {
+    api.ollama().then(
+      (found) => (setState(found), setError(null)),
+      (e: Error) => setError(e.message),
+    );
+  }, []);
+  useEffect(load, [load]);
+
+  // While a download runs, read its progress every second and a half; when it ends, the
+  // model list (and the model picker) are read again.
+  const pulling = Boolean(state?.pulls.some((p) => !p.done));
+  const wasPulling = useRef(false);
+  useEffect(() => {
+    if (wasPulling.current && !pulling) onChange();
+    wasPulling.current = pulling;
+    if (!pulling) return;
+    const timer = window.setInterval(load, 1500);
+    return () => window.clearInterval(timer);
+  }, [pulling, load, onChange]);
+
+  const act = (key: string, call: () => Promise<OllamaState>) => {
+    setBusy(key);
+    setError(null);
+    call().then(
+      (found) => {
+        setState(found);
+        setBusy(null);
+        onChange();
+      },
+      (e: Error) => {
+        setBusy(null);
+        // The backend wants the OK the page asks for before Linux asks for a password.
+        if (e instanceof ApiError && e.status === 409 && (key === "start" || key === "stop")) setAsking(key);
+        else setError(e.message);
+      },
+    );
+  };
+  const download = (model: string) => act(`pull:${model}`, () => api.ollamaPull(model));
+  const toggle = (verb: Switch, confirmed = false) => {
+    setAsking(null);
+    act(verb, () => (verb === "start" ? api.ollamaStart(confirmed) : api.ollamaStop(confirmed)));
+  };
+  const press = (verb: Switch) => (state?.needs_admin ? (setError(null), setAsking(verb)) : toggle(verb));
+
+  if (!state) {
+    return error ? <p className="settings__message settings__message--error">{error}</p> : <p className="settings__note">Checking Ollama…</p>;
+  }
+  const installed = new Set(state.models.map((m) => m.name));
+  const failed = error && <p className="settings__message settings__message--error">{error}</p>;
+
+  if (!state.installed) {
+    return (
+      <div className="ollama">
+        <p className="ollama__status">
+          <span className="ollama__dot" aria-hidden="true" />
+          Ollama isn't installed on this computer.
+        </p>
+        <p className="settings__note">Install it once, then start it here:</p>
+        {state.install.map((c) => (
+          <code key={c.command} className="ollama__command">
+            {c.command}
+          </code>
+        ))}
+        <div>
+          <button className="settings__button settings__button--quiet" onClick={load}>
+            Check again
+          </button>
+        </div>
+        {failed}
+      </div>
+    );
+  }
+
+  const main = (
+    <>
+      <div className="ollama__bar">
+        <p className="ollama__status">
+          <span className={`ollama__dot${state.running ? " ollama__dot--on" : ""}`} aria-hidden="true" />
+          <span>
+            {state.running ? (
+              <>
+                Ollama {state.version} is running at <code>{state.host}</code>
+              </>
+            ) : (
+              "Ollama is installed but not running."
+            )}
+            {state.local && state.managed_by && (state.running || state.managed_by !== "command") && (
+              <span className="ollama__by">{MANAGED_BY[state.managed_by]}</span>
+            )}
+          </span>
+        </p>
+        {!state.local ? (
+          <span className="settings__note">On another computer: start and stop it there.</span>
+        ) : state.running ? (
+          <button className="settings__button settings__button--quiet" disabled={busy === "stop" || asking !== null} onClick={() => press("stop")}>
+            {busy === "stop" ? "Stopping…" : "Stop Ollama"}
+          </button>
+        ) : (
+          <button className="settings__button" disabled={busy === "start" || asking !== null} onClick={() => press("start")}>
+            {busy === "start" ? "Starting…" : "Start Ollama"}
+          </button>
+        )}
+      </div>
+      {asking && <AdminConfirm verb={asking} onContinue={() => toggle(asking, true)} onCancel={() => setAsking(null)} onCheck={load} />}
+      {failed}
+      {state.local && state.running && <UsageChart />}
+    </>
+  );
+
+  if (!state.running) return <div className="ollama">{main}</div>;
+
+  return (
+    <div className="ollama ollama--split">
+      <div className="ollama__column">
+        {main}
+        <h3 className="ollama__heading">Models on this computer</h3>
+        {state.models.length === 0 ? (
+          <p className="settings__note">No models yet. Download one below: a small one is enough for explanations.</p>
+        ) : (
+          <table className="ollama__models">
+            <thead>
+              <tr>
+                <th scope="col">Model</th>
+                <th scope="col">Size</th>
+                <th scope="col" className="ollama__params">Parameters</th>
+                <th scope="col">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.models.map((m) => (
+                <tr key={m.name}>
+                  <td>
+                    <code>{m.name}</code>
+                    {m.loaded && <span className="ollama__loaded">Running</span>}
+                  </td>
+                  <td>{bytes(m.size)}</td>
+                  <td className="ollama__params">{m.parameters ?? ""}</td>
+                  <td>
+                    <div className="ollama__actions">
+                      {removing === m.name ? (
+                        <>
+                          <span>Delete from disk?</span>
+                          <button className="settings__button settings__button--danger" onClick={() => (setRemoving(null), act(`remove:${m.name}`, () => api.ollamaRemove(m.name)))}>
+                            Delete
+                          </button>
+                          <button className="settings__button settings__button--quiet" onClick={() => setRemoving(null)}>
+                            Keep
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {m.loaded ? (
+                            <button className="settings__button settings__button--quiet" disabled={busy !== null} onClick={() => act(`unload:${m.name}`, () => api.ollamaUnload(m.name))}>
+                              {busy === `unload:${m.name}` ? "Stopping…" : "Stop"}
+                            </button>
+                          ) : (
+                            <button className="settings__button settings__button--quiet" disabled={busy !== null} onClick={() => act(`load:${m.name}`, () => api.ollamaLoad(m.name))}>
+                              {busy === `load:${m.name}` ? "Loading…" : "Run"}
+                            </button>
+                          )}
+                          <button className="settings__button settings__button--quiet" disabled={busy !== null} onClick={() => setRemoving(m.name)}>
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />
+      <div className="ollama__column">
+        <h3 className="ollama__heading">Download a model</h3>
+        {state.pulls.length > 0 && (
+          <ul className="ollama__pulls">
+            {state.pulls.map((p) => {
+              const share = p.total ? Math.round((p.completed / p.total) * 100) : 0;
+              return (
+                <li key={p.name}>
+                  <span className="ollama__pull-top">
+                    <code>{p.name}</code>
+                    <span>{p.error ? "Download failed" : p.done ? "Downloaded" : p.total ? `${bytes(p.completed)} of ${bytes(p.total)}` : p.status}</span>
+                  </span>
+                  {!p.done && (
+                    <progress className="ollama__progress" max={100} value={p.total ? share : undefined} aria-label={`Downloading ${p.name}`} />
+                  )}
+                  {p.error && (
+                    <span className="settings__message settings__message--error">
+                      {p.error}{" "}
+                      <button className="ollama__retry" onClick={() => download(p.name)}>
+                        Try again
+                      </button>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <form
+          className="ollama__download"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (name.trim()) download(name.trim());
+            setName("");
+          }}
+        >
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Model name, like qwen2.5:3b"
+            aria-label="Model name"
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <button className="settings__button" disabled={!name.trim()}>
+            Download
+          </button>
+        </form>
+        <ul className="ollama__suggested">
+          {SUGGESTED.map((s) => (
+            <li key={s.name}>
+              <span>
+                <code>{s.name}</code> <span className="ollama__size">{s.size}</span>
+                <span className="settings__note">{s.note}</span>
+              </span>
+              <button
+                className="settings__button settings__button--quiet"
+                disabled={installed.has(s.name) || state.pulls.some((p) => p.name === s.name && !p.done)}
+                onClick={() => download(s.name)}
+              >
+                {installed.has(s.name) ? "Downloaded" : state.pulls.some((p) => p.name === s.name && !p.done) ? "Downloading…" : "Download"}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className="settings__note">
+          More models are listed at{" "}
+          <a href="https://ollama.com/library" target="_blank" rel="noreferrer">
+            ollama.com/library
+          </a>
+          . Type any name from there above.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type Switch = "start" | "stop";
+
+// What Start and Stop go through, under the status.
+const MANAGED_BY: Record<NonNullable<OllamaState["managed_by"]>, string> = {
+  devdash: "Started from DevDash",
+  service: "Runs as a Linux system service",
+  app: "Runs from the Ollama app",
+  command: "Started with ollama serve",
+};
+
+// Before DevDash asks Linux to start or stop Ollama's system service as administrator:
+// exactly what runs, what it changes, and where the password goes. The backend refuses
+// the step until this was answered, so nothing reaches the password window unseen.
+function AdminConfirm({ verb, onContinue, onCancel, onCheck }: {
+  verb: Switch;
+  onContinue: () => void;
+  onCancel: () => void;
+  onCheck: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const yes = useRef<HTMLButtonElement>(null);
+  useEffect(() => yes.current?.focus(), []);
+  const command = `systemctl ${verb} ollama`;
+  const copy = () =>
+    navigator.clipboard.writeText(`sudo ${command}`).then(
+      () => setCopied(true),
+      () => setCopied(false),
+    );
+
+  return (
+    <div className="ollama__ask" role="group" aria-labelledby="ollama-ask-title" onKeyDown={(event) => event.key === "Escape" && onCancel()}>
+      <h4 id="ollama-ask-title">{verb === "stop" ? "Stop" : "Start"} Ollama's system service?</h4>
+      <p className="settings__note">
+        Ollama was installed as a Linux service, so only an administrator can {verb} it. Here is everything DevDash will do.
+      </p>
+      <dl className="ollama__facts">
+        <dt>What runs</dt>
+        <dd>
+          <code>{command}</code>, as administrator. The command is fixed: nothing you type goes into it.
+        </dd>
+        <dt>What it changes</dt>
+        <dd>
+          Only the Ollama service. Your models stay on disk, and no files or other services are touched.
+          {verb === "stop" && " Explanations from Ollama pause until you start it again."}
+        </dd>
+        <dt>Your password</dt>
+        <dd>Linux asks for it in its own window. DevDash never sees it and never keeps it.</dd>
+      </dl>
+      <div className="ollama__ask-actions">
+        <button ref={yes} className="settings__button" onClick={onContinue}>
+          Continue
+        </button>
+        <button className="settings__button settings__button--quiet" onClick={copy}>
+          {copied ? "Copied" : "Copy the command"}
+        </button>
+        <button className="settings__button settings__button--quiet" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      {copied && (
+        <p className="settings__note">
+          Run <code>sudo {command}</code> in a terminal, then{" "}
+          <button className="ollama__retry" onClick={onCheck}>
+            check again
+          </button>
+          .
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Two minutes of samples, one every two seconds.
+const SAMPLES = 60;
+const EVERY = 2000;
+
+// The load a local model puts on the computer: the GPU when DevDash can read one (NVIDIA or
+// AMD), the CPU otherwise, with the memory it holds and the models loaded now.
+function UsageChart() {
+  const [usage, setUsage] = useState<OllamaUsage | null>(null);
+  const [history, setHistory] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let stopped = false;
+    const read = () => {
+      if (document.hidden) return;
+      api.ollamaUsage().then(
+        (found) => {
+          if (stopped) return;
+          setUsage(found);
+          setError(null);
+          const value = found.gpus.length ? average(found.gpus.map((g) => g.percent)) : found.cpu;
+          if (value !== null) setHistory((before) => [...before, value].slice(-SAMPLES));
+        },
+        (e: Error) => !stopped && setError(e.message),
+      );
+    };
+    read();
+    const timer = window.setInterval(read, EVERY);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  if (!usage) {
+    return error ? <p className="settings__message settings__message--error">{error}</p> : null;
+  }
+  const gpu = usage.gpus.length > 0;
+  const what = gpu ? (usage.gpus.length === 1 ? usage.gpus[0].name : `${usage.gpus.length} GPUs`) : `${usage.cores} CPU cores`;
+  const memory = gpu
+    ? { used: sum(usage.gpus.map((g) => g.memory_used)), total: sum(usage.gpus.map((g) => g.memory_total)), label: "Video memory" }
+    : usage.memory && { ...usage.memory, label: "Memory" };
+  const now = history.at(-1);
+
+  return (
+    <section className="usage" aria-labelledby="usage-title">
+      <div className="usage__head">
+        <span>
+          <h3 id="usage-title" className="ollama__heading">
+            {gpu ? "GPU use" : "CPU use"}
+          </h3>
+          <span className="settings__note">{what}</span>
+        </span>
+        {now !== undefined && <strong className="usage__now">{Math.round(now)}%</strong>}
+      </div>
+      <LineChart values={history} label={gpu ? "GPU use" : "CPU use"} />
+      {memory && memory.total > 0 && (
+        <div className="usage__memory">
+          <span className="usage__memory-top">
+            <span>{memory.label}</span>
+            <span>
+              {bytes(memory.used)} of {bytes(memory.total)}
+            </span>
+          </span>
+          <meter min={0} max={memory.total} value={memory.used} aria-label={`${memory.label} in use`} />
+        </div>
+      )}
+      {usage.models.length > 0 ? (
+        <ul className="usage__models">
+          {usage.models.map((m) => (
+            <li key={m.name}>
+              <code>{m.name}</code>
+              <span>{m.size > 0 ? bytes(m.size) : ""}</span>
+              <span>{placement(m.on_gpu)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="settings__note">No model is loaded now. Press Run on one below, or ask for an explanation.</p>
+      )}
+      {usage.note && <p className="settings__note">{usage.note}</p>}
+    </section>
+  );
+}
+
+function average(values: number[]): number {
+  return sum(values) / values.length;
+}
+
+function sum(values: number[]): number {
+  return values.reduce((total, value) => total + value, 0);
+}
+
+// Where a loaded model sits, as `ollama ps` says it.
+function placement(onGpu: number): string {
+  if (onGpu >= 0.995) return "All on the GPU";
+  if (onGpu <= 0.005) return "On the CPU";
+  return `${Math.round(onGpu * 100)}% on the GPU`;
+}
+
+// A 0 to 100% line over the last two minutes, newest on the right. Hover for a reading.
+function LineChart({ values, label }: { values: number[]; label: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(600);
+  const [hover, setHover] = useState<number | null>(null);
+  useEffect(() => {
+    const node = box.current;
+    if (!node) return;
+    const watch = new ResizeObserver(([entry]) => setWidth(Math.max(240, entry.contentRect.width)));
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, []);
+
+  const height = 150;
+  const left = 36;
+  const right = 10;
+  const top = 10;
+  const bottom = 22;
+  const x = (i: number) => left + ((width - left - right) * (SAMPLES - values.length + i)) / (SAMPLES - 1);
+  const y = (v: number) => top + (height - top - bottom) * (1 - Math.min(100, Math.max(0, v)) / 100);
+  const line = values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const area = values.length > 1 ? `${line}L${x(values.length - 1).toFixed(1)},${y(0)}L${x(0).toFixed(1)},${y(0)}Z` : "";
+  const last = values.length - 1;
+  const shown = hover ?? last;
+
+  const pick = (event: PointerEvent<SVGSVGElement>) => {
+    if (values.length === 0) return;
+    const at = event.clientX - event.currentTarget.getBoundingClientRect().left;
+    const i = Math.round(((at - left) * (SAMPLES - 1)) / (width - left - right)) - (SAMPLES - values.length);
+    setHover(Math.min(last, Math.max(0, i)));
+  };
+  const ago = (i: number) => {
+    const seconds = ((last - i) * EVERY) / 1000;
+    return seconds === 0 ? "now" : `${seconds} s ago`;
+  };
+
+  return (
+    <div className="usage__chart" ref={box}>
+      <svg
+        width={width}
+        height={height}
+        role="img"
+        aria-label={values.length ? `${label} over the last two minutes, ${Math.round(values[last])}% now` : `${label}: reading`}
+        onPointerMove={pick}
+        onPointerLeave={() => setHover(null)}
+      >
+        {[0, 50, 100].map((tick) => (
+          <g key={tick}>
+            <line className="usage__grid" x1={left} x2={width - right} y1={y(tick)} y2={y(tick)} />
+            <text className="usage__tick" x={left - 8} y={y(tick)} dy="0.32em" textAnchor="end">
+              {tick}%
+            </text>
+          </g>
+        ))}
+        <text className="usage__tick" x={left} y={height - 4}>
+          2 min ago
+        </text>
+        <text className="usage__tick" x={width - right} y={height - 4} textAnchor="end">
+          now
+        </text>
+        {area && <path className="usage__area" d={area} />}
+        {values.length > 1 && <path className="usage__line" d={line} />}
+        {hover !== null && <line className="usage__cross" x1={x(hover)} x2={x(hover)} y1={top} y2={y(0)} />}
+        {values.length > 0 && <circle className="usage__dot" cx={x(shown)} cy={y(values[shown])} r={4.5} />}
+      </svg>
+      {values.length < 2 && <span className="usage__wait">Reading…</span>}
+      {hover !== null && (
+        <span className="usage__tip" style={{ left: Math.min(width - 90, Math.max(0, x(hover) - 45)), top: Math.max(0, y(values[hover]) - 52) }}>
+          <strong>{Math.round(values[hover])}%</strong>
+          <span>{ago(hover)}</span>
+        </span>
+      )}
     </div>
   );
 }
 
 // What each AI is, in a line.
 const BLURB: Record<AiProvider, string> = {
-  claude: "Anthropic's Claude Code. Uses your Claude plan.",
-  codex: "OpenAI's Codex CLI. Uses your ChatGPT plan.",
-  ollama: "A model running on this computer. Free and private, but slower.",
-  antigravity:
-    "Google's Antigravity CLI. Uses your Google account. Experimental: the request goes on its command line, where other accounts on this computer can see it.",
+  claude: "Uses your Claude plan.",
+  codex: "Uses your ChatGPT plan.",
+  ollama: "On this computer. Free and private.",
+  antigravity: "Uses your Google account. Experimental.",
+  hosted: "Ollama, vLLM, llama.cpp or LM Studio.",
 };
-const ORDER: AiProvider[] = ["claude", "codex", "ollama", "antigravity"];
+// Shown under the picker for the one picked, when there's more to know.
+const CAVEAT: Partial<Record<AiProvider, string>> = {
+  antigravity: "Antigravity is experimental: the request goes on its command line, where other accounts on this computer can see it.",
+};
+// The badge on each AI's card: a word or two; the setup below says the rest.
+const BADGE = { checking: "Checking…", ready: "Ready", signin: "Sign in", setup: "Set up", connect: "Connect" };
+const ORDER: AiProvider[] = ["claude", "codex", "ollama", "antigravity", "hosted"];
 
 // Choosing the AI that writes explanations: each with whether it's ready, the setup steps
 // for the one picked (install, sign in), and its model. Also on the first-run screen.
@@ -138,7 +816,11 @@ export function AiPicker({ prefs, onPrefs, onActiveChange, active }: {
       <div className="ai-picker__options" role="radiogroup" aria-label="AI for explanations">
         {ORDER.map((id) => {
           const p = list?.find((item) => item.provider === id);
-          const state = !p ? "checking" : !p.available ? "setup" : p.signed_in === false ? "signin" : "ready";
+          const state = !p
+            ? "checking"
+            : !p.available
+              ? id === "hosted" ? "connect" : "setup"
+              : p.signed_in === false ? "signin" : "ready";
           return (
             <button
               key={id}
@@ -150,8 +832,8 @@ export function AiPicker({ prefs, onPrefs, onActiveChange, active }: {
             >
               <span className="ai-picker__top">
                 <strong>{p?.name ?? id}</strong>
-                <span className={`ai-picker__state ai-picker__state--${state}`}>
-                  {state === "checking" ? "Checking…" : state === "ready" ? "Ready" : state === "signin" ? "Sign in" : p?.detail?.replace(/^Install the /, "Install ") ?? "Set up"}
+                <span className={`ai-picker__state ai-picker__state--${state}`} title={p?.detail ?? undefined}>
+                  {BADGE[state]}
                 </span>
               </span>
               <span className="ai-picker__blurb">{BLURB[id]}</span>
@@ -160,7 +842,12 @@ export function AiPicker({ prefs, onPrefs, onActiveChange, active }: {
         })}
       </div>
       {error && <p className="settings__message settings__message--error">{error}</p>}
-      <ClaudeSetup ai={current} onRefresh={refresh} />
+      {CAVEAT[chosen] && <p className="settings__note">{CAVEAT[chosen]}</p>}
+      {chosen === "hosted" ? (
+        <HostedSetup ai={current} onConnected={refresh} />
+      ) : (
+        <ClaudeSetup ai={current} onRefresh={refresh} />
+      )}
       {current?.available && (
         <ModelPicker
           key={current.provider}
@@ -201,7 +888,7 @@ function ModelPicker({ ai, chosen, onPick }: { ai: AiStatus; chosen: string; onP
           {ai.models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
-              {m.id === ai.default_model ? " · default, fewest tokens" : ""}
+              {m.id === ai.default_model ? (ai.provider === "hosted" ? " · default" : " · default, fewest tokens") : ""}
             </option>
           ))}
           <option value="__other">Another model (type its name)…</option>
@@ -214,59 +901,163 @@ function ModelPicker({ ai, chosen, onPick }: { ai: AiStatus; chosen: string; onP
           onChange={(event) => setText(event.target.value)}
           onBlur={save}
           onKeyDown={(event) => event.key === "Enter" && save()}
-          placeholder={ai.provider === "ollama" ? "e.g. llama3.2:3b" : ai.provider === "antigravity" ? "a model name, as agy's /model shows it" : "model name"}
+          placeholder={ai.provider === "ollama" || ai.provider === "hosted" ? "e.g. llama3.2:3b" : ai.provider === "antigravity" ? "a model name, as agy's /model shows it" : "model name"}
           spellCheck={false}
           autoFocus
         />
       )}
       <p className="settings__note">
         {!typing && note ? `${note} ` : ""}
-        {ai.provider === "ollama"
-          ? "Local models use no tokens; smaller ones answer faster."
+        {ai.provider === "ollama" || ai.provider === "hosted"
+          ? "Your own models use no tokens; smaller ones answer faster."
           : "Smaller models use fewer tokens; bigger ones explain tricky code better."}
       </p>
     </div>
   );
 }
 
+const CURL_EXAMPLE = `curl http://your-server:8000/v1/chat/completions \\
+  -H "Authorization: Bearer YOUR_KEY" \\
+  -d '{"model": "qwen2.5:7b", "messages": [...]}'`;
+
+// Connecting a model on your own server: paste the curl command that reaches it, or type its
+// address, key and model. DevDash reads the command, never runs it, asks the model a test
+// question, and keeps the key to itself: the page only ever sees its last four characters.
+function HostedSetup({ ai, onConnected }: { ai: AiStatus | null; onConnected: () => void }) {
+  const server = ai?.server ?? null;
+  const [editing, setEditing] = useState(false);
+  const [typed, setTyped] = useState(false);
+  const [curl, setCurl] = useState("");
+  const [url, setUrl] = useState("");
+  const [key, setKey] = useState("");
+  const [model, setModel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    const connection = typed ? { url: url.trim(), key: key.trim() || undefined, model: model.trim() || undefined } : { curl };
+    api.connectHosted(connection).then(
+      (status) => {
+        // The paste holds the key: don't keep it on the page.
+        setCurl("");
+        setKey("");
+        setBusy(false);
+        setEditing(false);
+        setMessage({ ok: true, text: `Connected. ${status.model} answered, and now writes explanations.` });
+        onConnected();
+      },
+      (e: Error) => {
+        setBusy(false);
+        setMessage({ ok: false, text: e.message });
+      },
+    );
+  };
+  const forget = () =>
+    api.forgetHosted().then(
+      () => (setMessage(null), onConnected()),
+      (e: Error) => setMessage({ ok: false, text: e.message }),
+    );
+
+  return (
+    <div className="hosted">
+      {server && (
+        <div className="hosted__server">
+          <span>
+            {ai?.available ? "Connected to" : "Can't reach"} <code>{server.url}</code>
+            {server.key ? <> · key {server.key}</> : " · no key"}
+            {server.style === "ollama" ? " · Ollama API" : " · OpenAI-style API"}
+          </span>
+          <span className="hosted__actions">
+            {!editing && (
+              <button type="button" className="settings__button settings__button--quiet" onClick={() => setEditing(true)}>
+                Change
+              </button>
+            )}
+            <button type="button" className="settings__button settings__button--quiet" onClick={forget}>
+              Disconnect
+            </button>
+          </span>
+        </div>
+      )}
+      {server && !ai?.available && ai?.detail && <p className="settings__message settings__message--error">{ai.detail}</p>}
+      {server?.unencrypted && (
+        <p className="hosted__warning">
+          This address is plain http to another computer, so your code goes over the network unencrypted. Use https, or
+          a private network such as a VPN or Tailscale.
+        </p>
+      )}
+      {(!server || editing) && (
+        <form className="settings__form" onSubmit={submit}>
+          {typed ? (
+            <>
+              <label>
+                <span>Address</span>
+                <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="http://your-server:8000/v1" spellCheck={false} />
+              </label>
+              <label>
+                <span>API key (if it needs one)</span>
+                <input type="password" value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
+              </label>
+              <label>
+                <span>Model (leave empty for the first it lists)</span>
+                <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. qwen2.5:7b" spellCheck={false} />
+              </label>
+            </>
+          ) : (
+            <label>
+              <span>The curl command that reaches your model</span>
+              <textarea
+                className="hosted__curl"
+                value={curl}
+                onChange={(e) => setCurl(e.target.value)}
+                placeholder={CURL_EXAMPLE}
+                rows={5}
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </label>
+          )}
+          <p className="settings__note">
+            DevDash only reads the command, it never runs it. The key stays in DevDash on this computer and isn't shown
+            again.
+          </p>
+          <div className="settings__form-end">
+            <button type="button" className="hosted__switch" onClick={() => (setTyped(!typed), setMessage(null))}>
+              {typed ? "Paste a curl command instead" : "Or type the address, key and model"}
+            </button>
+            <span className="hosted__actions">
+              {editing && (
+                <button type="button" className="settings__button settings__button--quiet" onClick={() => setEditing(false)}>
+                  Cancel
+                </button>
+              )}
+              <button className="settings__button" disabled={busy || (typed ? !url.trim() : !curl.trim())}>
+                {busy ? "Testing…" : "Test and connect"}
+              </button>
+            </span>
+          </div>
+          {busy && <p className="settings__note">Asking the model a test question. The first answer can take a minute while the server loads it.</p>}
+        </form>
+      )}
+      {message && <p className={`settings__message${message.ok ? "" : " settings__message--error"}`}>{message.text}</p>}
+    </div>
+  );
+}
+
+// Your account: who's signed in, changing the name and the password, and signing out.
 function Account({ username, passwordSet, onSignOut, onPasswordSet }: {
   username?: string;
   passwordSet: boolean;
   onSignOut?: () => void;
   onPasswordSet: () => void;
 }) {
-  const [current, setCurrent] = useState("");
-  const [password, setPassword] = useState("");
-  const [again, setAgain] = useState("");
-  const [name, setName] = useState("");
-  const [show, setShow] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    if (password !== again) return setMessage({ ok: false, text: "The two new passwords don't match." });
-    setBusy(true);
-    api.setPassword(passwordSet ? undefined : name.trim(), password, passwordSet ? current : undefined).then(
-      () => {
-        setMessage({ ok: true, text: passwordSet ? "Password changed. Other browsers are signed out." : "Password set. DevDash now asks for it." });
-        setCurrent("");
-        setPassword("");
-        setAgain("");
-        setBusy(false);
-        onPasswordSet();
-      },
-      (e: Error) => {
-        setMessage({ ok: false, text: e.message });
-        setBusy(false);
-      },
-    );
-  };
-
   return (
     <section className="card settings__section">
       <div className="settings__head">
-        <h2>Account</h2>
+        <h2>Your account</h2>
         {onSignOut && (
           <button className="settings__button settings__button--quiet" onClick={onSignOut}>
             Sign out
@@ -282,49 +1073,138 @@ function Account({ username, passwordSet, onSignOut, onPasswordSet }: {
           "No password yet: anyone who can open this computer's DevDash address can use it. Set one to lock it."
         )}
       </p>
-      <form className="settings__form" onSubmit={submit}>
-        {!passwordSet && (
-          <label>
-            <span>Username</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" />
-          </label>
-        )}
-        {passwordSet && (
-          <label>
-            <span>Current password</span>
-            <input type={show ? "text" : "password"} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
-          </label>
-        )}
-        <label>
-          <span>New password</span>
-          <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-        </label>
-        <label>
-          <span>New password again</span>
-          <input type={show ? "text" : "password"} value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" />
-        </label>
-        <div className="settings__form-end">
-          <label className="settings__check">
-            <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show
-          </label>
-          <button
-            className="settings__button"
-            disabled={busy || !password || !again || (passwordSet ? !current : !name.trim())}
-          >
-            {passwordSet ? "Change password" : "Set password"}
-          </button>
-        </div>
-        {message && <p className={`settings__message${message.ok ? "" : " settings__message--error"}`}>{message.text}</p>}
-        <p className="settings__note">Forgot it? Run <code>devdash password</code> in a terminal to set a new one.</p>
-      </form>
+      <div className="settings__forms">
+        {passwordSet && <NameForm username={username} onChanged={onPasswordSet} />}
+        <PasswordForm passwordSet={passwordSet} onChanged={onPasswordSet} />
+      </div>
+      <p className="settings__note">
+        Forgot the password? Run <code>devdash password</code> in a terminal to set a new one.
+      </p>
     </section>
+  );
+}
+
+function NameForm({ username, onChanged }: { username?: string; onChanged: () => void }) {
+  const [name, setName] = useState(username ?? "");
+  const [current, setCurrent] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => setName(username ?? ""), [username]);
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    api.setUsername(name.trim(), current).then(
+      () => {
+        setMessage({ ok: true, text: "Name saved. Sign in with it from now on." });
+        setCurrent("");
+        setBusy(false);
+        onChanged();
+      },
+      (e: Error) => {
+        setMessage({ ok: false, text: e.message });
+        setBusy(false);
+      },
+    );
+  };
+
+  return (
+    <form className="settings__form" onSubmit={submit}>
+      <h3>Name</h3>
+      <label>
+        <span>Username</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" maxLength={40} />
+      </label>
+      <label>
+        <span>Current password</span>
+        <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
+      </label>
+      <div className="settings__form-end">
+        <span />
+        <button className="settings__button" disabled={busy || !current || !name.trim() || name.trim() === username}>
+          {busy ? "Saving…" : "Save name"}
+        </button>
+      </div>
+      {message && <p className={`settings__message${message.ok ? "" : " settings__message--error"}`}>{message.text}</p>}
+    </form>
+  );
+}
+
+function PasswordForm({ passwordSet, onChanged }: { passwordSet: boolean; onChanged: () => void }) {
+  const [current, setCurrent] = useState("");
+  const [password, setPassword] = useState("");
+  const [again, setAgain] = useState("");
+  const [name, setName] = useState("");
+  const [show, setShow] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const short = password.length > 0 && password.length < 8;
+  const mismatch = again.length > 0 && password !== again;
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (password !== again) return setMessage({ ok: false, text: "The two new passwords don't match." });
+    setBusy(true);
+    api.setPassword(passwordSet ? undefined : name.trim(), password, passwordSet ? current : undefined).then(
+      () => {
+        setMessage({ ok: true, text: passwordSet ? "Password changed. Other browsers are signed out." : "Password set. DevDash now asks for it." });
+        setCurrent("");
+        setPassword("");
+        setAgain("");
+        setBusy(false);
+        onChanged();
+      },
+      (e: Error) => {
+        setMessage({ ok: false, text: e.message });
+        setBusy(false);
+      },
+    );
+  };
+
+  return (
+    <form className="settings__form" onSubmit={submit}>
+      <h3>{passwordSet ? "Password" : "Set a password"}</h3>
+      {!passwordSet && (
+        <label>
+          <span>Username</span>
+          <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="username" maxLength={40} />
+        </label>
+      )}
+      {passwordSet && (
+        <label>
+          <span>Current password</span>
+          <input type={show ? "text" : "password"} value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" />
+        </label>
+      )}
+      <label>
+        <span>New password</span>
+        <input type={show ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" aria-invalid={short} />
+        {short && <em className="settings__hint">At least 8 characters.</em>}
+      </label>
+      <label>
+        <span>New password again</span>
+        <input type={show ? "text" : "password"} value={again} onChange={(e) => setAgain(e.target.value)} autoComplete="new-password" aria-invalid={mismatch} />
+        {mismatch && <em className="settings__hint">Doesn't match yet.</em>}
+      </label>
+      <div className="settings__form-end">
+        <label className="settings__check">
+          <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show
+        </label>
+        <button className="settings__button" disabled={busy || short || mismatch || !password || !again || (passwordSet ? !current : !name.trim())}>
+          {busy ? "Saving…" : passwordSet ? "Change password" : "Set password"}
+        </button>
+      </div>
+      {message && <p className={`settings__message${message.ok ? "" : " settings__message--error"}`}>{message.text}</p>}
+    </form>
   );
 }
 
 const EVENTS: [string, string][] = [
   ["user-prompt-submit", "A prompt started"],
   ["pre-tool-use", "An AI edit"],
+  ["post-tool-use", "A shell command finished"],
   ["stop", "A prompt finished"],
+  ["session-end", "A session ended"],
   ["post-commit", "A commit"],
 ];
 
@@ -352,6 +1232,19 @@ function Recording() {
           </li>
         ))}
       </ul>
+      {health.problems.length > 0 && (
+        <div className="settings__message settings__message--error">
+          {health.problems.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+          {health.repairable && <button
+            className="settings__button"
+            onClick={() => api.repairRecording().then(setHealth, (e: Error) => setHealth({ ...health, problems: [e.message] }))}
+          >
+            Repair the hooks
+          </button>}
+        </div>
+      )}
       {health.errors > 0 ? (
         <p className="settings__message settings__message--error">
           {health.errors} hook error{health.errors === 1 ? "" : "s"} in the last {health.days} days

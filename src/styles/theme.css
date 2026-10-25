@@ -1,5 +1,6 @@
 /* Brand colours and surfaces. Components read these; canvas code reads them with
-   getComputedStyle. Dark mode swaps the surfaces and ink, never the brand blue and red. */
+   getComputedStyle. Dark mode swaps the surfaces and ink, never the brand blue and red.
+   Tailwind and shadcn read the same values through src/index.css. */
 :root {
   --dd-blue: #4fc3f7;
   --dd-blue-strong: #0288d1;
@@ -38,40 +39,55 @@
   --dd-del-bg: #fee2e2;
   --dd-mod: #035e8f;
   --dd-mod-bg: #e0f2fe;
+  /* The line on the Ollama usage chart (checked for contrast on the cards). */
+  --dd-chart: #035e8f;
+  /* Amber marks what an AI tool wrote: dots on the graphs and the commit list. */
+  --dd-ai: #c2740a;
+  --dd-ai-bg: rgba(194, 116, 10, 0.14);
 
-  --dd-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Big headings and the main button fade from solid ink to softer ink, top to bottom. */
+  --dd-gradient-from: #24180f;
+  --dd-gradient-to: rgba(36, 24, 15, 0.72);
+  --dd-gradient-ink: #f8f0e5;
+
+  --dd-font: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --dd-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
-/* Dark is the dashboard look: deep navy, glass cards, teal and blue glows. */
+/* Dark is the dashboard look: black, smoked-glass panels, grey hairlines and white ink. */
 :root[data-theme="dark"] {
-  --dd-accent: #2dd4bf;
-  --dd-accent-soft: rgba(45, 212, 191, 0.14);
-  --dd-on-accent: #04110f;
-  --dd-ink: #f1f5f9;
-  --dd-ink-soft: #cbd5e1;
+  /* Monochrome: white is the accent, so gauges, active items and the main button glow white. */
+  --dd-accent: #f5f5f5;
+  --dd-accent-soft: rgba(255, 255, 255, 0.08);
+  --dd-on-accent: #000;
+  --dd-ink: #fff;
+  --dd-ink-soft: #d1d5db;
   --dd-brand-ink: #4fc3f7;
   --dd-brand-red: #ef4444;
   --dd-warn: #f59e0b;
-  --dd-muted: #64748b;
-  --dd-bg: #05080f;
-  --dd-backdrop:
-    radial-gradient(900px 560px at 78% 72%, rgba(45, 212, 191, 0.13), transparent 62%),
-    radial-gradient(800px 500px at 10% 6%, rgba(56, 189, 248, 0.12), transparent 60%),
-    radial-gradient(600px 400px at 50% 110%, rgba(99, 102, 241, 0.10), transparent 70%);
-  --dd-card: #0e1522;
-  --dd-glass: rgba(17, 25, 40, 0.66);
-  --dd-glass-line: rgba(148, 163, 184, 0.12);
-  --dd-line: rgba(148, 163, 184, 0.14);
-  --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --dd-scroll: rgba(148, 163, 184, 0.3);
+  --dd-muted: #9ca3af;
+  --dd-bg: #000;
+  /* One soft light from above the page, where the template has its glow. */
+  --dd-backdrop: radial-gradient(1100px 560px at 50% -14%, rgba(255, 255, 255, 0.1), transparent 66%);
+  --dd-card: #101012;
+  --dd-glass: rgba(18, 18, 20, 0.72);
+  --dd-glass-line: rgba(75, 85, 99, 0.38);
+  --dd-line: rgba(75, 85, 99, 0.5);
+  --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --dd-scroll: rgba(156, 163, 175, 0.3);
   --dd-add: #4ade80;
   --dd-add-bg: rgba(74, 222, 128, 0.14);
   --dd-del: #f87171;
   --dd-del-bg: rgba(248, 113, 113, 0.14);
   --dd-mod: #4fc3f7;
   --dd-mod-bg: rgba(79, 195, 247, 0.14);
+  --dd-chart: #2f9fd8;
+  --dd-ai: #fbbf24;
+  --dd-ai-bg: rgba(251, 191, 36, 0.16);
+  --dd-gradient-from: #fff;
+  --dd-gradient-to: rgba(255, 255, 255, 0.6);
+  --dd-gradient-ink: #000;
   color-scheme: dark;
 }
 
@@ -134,4 +150,28 @@ select,
 input {
   font: inherit;
   color: inherit;
+}
+
+/* One keyboard focus ring for every control, in the theme's accent instead of the browser's
+   blue. Controls that draw their own focus (inputs with a glow, the switches) set theirs. */
+:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--dd-accent-soft);
+  color: var(--dd-ink);
+}
+
+/* The page's big headings: solid at the top of the letters, fading toward the bottom. */
+.dd-heading,
+.topbar__title h1,
+.welcome h1,
+.login h1,
+.home__hello h2 {
+  background: linear-gradient(to bottom, var(--dd-gradient-from), var(--dd-gradient-from), var(--dd-gradient-to));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }

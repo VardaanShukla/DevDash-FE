@@ -94,7 +94,7 @@
 
 :root[data-theme="dark"] .digest {
   --digest-ghost: rgba(148, 163, 184, 0.12);
-  --digest-shine: rgba(45, 212, 191, 0.22);
+  --digest-shine: rgba(255, 255, 255, 0.12);
 }
 
 .digest__skeleton,
@@ -616,7 +616,7 @@
 .digest__button--danger {
   border-color: transparent;
   background: var(--dd-del);
-  color: #fff;
+  color: var(--dd-on-accent);
 }
 
 @media (max-width: 520px) {
