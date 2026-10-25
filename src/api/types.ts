@@ -201,8 +201,24 @@ export type FunctionDetail = {
   explanation: FunctionExplanation | null;
 };
 
-// An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama) or Antigravity.
-export type AiProvider = "claude" | "codex" | "ollama" | "antigravity";
+// An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama), Antigravity,
+// or a model on your own server (hosted).
+export type AiProvider = "claude" | "codex" | "ollama" | "antigravity" | "hosted";
+
+// The server a hosted model is on, as DevDash shows it: never the key itself.
+export type HostedServer = {
+  url: string;
+  // OpenAI-style /v1/chat/completions (vLLM, llama.cpp, LM Studio), or Ollama's /api/chat.
+  style: "openai" | "ollama";
+  // The key's last four characters, "set", or null when there's none.
+  key: string | null;
+  headers: string[];
+  // Plain http to another computer: code goes over the network unencrypted.
+  unencrypted: boolean;
+};
+
+// Connecting a hosted model: the pasted curl command (read, never run), or the parts typed in.
+export type HostedConnect = { curl?: string; url?: string; key?: string; model?: string };
 export type AiModel = { id: string; label: string; note: string };
 
 export type AiStatus = {
@@ -224,6 +240,49 @@ export type AiStatus = {
   detail: string | null;
   // Claude Code's official installers for this computer, when it isn't installed.
   install?: { shell: string; command: string }[];
+  // hosted only: the connected server.
+  server?: HostedServer | null;
+};
+
+// Ollama on this computer, run from Settings → AI → Ollama.
+export type OllamaModel = {
+  name: string;
+  size: number; // bytes on disk
+  parameters: string | null; // e.g. "3.1B"
+  family: string | null;
+  loaded: boolean; // in memory now, so it answers at once
+  until: string | null; // when it's unloaded if unused
+};
+export type OllamaPull = { name: string; status: string; completed: number; total: number; error: string | null; done: boolean };
+export type OllamaState = {
+  installed: boolean;
+  running: boolean;
+  version: string | null;
+  host: string;
+  // Started from DevDash.
+  started_here: boolean;
+  // What runs it: Start and Stop go through the same thing. "service" is the Linux systemd
+  // service, which takes an administrator's password.
+  managed_by: "devdash" | "service" | "app" | "command" | null;
+  // Start and Stop ask for your password (the page asks for your OK first).
+  needs_admin: boolean;
+  // On this computer. An Ollama that OLLAMA_HOST points elsewhere is started and stopped there.
+  local: boolean;
+  models: OllamaModel[];
+  pulls: OllamaPull[];
+  install: { shell: string; command: string }[];
+};
+
+// What a local model costs the computer, for the chart on the Ollama page.
+export type OllamaUsage = {
+  // Empty when there's no GPU DevDash can read: the CPU is shown instead.
+  gpus: { name: string; percent: number; memory_used: number; memory_total: number }[];
+  cpu: number | null;
+  cores: number;
+  memory: { used: number; total: number } | null;
+  // Loaded in memory now, with the share on the GPU (0-1), as `ollama ps` shows it.
+  models: { name: string; size: number; on_gpu: number }[];
+  note: string | null;
 };
 
 export type SignIn = { state: "idle" | "waiting" | "signed_in" | "failed"; url: string | null; detail: string | null };
@@ -394,15 +453,3 @@ export type Digest = {
   changes: DigestChange[];
 };
 
-// Whether DevDash starts when you sign in to this computer.
-export type Autostart = {
-  supported: boolean;
-  enabled: boolean;
-  // How this system starts it, in words.
-  method: string | null;
-  // It starts this install of DevDash; false after a reinstall, until turned on again.
-  current: boolean;
-  port: number | null;
-  // Needed before it can be turned on.
-  password_set: boolean;
-};

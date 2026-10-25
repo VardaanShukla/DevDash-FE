@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { api, ApiError } from "../../api/client";
 import type { Repo } from "../../api/types";
 import "../AddProject/AddProject.css";
@@ -49,12 +50,12 @@ export default function RemoveProject({ repo, onClose, onRemoved }: Props) {
         </ul>
         {error && <p className="modal__error">{error}</p>}
         <div className="modal__actions">
-          <button type="button" className="button button--ghost" onClick={onClose} autoFocus>
+          <Button variant="ghost" onClick={onClose} autoFocus>
             Cancel
-          </button>
-          <button type="button" className="button button--danger" onClick={remove} disabled={saving}>
+          </Button>
+          <Button variant="danger" onClick={remove} disabled={saving}>
             {saving ? "Removing…" : "Remove project"}
-          </button>
+          </Button>
         </div>
       </section>
     </div>

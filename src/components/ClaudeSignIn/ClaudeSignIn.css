@@ -101,7 +101,7 @@
   height: 26px;
   border-radius: 50%;
   background: var(--dd-add);
-  color: #fff;
+  color: var(--dd-on-accent);
   font-weight: 800;
 }
 

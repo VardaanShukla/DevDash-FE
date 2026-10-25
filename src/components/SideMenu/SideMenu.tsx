@@ -1,9 +1,13 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import "./SideMenu.css";
 
 // The menu down the left side: the brand, the project, then one item per view, with
 // Settings and Help at the bottom. Each item's shortcut key (set in Settings) shows in its
-// tooltip; App listens for the keys. On a phone it turns into a bar along the bottom.
+// tooltip; App listens for the keys. It folds down to icons (remembered per browser), and
+// on a phone it turns into a bar along the bottom.
+//
+// Settings opens like a folder: its parts (and AI's, one per AI) show under it while it's
+// on screen, and pick what Settings shows.
 
 export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
@@ -18,9 +22,49 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Theme, uncommitted work, your account and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
+export type SettingsSection =
+  | "general"
+  | "appearance"
+  | "ai"
+  | "ai/claude"
+  | "ai/codex"
+  | "ai/ollama"
+  | "ai/antigravity"
+  | "ai/hosted"
+  | "recording"
+  | "shortcuts";
+
+export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: ReactNode; children?: { id: SettingsSection; label: string }[] }[] = [
+  { id: "general", label: "General", icon: <UserIcon /> },
+  { id: "appearance", label: "Appearance", icon: <PaletteIcon /> },
+  {
+    id: "ai",
+    label: "AI",
+    icon: <DigestIcon />,
+    children: [
+      { id: "ai/claude", label: "Claude" },
+      { id: "ai/codex", label: "ChatGPT Codex" },
+      { id: "ai/ollama", label: "Ollama" },
+      { id: "ai/antigravity", label: "Antigravity" },
+      { id: "ai/hosted", label: "Your server" },
+    ],
+  },
+  { id: "recording", label: "Recording", icon: <RecordIcon /> },
+  { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
+];
+
+export function settingsSectionLabel(id: SettingsSection): string {
+  for (const section of SETTINGS_SECTIONS) {
+    if (section.id === id) return section.label;
+    const child = section.children?.find((item) => item.id === id);
+    if (child) return child.label;
+  }
+  return "Settings";
+}
+
 // Settings and Help sit apart, at the bottom of the menu.
 const BOTTOM = 2;
 const MENU = VIEWS.filter((view) => view.inMenu !== false);
@@ -34,9 +78,49 @@ type Props = {
   project?: ReactNode;
   // Each screen's shortcut key, for its tooltip.
   keys?: Partial<Record<View, string>>;
+  // The part of Settings on screen, and picking another.
+  settings: SettingsSection;
+  onSettings: (section: SettingsSection) => void;
+  // The AI that writes explanations, marked under AI.
+  aiInUse?: string;
 };
 
-export default function SideMenu({ view, onView, badges = {}, project, keys = {} }: Props) {
+const COLLAPSED_KEY = "devdash:menu-collapsed";
+
+function savedCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// A narrow window always gets the icons, whatever was picked.
+const NARROW = "(max-width: 1100px)";
+
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
+  useEffect(() => {
+    const query = window.matchMedia(NARROW);
+    const change = () => setNarrow(query.matches);
+    query.addEventListener("change", change);
+    return () => query.removeEventListener("change", change);
+  }, []);
+  return narrow;
+}
+
+export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse }: Props) {
+  const [collapsed, setCollapsed] = useState(savedCollapsed);
+  const narrow = useNarrow();
+  const folded = collapsed || narrow;
+  const fold = () => {
+    setCollapsed(!collapsed);
+    try {
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? "0" : "1");
+    } catch {
+      // Only a convenience: the menu just opens wide next time.
+    }
+  };
   // A Home section's full screen lights Home in the menu.
   const lit = VIEWS.find((entry) => entry.id === view)?.inMenu === false ? "home" : view;
   const item = (entry: (typeof VIEWS)[number]) => (
@@ -50,21 +134,80 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
       {badges[entry.id] ? <span className="menu__badge">{badges[entry.id]}</span> : null}
+      {entry.id === "settings" && <ChevronIcon open={view === "settings"} />}
     </button>
+  );
+  const open = view === "settings";
+  // Settings' parts, shown while Settings is on screen. AI's own list shows while one of its
+  // parts is picked; folded, only the parts' icons show.
+  const settingsParts = open && (
+    <div className="menu__sub" role="group" aria-label="Settings">
+      {SETTINGS_SECTIONS.map((section) => {
+        const inside = settings === section.id || settings.startsWith(`${section.id}/`);
+        return (
+          <div key={section.id} className="menu__subgroup">
+            <button
+              className={`menu__subitem${inside ? " menu__subitem--active" : ""}`}
+              onClick={() => onSettings(section.id)}
+              aria-current={settings === section.id ? "page" : undefined}
+              title={section.label}
+            >
+              <span className="menu__icon menu__icon--small">{section.icon}</span>
+              <span className="menu__label">{section.label}</span>
+            </button>
+            {section.children && inside && !folded && (
+              <div className="menu__leaves">
+                {section.children.map((child) => (
+                  <button
+                    key={child.id}
+                    className={`menu__leaf${settings === child.id ? " menu__leaf--active" : ""}`}
+                    onClick={() => onSettings(child.id)}
+                    aria-current={settings === child.id ? "page" : undefined}
+                  >
+                    <span className="menu__label">{child.label}</span>
+                    {aiInUse && child.id === `ai/${aiInUse}` && (
+                      <span className="menu__inuse" title="Writes explanations now">
+                        In use
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 
   return (
-    <aside className="menu">
-      <span className="menu__brand" aria-label="DevDash">
-        <span className="brand__dev">Dev</span>
-        <span className="brand__tag">&lt;/&gt;</span>
-        <span className="brand__dash">Dash</span>
-      </span>
+    <aside className={`menu${folded ? " menu--collapsed" : ""}`}>
+      <div className="menu__head">
+        <span className="menu__brand" aria-label="DevDash">
+          <span className="brand__dev">Dev</span>
+          <span className="brand__tag">&lt;/&gt;</span>
+          <span className="brand__dash">Dash</span>
+        </span>
+        {!narrow && (
+          <button
+            type="button"
+            className="menu__fold"
+            onClick={fold}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? "Show the menu's names" : "Fold the menu to icons"}
+            title={collapsed ? "Show names" : "Fold to icons"}
+          >
+            <FoldIcon collapsed={collapsed} />
+          </button>
+        )}
+      </div>
       {project && <div className="menu__project">{project}</div>}
       <nav className="menu__nav" aria-label="Views">
         {MENU.slice(0, -BOTTOM).map(item)}
         <span className="menu__spacer" />
-        {MENU.slice(-BOTTOM).map(item)}
+        {MENU.slice(-BOTTOM, -1).map(item)}
+        {settingsParts}
+        {MENU.slice(-1).map(item)}
       </nav>
     </aside>
   );
@@ -182,6 +325,62 @@ function SummaryIcon() {
     <svg {...iconProps}>
       <rect x="4" y="3" width="16" height="18" rx="2" />
       <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg {...iconProps} width={14} height={14} className={`menu__chevron${open ? " menu__chevron--open" : ""}`} aria-hidden="true">
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+function FoldIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg {...iconProps} width={18} height={18} aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2.5" />
+      <path d="M9 4v16" />
+      <path d={collapsed ? "M13 10l2 2-2 2" : "M16 10l-2 2 2 2"} />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+function PaletteIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2z" />
+      <circle cx="7.5" cy="11" r="1" fill="currentColor" />
+      <circle cx="10.5" cy="7" r="1" fill="currentColor" />
+      <circle cx="15" cy="7.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function RecordIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.5" fill="currentColor" />
+    </svg>
+  );
+}
+
+function KeyboardIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="2.5" y="6" width="19" height="12" rx="2" />
+      <path d="M6.5 10h.01M10 10h.01M13.5 10h.01M17 10h.01M7.5 14h9" />
     </svg>
   );
 }

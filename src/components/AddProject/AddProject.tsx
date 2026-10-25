@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { api, ApiError } from "../../api/client";
 import type { AiStatus, AiTool, AiToolId, Candidate, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
@@ -132,12 +133,12 @@ export default function AddProject({ onClose, onAdded }: Props) {
         {error && <p className="modal__error">{error}</p>}
 
         <div className="modal__actions">
-          <button type="button" className="button button--ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button type="submit" className="button" disabled={saving || !path.trim()}>
+          </Button>
+          <Button type="submit" variant="gradient" disabled={saving || !path.trim()}>
             {saving ? "Adding…" : "Add project"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

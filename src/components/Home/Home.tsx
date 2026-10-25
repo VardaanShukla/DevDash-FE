@@ -153,7 +153,7 @@ export default function Home(props: Props) {
               {moment.words}
               {props.username && (
                 <>
-                  , <span className="home__name">{props.username}</span>
+                  , {props.username}
                 </>
               )}
             </h2>

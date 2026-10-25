@@ -7,7 +7,13 @@ import "./ClaudeSignIn.css";
 // tool's own sign-in (`claude auth login`, `codex login`), which opens its sign-in page in
 // the browser; when Claude's page shows a code instead of finishing by itself, it's pasted here.
 
-const NAMES: Record<AiProvider, string> = { claude: "Claude", codex: "ChatGPT", ollama: "Ollama", antigravity: "Antigravity" };
+const NAMES: Record<AiProvider, string> = {
+  claude: "Claude",
+  codex: "ChatGPT",
+  ollama: "Ollama",
+  antigravity: "Antigravity",
+  hosted: "your server",
+};
 
 type Props = {
   onSignedIn: () => void;

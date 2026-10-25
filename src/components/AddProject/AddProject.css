@@ -139,26 +139,6 @@
   gap: 8px;
 }
 
-.button {
-  padding: 9px 16px;
-  border: none;
-  border-radius: 10px;
-  background: var(--dd-accent);
-  color: var(--dd-on-accent);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.button--ghost {
-  background: none;
-  color: var(--dd-ink-soft);
-}
-
 @media (max-width: 520px) {
   .tools {
     grid-template-columns: 1fr;
