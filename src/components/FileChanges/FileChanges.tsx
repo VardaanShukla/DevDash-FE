@@ -164,8 +164,9 @@ export default function FileChanges({ files, focus, version, loadFunctions, expl
           file={file}
           layout={narrow || file.status === "added" || file.status === "deleted" ? "unified" : layout}
           sideBySide={!narrow && layout === "split"}
-          // Files with no functions, such as docs and settings, only have lines to show.
-          mode={file.binary || file.generated || file.functions.length === 0 || !readsFunctions(file.path) ? "lines" : mode}
+          // Every text file can be read and explained: code by its functions, styles by their
+          // rules, docs by their sections, anything else as a whole file.
+          mode={file.binary || file.generated ? "lines" : mode}
           onShowLines={() => setMode("lines")}
           functions={{
             version: `${version}:${file.path}:${file.additions}:${file.deletions}`,
@@ -443,10 +444,6 @@ function Segments({ segments, text }: { segments?: Segment[]; text: string }) {
     </>
   );
 }
-
-// The languages DevDash can split into functions (see the backend's functions.py).
-const FUNCTION_LANGUAGES = /\.(py|jsx?|mjs|cjs|tsx?|go|rs|java|kt|cs|php|c|h|cpp|swift)$/;
-const readsFunctions = (path: string) => FUNCTION_LANGUAGES.test(path);
 
 // Two columns of code don't fit a phone, so narrow screens always get one.
 function useNarrow() {

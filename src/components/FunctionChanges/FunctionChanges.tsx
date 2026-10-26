@@ -32,7 +32,13 @@ const KIND = {
   component: "Piece of a screen",
   class: "Class",
   type: "Shape of data",
+  style: "Style rule",
+  section: "Section of the doc",
+  file: "Whole file",
 } as const;
+
+// Kinds with no inputs or calls to count.
+const NO_FACTS = new Set<FunctionDetail["kind"]>(["type", "class", "style", "section", "file"]);
 
 // Short code shows at once; longer code waits for a click.
 const OPEN_LINES = 40;
@@ -64,7 +70,7 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
   if (functions.length === 0) {
     return (
       <div className="fns__empty">
-        <p>No function changed in this file. The edits sit outside functions, such as imports, settings or comments.</p>
+        <p>Nothing in this file's text changed: only its name, its permissions, or blank space.</p>
         <button className="fns__link" onClick={onShowLines}>
           Show the changed lines
         </button>
@@ -130,7 +136,7 @@ function FunctionCard(props: {
   const { item } = props;
   const now = item.after ?? item.before!;
   const badge = BADGE[item.change];
-  const longest = Math.max(item.before?.lines ?? 0, item.after?.lines ?? 0);
+  const longest = item.diff ? item.diff.split("\n").length : Math.max(item.before?.lines ?? 0, item.after?.lines ?? 0);
   const [showCode, setShowCode] = useState(longest <= OPEN_LINES);
 
   return (
@@ -140,7 +146,7 @@ function FunctionCard(props: {
         <span className="fn__kind">{KIND[item.kind]}</span>
         <h4 className="fn__name">{item.name}</h4>
         <span className="fn__where">
-          lines {now.start}–{now.end}
+          {item.kind === "file" ? `${now.lines} line${now.lines === 1 ? "" : "s"}` : `lines ${now.start}–${now.end}`}
         </span>
       </header>
 
@@ -159,7 +165,7 @@ function FunctionCard(props: {
 
       <div className="fn__code-head">
         <button className="fns__link" onClick={() => setShowCode((open) => !open)}>
-          {showCode ? "Hide the code" : `Show the code (${longest} lines)`}
+          {showCode ? "Hide the code" : item.diff ? "Show the changed lines" : `Show the code (${longest} lines)`}
         </button>
       </div>
       {showCode && <Code item={item} sideBySide={props.sideBySide} />}
@@ -186,6 +192,14 @@ function FunctionCard(props: {
 // One or two plain sentences on what kind of change this is, from the facts alone.
 function lead(item: FunctionDetail) {
   const lines = (n: number) => `${n} line${n === 1 ? "" : "s"}`;
+  if (item.kind === "file" || item.kind === "section" || item.kind === "style") {
+    const what = item.kind === "file" ? "file" : item.kind === "section" ? "section" : "style rule";
+    if (item.change === "added") return `New ${what}, ${lines(item.after!.lines)} long.`;
+    if (item.change === "deleted") return `Removed. The ${what} was ${lines(item.before!.lines)} long.`;
+    const [a, b] = [item.before!.lines, item.after!.lines];
+    const changed = item.diff ? item.diff.split("\n").filter((l) => /^[+-]/.test(l)).length : null;
+    return `${changed !== null ? `${lines(changed)} changed. ` : ""}The ${what} ${a === b ? `is still ${lines(b)}` : `went from ${lines(a)} to ${lines(b)}`}.`;
+  }
   if (item.change === "added") {
     const after = item.after!;
     const inputs = after.params.length ? ` It takes ${list(after.params)}.` : "";
@@ -217,7 +231,7 @@ function lead(item: FunctionDetail) {
 
 function Facts({ item }: { item: FunctionDetail }) {
   const now = item.after ?? item.before!;
-  if (item.kind === "type" || item.kind === "class") return null;
+  if (NO_FACTS.has(item.kind)) return null;
   const f = item.facts;
   return (
     <dl className="fn__facts">
@@ -358,6 +372,7 @@ function Explanation(props: {
 
 // Before and after, with the lines that differ marked.
 function Code({ item, sideBySide }: { item: FunctionDetail; sideBySide: boolean }) {
+  if (item.diff) return <DiffBlock diff={item.diff} />;
   if (!item.before || !item.after) {
     const side = (item.after ?? item.before)!;
     return (
@@ -389,6 +404,27 @@ function CodeBlock({ title, side, marks, tone }: { title: string; side: UnitSide
         ))}
       </pre>
     </figure>
+  );
+}
+
+// A whole file's change: only the lines that changed, with a little around them.
+function DiffBlock({ diff }: { diff: string }) {
+  return (
+    <div className="fn__code">
+      <figure className="fn__block">
+        <figcaption>The lines that changed</figcaption>
+        <pre>
+          {diff.split("\n").map((line, i) => {
+            const tone = line.startsWith("@@") ? "plain" : line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : null;
+            return (
+              <div key={i} className={tone ? `fn__line fn__line--${tone}` : "fn__line"}>
+                <span>{line || " "}</span>
+              </div>
+            );
+          })}
+        </pre>
+      </figure>
+    </div>
   );
 }
 

@@ -10,7 +10,8 @@ import FlowGraph from "./components/FlowGraph/FlowGraph";
 import Help, { useSetup } from "./components/Help/Help";
 import Home from "./components/Home/Home";
 import Login from "./components/Login/Login";
-import Overview from "./components/Overview/Overview";
+import Logo from "./components/Logo/Logo";
+import Overview, { branchNote } from "./components/Overview/Overview";
 import ProjectMap from "./components/ProjectMap/ProjectMap";
 import ProjectPanel from "./components/ProjectPanel/ProjectPanel";
 import RemoveProject from "./components/RemoveProject/RemoveProject";
@@ -248,6 +249,17 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     };
   }, [repoId, revision]);
 
+  // Merged and deleted branches are listed for a while, then dropped: reload when the
+  // first of them is due to go.
+  useEffect(() => {
+    const due = (branches?.details ?? [])
+      .filter((branch) => branch.removes_at && branch.name !== branches?.current)
+      .map((branch) => Date.parse(branch.removes_at!));
+    if (due.length === 0) return;
+    const timer = window.setTimeout(() => setRevision((n) => n + 1), Math.max(0, Math.min(...due) - Date.now()) + 1000);
+    return () => window.clearTimeout(timer);
+  }, [branches]);
+
   // The branch flow: reloaded with everything else when git changes.
   useEffect(() => {
     if (repoId === null) return;
@@ -478,16 +490,12 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           branches={details}
           flow={flow}
           map={map}
-          onPick={(id) => id !== repoId && selectRepo(id)}
-          onOpen={(id) => {
-            if (id !== repoId) selectRepo(id);
-            setView("summary");
-          }}
           onHeadChange={setHead}
           onView={setView}
           onOpenFile={openFile}
           onAdd={() => setAdding(true)}
           onDigest={() => setView("digest")}
+          onSync={() => syncNow.current()}
         />
       );
     }
@@ -524,7 +532,9 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           key={`${repoId}:${head}`}
           summary={summary}
           ai={ai}
-          explain={() => watchSignIn(api.explainProject(repoId, head))}
+          explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
+          loadKt={() => api.kt(repoId, head)}
+          explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
           onSignedIn={refreshAi}
           onOpenMap={() => setView("map")}
         />
@@ -664,11 +674,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
               </p>
             </div>
           ) : (
-            <span className="brand" aria-label="DevDash">
-              <span className="brand__dev">Dev</span>
-              <span className="brand__tag">&lt;/&gt;</span>
-              <span className="brand__dash">Dash</span>
-            </span>
+            <Logo size={34} wordmark />
           )}
           <div className="topbar__controls">
             <Clock />
@@ -780,10 +786,8 @@ function BranchTable(props: { branches: Branches["details"]; current: string | n
             >
               <span className="branches__name">{branch.name}</span>
               {branch.name === props.current && <span className="branches__tag branches__tag--current">checked out</span>}
-              {branch.gone ? (
-                <span className="branches__tag branches__tag--done">deleted on GitHub</span>
-              ) : branch.merged ? (
-                <span className="branches__tag branches__tag--done">merged</span>
+              {branch.gone || branch.merged ? (
+                <span className="branches__tag branches__tag--done">{branchNote(branch)}</span>
               ) : (
                 <span className="branches__tag">open</span>
               )}

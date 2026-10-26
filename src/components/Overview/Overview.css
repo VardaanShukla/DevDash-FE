@@ -287,6 +287,7 @@
 /* Sized by the screen's height too, so the gauge never pushes the stats off screen. */
 .ov-gauge__dial {
   position: relative;
+  container-type: inline-size;
   width: min(100%, 440px, calc((100dvh - 430px) * 1.13));
   min-width: 240px;
 }
@@ -345,6 +346,8 @@
   position: absolute;
   top: 57%;
   left: 50%;
+  /* The inside of the arc: the readout never grows past it. */
+  width: 56%;
   transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
@@ -353,12 +356,16 @@
   pointer-events: none;
 }
 
+/* A mono digit is about 0.6em wide, so --chars digits fill 56cqi at 93cqi / chars. */
 .ov-gauge__center strong {
+  max-width: 100%;
   font-family: var(--dd-mono);
-  font-size: clamp(44px, 6vw, 76px);
+  font-size: min(76px, 22cqi, calc(88cqi / var(--chars, 3)));
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .ov-gauge__center > span {
@@ -374,8 +381,10 @@
   gap: 10px;
   margin-top: 6px;
   font-family: var(--dd-mono);
-  font-size: 13px !important;
+  font-size: min(13px, calc(85cqi / var(--chars, 10))) !important;
   letter-spacing: 0 !important;
+  text-transform: none !important;
+  white-space: nowrap;
 }
 
 .ov-add {

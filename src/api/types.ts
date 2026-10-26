@@ -34,6 +34,8 @@ export type BranchInfo = {
   merged: boolean;
   // Its upstream was deleted on the remote, usually after a merged pull request.
   gone: boolean;
+  // When DevDash stops listing a merged or deleted branch; null for an open one.
+  removes_at: string | null;
 };
 
 export type Branches = {
@@ -192,13 +194,17 @@ export type FunctionExplanation = {
 
 export type FunctionDetail = {
   name: string;
-  kind: "function" | "method" | "component" | "class" | "type";
+  // style: a rule in a style sheet; section: part of a doc; file: a whole file of any
+  // other kind (settings, HTML, SQL, a script), or edits outside every function.
+  kind: "function" | "method" | "component" | "class" | "type" | "style" | "section" | "file";
   change: "added" | "deleted" | "modified";
   before: UnitSide | null;
   after: UnitSide | null;
   facts: UnitFacts | null;
   used_by: { path: string; line: number; text: string }[];
   explanation: FunctionExplanation | null;
+  // For a whole file: the lines that changed, as a unified diff.
+  diff?: string | null;
 };
 
 // An AI that can write explanations: Claude, ChatGPT Codex, a local model (Ollama), Antigravity,
@@ -291,8 +297,30 @@ export type ProjectExplanation = {
   overview: string;
   how_it_works: string[];
   parts: { name: string; what: string }[];
+  // Main things the project does, step by step, naming the files involved.
+  flows?: { name: string; steps: string[] }[];
+  // The files a new team member should read first, in order.
+  start_here?: { path: string; why: string }[];
   state: string;
 };
+
+// One file of the project's knowledge transfer, as the AI wrote it.
+export type FileExplanation = {
+  purpose: string;
+  functions: { name: string; what: string }[];
+  connects: string;
+  notes: string[];
+};
+
+export type KtFile = {
+  path: string;
+  part: string;
+  language: string;
+  bytes: number;
+  explanation: FileExplanation | null;
+};
+
+export type KnowledgeTransfer = { files: KtFile[]; explained: number };
 
 export type Summary = {
   revision: string;
@@ -392,7 +420,7 @@ export type Preferences = {
   // Home's widgets in the order shown, and the ones hidden.
   home: HomeLayout;
 };
-export type Widget = "ai" | "projects" | "branch" | "flow" | "map" | "calendar";
+export type Widget = "pulse" | "ai" | "branch" | "keys" | "flow" | "commits" | "map" | "calendar";
 export type HomeLayout = { order: Widget[]; hidden: Widget[] };
 // What a change sends: only the settings to change; for the AI, the provider and/or the
 // models of the AIs to change ("" goes back to that AI's default).

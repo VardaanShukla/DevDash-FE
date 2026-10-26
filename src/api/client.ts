@@ -17,7 +17,9 @@ import type {
   Digest,
   Flow,
   FunctionDetail,
+  FileExplanation,
   FunctionExplanation,
+  KnowledgeTransfer,
   ProjectExplanation,
   ProjectCard,
   ProjectMap,
@@ -144,8 +146,13 @@ export const api = {
   signInCode: (code: string) => request<SignIn>("/api/ai/sign-in/code", "POST", { code }),
   summary: (repoId: number, head: string) =>
     get<Summary>(`/api/repos/${repoId}/summary?${new URLSearchParams({ head })}`),
-  explainProject: (repoId: number, head: string) =>
-    request<ProjectExplanation>(`/api/repos/${repoId}/explain/project`, "POST", { head }),
+  // fresh: write it again, as when the file-by-file notes have filled in since.
+  explainProject: (repoId: number, head: string, fresh = false) =>
+    request<ProjectExplanation>(`/api/repos/${repoId}/explain/project`, "POST", { head, fresh }),
+  // Every file of the project's knowledge transfer, with the notes written so far.
+  kt: (repoId: number, head: string) => get<KnowledgeTransfer>(`/api/repos/${repoId}/kt?${new URLSearchParams({ head })}`),
+  explainFile: (repoId: number, path: string, head: string) =>
+    request<FileExplanation>(`/api/repos/${repoId}/explain/file`, "POST", { path, head }),
   home: () => get<ProjectCard[]>("/api/home"),
   digest: (day?: string) => get<Digest>(`/api/digest${day ? `?day=${day}` : ""}`),
   undoChange: (change: string) =>

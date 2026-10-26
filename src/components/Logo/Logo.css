@@ -1,0 +1,94 @@
+/* The mark is a real 3D object: the face sits at the front and each side layer is a copy of
+   the keycap's outline one pixel further back, darker the deeper it goes. */
+.logo {
+  --logo-size: 32px;
+  --logo-depth: 6;
+  --logo-step: calc(var(--logo-size) / 40);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: calc(var(--logo-size) * 0.32);
+  perspective: calc(var(--logo-size) * 12);
+}
+
+.logo__key {
+  position: relative;
+  width: var(--logo-size);
+  height: var(--logo-size);
+  transform-style: preserve-3d;
+  transform: rotateX(16deg) rotateY(-18deg);
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.logo:hover .logo__key {
+  transform: rotateX(8deg) rotateY(14deg);
+}
+
+.logo__face,
+.logo__side {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.logo__face {
+  transform: translateZ(calc(var(--logo-depth) * var(--logo-step) / 2));
+  filter: drop-shadow(0 0 calc(var(--logo-size) * 0.08) rgba(79, 195, 247, 0.35));
+}
+
+.logo__side {
+  /* The keycap's outline (rx 16 of 64 = a quarter of the edge), inset like the face's. */
+  inset: 3.1%;
+  border-radius: 26%;
+  background: linear-gradient(160deg, #0a5f93, #032f4d);
+  transform: translateZ(calc((var(--logo-depth) / 2 - var(--z)) * var(--logo-step)));
+  filter: brightness(calc(1 - var(--z) * 0.06));
+}
+
+/* The last layer throws the shadow onto whatever the key sits on. */
+.logo__side:last-of-type {
+  box-shadow: 0 calc(var(--logo-size) * 0.18) calc(var(--logo-size) * 0.3) rgba(0, 0, 0, 0.35);
+}
+
+.logo__word {
+  display: inline-flex;
+  font-family: var(--dd-font);
+  font-size: calc(var(--logo-size) * 0.66);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.logo__dev {
+  color: var(--dd-brand-ink);
+}
+
+.logo__dash {
+  color: var(--dd-ink);
+}
+
+/* On the splash: a slow turn in space, the face never quite edge-on. */
+.logo--spin .logo__key {
+  animation: logo-turn 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes logo-turn {
+  0%,
+  100% {
+    transform: rotateX(14deg) rotateY(-28deg);
+  }
+  50% {
+    transform: rotateX(-6deg) rotateY(28deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo__key,
+  .logo--spin .logo__key,
+  .logo:hover .logo__key {
+    animation: none;
+    transition: none;
+    transform: rotateX(12deg) rotateY(-14deg);
+  }
+}

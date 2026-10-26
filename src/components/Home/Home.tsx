@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { api } from "../../api/client";
 import type {
   BranchInfo, Comparison, Digest, Flow, HomeLayout, PreferenceChange, Preferences, ProjectCard, ProjectMap,
@@ -6,13 +6,16 @@ import type {
 } from "../../api/types";
 import Agenda from "../Agenda/Agenda";
 import FlowGraph from "../FlowGraph/FlowGraph";
+import { branchNote, GaugeDial, SIZES } from "../Overview/Overview";
 import { languageColor, languageTotals, mapParts } from "../ProjectMap/ProjectMap";
-import type { View } from "../SideMenu/SideMenu";
+import { VIEWS, type View } from "../SideMenu/SideMenu";
 import "./Home.css";
 
-// The start screen: a greeting with the one thing that most needs you, then the widgets
-// the person picked, in their order (Customise moves and hides them; the layout is kept in
-// their settings). AI today leads by default: what the AI changed and whether recording works.
+// The start screen, laid out like a car's instrument cluster: a greeting with the one thing
+// that most needs you, then the widgets the person picked, in their order (Customise moves
+// and hides them; the layout is kept in their settings). The branch dial leads, standing
+// tall beside AI today and the branch's files; every widget is one click from its screen.
+// Projects live on their own screen, not here.
 
 type Props = {
   repos: Repo[];
@@ -28,29 +31,36 @@ type Props = {
   // The saved settings, for the layout; null while they load.
   prefs: Preferences | null;
   onPrefs: (changes: PreferenceChange) => Promise<void>;
-  onPick: (repoId: number) => void;
-  onOpen: (repoId: number) => void;
   onHeadChange: (head: string) => void;
   onView: (view: View) => void;
   onOpenFile: (path: string) => void;
   onAdd: () => void;
   onDigest: () => void;
+  onSync: () => void;
   // The signed-in DevDash username, for the greeting; none before a password is set.
   username?: string;
 };
 
 const WIDGET_NAMES: Record<Widget, string> = {
+  pulse: "Branch dial",
   ai: "AI today",
-  projects: "Projects",
   branch: "Branch changes",
+  keys: "Jump to",
   flow: "Branch flow",
+  commits: "Latest commits",
   map: "Project map",
   calendar: "Calendar",
 };
-const DEFAULT_LAYOUT: HomeLayout = { order: ["ai", "projects", "branch", "flow", "map", "calendar"], hidden: ["map", "calendar"] };
+const DEFAULT_LAYOUT: HomeLayout = {
+  order: ["pulse", "ai", "branch", "keys", "flow", "commits", "map", "calendar"],
+  hidden: ["calendar"],
+};
+// Saved layouts can still name widgets this page no longer has (Projects moved off Home).
+const known = (widget: string): widget is Widget => widget in WIDGET_NAMES;
 
 export default function Home(props: Props) {
   const { repos, repoId, version, onAdd, onDigest } = props;
+  const tilt = useTilt();
   const [cards, setCards] = useState<ProjectCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Today's AI changes and whether the hooks that record them work.
@@ -58,9 +68,9 @@ export default function Home(props: Props) {
   const [health, setHealth] = useState<RecordingHealth | null>(null);
   const [editing, setEditing] = useState(false);
   // Shown at once while a change saves; the saved settings win when they arrive.
-  const [layout, setLayout] = useState<HomeLayout>(props.prefs?.home ?? DEFAULT_LAYOUT);
+  const [layout, setLayout] = useState<HomeLayout>(clean(props.prefs?.home ?? DEFAULT_LAYOUT));
   useEffect(() => {
-    if (props.prefs) setLayout(props.prefs.home);
+    if (props.prefs) setLayout(clean(props.prefs.home));
   }, [props.prefs]);
 
   useEffect(() => {
@@ -115,8 +125,10 @@ export default function Home(props: Props) {
           : { text: "All caught up", tone: "calm" };
 
   const widgets: Record<Widget, () => ReactNode> = {
+    pulse: () => <Pulse comparison={props.comparison} project={picked?.name ?? null} onView={props.onView} />,
     ai: () => <AiToday digest={digest} health={health} onHealth={setHealth} onDigest={onDigest} />,
-    projects: () => <Projects cards={cards} error={error} repoId={repoId} onAdd={onAdd} onPick={props.onPick} onOpen={props.onOpen} />,
+    keys: () => <Keys shortcuts={props.prefs?.shortcuts ?? {}} onView={props.onView} onAdd={onAdd} onSync={props.onSync} />,
+    commits: () => <LatestCommits comparison={props.comparison} onView={props.onView} />,
     branch: () => <BranchChanges {...props} project={picked?.name ?? null} />,
     flow: () =>
       props.flow && props.comparison && props.flow.commits.length > 1 ? (
@@ -142,7 +154,7 @@ export default function Home(props: Props) {
   const shown = layout.order.filter((w) => !layout.hidden.includes(w));
 
   return (
-    <div className={`home${editing ? " home--editing" : ""}`}>
+    <div className={`home${editing ? " home--editing" : ""}`} {...tilt}>
       <section className="home__hello">
         <div className="home__greet">
           <span className={`home__sky home__sky--${moment.part}`} aria-hidden="true">
@@ -159,6 +171,12 @@ export default function Home(props: Props) {
             </h2>
             <p className="home__sub">
               <span>{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>
+              {error && (
+                <>
+                  <span aria-hidden="true"> · </span>
+                  <span className="home__mood home__mood--risk">{error}</span>
+                </>
+              )}
               {cards && (
                 <>
                   <span aria-hidden="true"> · </span>
@@ -364,79 +382,6 @@ function AiToday({ digest, health, onHealth, onDigest }: {
   );
 }
 
-// Every project at a glance; a click shows it on Home, a double click opens its summary.
-function Projects({ cards, error, repoId, onAdd, onPick, onOpen }: {
-  cards: ProjectCard[] | null;
-  error: string | null;
-  repoId: number | null;
-  onAdd: () => void;
-  onPick: (repoId: number) => void;
-  onOpen: (repoId: number) => void;
-}) {
-  return (
-    <section className="card home__projects">
-      <header>
-        <h3>Projects</h3>
-        <button className="home__link" onClick={onAdd}>
-          + Add
-        </button>
-      </header>
-      {error && <p className="home__muted">{error}</p>}
-      {!cards && !error && <p className="home__muted">Reading your projects…</p>}
-      <ul>
-        {(cards ?? []).map((card) => (
-          <li key={card.id}>
-            <button
-              className={`project${card.id === repoId ? " project--current" : ""}`}
-              onClick={() => onPick(card.id)}
-              onDoubleClick={() => onOpen(card.id)}
-              disabled={!card.exists}
-              title={`${card.path}\nClick to show it here, double-click to open its summary`}
-              aria-pressed={card.id === repoId}
-            >
-              <span className="project__top">
-                <strong>{card.name}</strong>
-                {card.branch && <code>{card.branch}</code>}
-              </span>
-              {!card.exists ? (
-                <span className="project__warn">Folder missing: {card.path}</span>
-              ) : (
-                <>
-                  <span className="project__facts">
-                    {card.ahead !== null && card.base && (
-                      <span>
-                        {card.ahead} commit{card.ahead === 1 ? "" : "s"} ahead of {card.base}
-                      </span>
-                    )}
-                    {card.uncommitted > 0 && (
-                      <span className="project__warn">
-                        {card.uncommitted} file{card.uncommitted === 1 ? "" : "s"} not committed
-                      </span>
-                    )}
-                    <span className="project__muted">
-                      {card.branches} branch{card.branches === 1 ? "" : "es"}
-                    </span>
-                  </span>
-                  {card.last_commit ? (
-                    <span className="project__last">
-                      <span>{card.last_commit.subject}</span>
-                      <em>
-                        {card.last_commit.author}, {ago(card.last_commit.at)}
-                      </em>
-                    </span>
-                  ) : (
-                    <span className="project__muted">No commits yet</span>
-                  )}
-                </>
-              )}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 // What the picked project's branch changes, compared with its base: the size of it, the
 // files (each opens in Changes) and a branch picker.
 function BranchChanges({ comparison, branches, project, onHeadChange, onView, onOpenFile }: Props & { project: string | null }) {
@@ -474,7 +419,7 @@ function BranchChanges({ comparison, branches, project, onHeadChange, onView, on
           {branches.map((branch) => (
             <option key={branch.name} value={branch.name}>
               {branch.name}
-              {branch.gone ? " · deleted on GitHub" : branch.merged ? " · merged" : ""}
+              {branchNote(branch) && ` · ${branchNote(branch)}`}
             </option>
           ))}
         </select>
@@ -592,6 +537,218 @@ function MapPreview({ map, comparison, onView }: { map: ProjectMap | null; compa
         </>
       )}
     </section>
+  );
+}
+
+// The layout with any widget this page doesn't know left out.
+function clean(layout: HomeLayout): HomeLayout {
+  return { order: layout.order.filter(known), hidden: layout.hidden.filter(known) };
+}
+
+// Widgets tip toward the pointer, a few degrees at most, with a highlight that follows it,
+// as if the panel were a pane of glass in the cluster. One listener for the whole page; the
+// tilt is written to CSS variables on the widget under the pointer, once a frame. Touch
+// screens and reduced motion get flat panels.
+function useTilt() {
+  const frame = useRef(0);
+  const current = useRef<HTMLElement | null>(null);
+  const still = typeof window !== "undefined" &&
+    (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !window.matchMedia("(hover: hover)").matches);
+  const settle = (widget: HTMLElement | null) => {
+    if (!widget) return;
+    widget.style.setProperty("--rx", "0deg");
+    widget.style.setProperty("--ry", "0deg");
+    widget.style.setProperty("--glare", "0");
+  };
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (still || event.pointerType !== "mouse") return;
+    const widget = (event.target as HTMLElement).closest<HTMLElement>(".widget");
+    if (widget !== current.current) {
+      settle(current.current);
+      current.current = widget;
+    }
+    if (!widget || widget.classList.contains("widget--hidden")) return;
+    const { clientX, clientY } = event;
+    cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      const box = widget.getBoundingClientRect();
+      const x = (clientX - box.left) / box.width;
+      const y = (clientY - box.top) / box.height;
+      // Bigger panels tip less, so their far edge doesn't swing.
+      const most = Math.min(3, 900 / Math.max(box.width, box.height));
+      widget.style.setProperty("--rx", `${((0.5 - y) * most).toFixed(2)}deg`);
+      widget.style.setProperty("--ry", `${((x - 0.5) * most).toFixed(2)}deg`);
+      widget.style.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
+      widget.style.setProperty("--my", `${(y * 100).toFixed(1)}%`);
+      widget.style.setProperty("--glare", "1");
+    });
+  };
+  const onPointerLeave = () => {
+    cancelAnimationFrame(frame.current);
+    settle(current.current);
+    current.current = null;
+  };
+  return { onPointerMove, onPointerLeave };
+}
+
+// The cluster's main instrument: how much this branch changes, as a speedometer standing in
+// its own recessed bezel, with the review size as gears and the counts beneath. A click
+// anywhere on the numbers opens the screen with the detail.
+function Pulse({ comparison, project, onView }: { comparison: Comparison | null; project: string | null; onView: (view: View) => void }) {
+  if (!comparison) {
+    return (
+      <section className="card pulse">
+        <h2 className="card__title">Branch dial</h2>
+        <p className="home__muted">{project ? `Reading ${project}…` : "Pick a project to see its branch."}</p>
+      </section>
+    );
+  }
+  const files = comparison.files.filter((file) => !file.generated);
+  const additions = files.reduce((sum, file) => sum + file.additions, 0);
+  const deletions = files.reduce((sum, file) => sum + file.deletions, 0);
+  const lines = additions + deletions;
+  const functions = files.reduce((sum, file) => sum + file.functions.length, 0);
+  const size = SIZES.find((s) => lines < s.until)!;
+  return (
+    <section className="card pulse">
+      <header className="card__header">
+        <div className="pulse__branch">
+          <h2 className="card__title" title={comparison.head}>
+            {comparison.head}
+          </h2>
+          <span>
+            vs <code>{comparison.base}</code>
+            {comparison.behind > 0 ? ` · ${comparison.behind} behind` : " · up to date"}
+          </span>
+        </div>
+        <button className="card__link" onClick={() => onView("overview")}>
+          This branch ›
+        </button>
+      </header>
+      <button className="pulse__stage" onClick={() => onView("overview")} aria-label={`${lines} lines changed. Open This branch`}>
+        <span className="pulse__bezel">
+          <GaugeDial lines={lines} additions={additions} deletions={deletions} size={size.id} />
+        </span>
+      </button>
+      <div className="pulse__gears" aria-label={size.label}>
+        {SIZES.map((s) => (
+          <span key={s.id} className={s.id === size.id ? "is-on" : ""}>
+            {s.id}
+          </span>
+        ))}
+        <em>{size.label}</em>
+      </div>
+      <div className="pulse__counts">
+        <button onClick={() => onView("changes")}>
+          <strong>{files.length.toLocaleString()}</strong>
+          <span>{files.length === 1 ? "file" : "files"}</span>
+        </button>
+        <button onClick={() => onView("changes")}>
+          <strong>{functions.toLocaleString()}</strong>
+          <span>{functions === 1 ? "function" : "functions"}</span>
+        </button>
+        <button onClick={() => onView("commits")}>
+          <strong>{comparison.commits.length.toLocaleString()}</strong>
+          <span>{comparison.commits.length === 1 ? "commit" : "commits"}</span>
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// The screens one press away, as keys on a keyboard: each cap carries its shortcut key
+// (set in Settings) and sinks when pressed.
+const KEY_VIEWS: View[] = ["changes", "commits", "summary", "digest", "map", "flow", "project"];
+
+function Keys({ shortcuts, onView, onAdd, onSync }: {
+  shortcuts: Record<string, string>;
+  onView: (view: View) => void;
+  onAdd: () => void;
+  onSync: () => void;
+}) {
+  const caps: { id: string; label: string; icon: ReactNode; legend?: string; go: () => void }[] = [
+    ...KEY_VIEWS.map((id) => {
+      const view = VIEWS.find((item) => item.id === id)!;
+      return { id, label: view.label, icon: view.icon, legend: shortcuts[`view:${id}`], go: () => onView(id) };
+    }),
+    { id: "sync", label: "Sync GitHub", icon: <SyncIcon />, legend: shortcuts.sync, go: onSync },
+    { id: "add", label: "Add project", icon: <PlusIcon />, go: onAdd },
+  ];
+  return (
+    <section className="card home__section keys">
+      <header className="card__header">
+        <h2 className="card__title">Jump to</h2>
+      </header>
+      <div className="keys__board">
+        {caps.map((cap) => (
+          <button key={cap.id} className="keycap" onClick={cap.go} title={cap.legend ? `${cap.label} (key ${cap.legend.toUpperCase()})` : cap.label}>
+            <span className="keycap__top">
+              {cap.legend && <kbd className="keycap__legend">{cap.legend.toUpperCase()}</kbd>}
+              <span className="keycap__icon" aria-hidden="true">
+                {cap.icon}
+              </span>
+              <span className="keycap__label">{cap.label}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// The newest commits on the branch, newest first; amber marks the ones an AI co-wrote.
+function LatestCommits({ comparison, onView }: { comparison: Comparison | null; onView: (view: View) => void }) {
+  const commits = comparison?.commits ?? [];
+  return (
+    <section className="card home__section latest">
+      <header className="card__header">
+        <h2 className="card__title">Latest commits</h2>
+        {commits.length > 0 && (
+          <button className="card__link" onClick={() => onView("commits")}>
+            All {commits.length} ›
+          </button>
+        )}
+      </header>
+      {!comparison ? (
+        <p className="home__muted">Reading the branch…</p>
+      ) : commits.length === 0 ? (
+        <p className="home__muted">
+          No commits ahead of <code>{comparison.base}</code> yet.
+        </p>
+      ) : (
+        <ol className="latest__list">
+          {commits.slice(0, 8).map((commit) => (
+            <li key={commit.sha}>
+              <span className={`latest__dot${commit.ai ? " latest__dot--ai" : ""}`} title={commit.ai ? "Written with an AI" : undefined} />
+              <span className="latest__subject">{commit.subject}</span>
+              <span className="latest__meta">
+                {commit.author}, {ago(commit.authored_at)} <code>{commit.short_sha}</code>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function SyncIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" />
+      <path d="M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" />
+      <path d="M20 20v-4h-4" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+      <path d="M12 8v8M8 12h8" />
+    </svg>
   );
 }
 

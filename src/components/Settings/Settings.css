@@ -981,7 +981,7 @@
 
 .settings__button--danger {
   background: var(--dd-del);
-  color: #fff;
+  color: var(--dd-on-del);
 }
 
 .sr-only {
