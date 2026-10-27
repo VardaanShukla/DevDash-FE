@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Logo from "../Logo/Logo";
 import "./Splash.css";
 
 // A funnel of fine, glowing threads turns slowly in the dark, each thread a ring of tiny
-// points that drifts and wavers, and the name rises into view in the middle of it. The camera
+// points that drifts and wavers, and the logo's keycap turns in space above the name as it
+// rises into view in the middle of it. The scene leans toward the pointer: the title tips
+// and the funnel slides the other way, so the two read as near and far. The camera
 // starts above the funnel and settles in front of it. Click or press any key to skip ahead.
 //
 // When this browser has to sign in, the sign-in panel slides in from the right and the name
@@ -159,6 +162,16 @@ export default function Splash({ hold, panel, onDone }: Props) {
     window.addEventListener("keydown", skip);
     root.addEventListener("pointerdown", skip);
 
+    // Where the pointer is, -1 to 1 across the screen, and where the scene has eased to.
+    const pointer = { x: 0, y: 0 };
+    const lean = { x: 0, y: 0 };
+    const onPointer = (event: PointerEvent) => {
+      if (event.pointerType !== "mouse") return;
+      pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = (event.clientY / window.innerHeight) * 2 - 1;
+    };
+    window.addEventListener("pointermove", onPointer);
+
     let width = 0;
     let height = 0;
     const resize = () => {
@@ -179,8 +192,8 @@ export default function Splash({ hold, panel, onDone }: Props) {
     const place = () => {
       const along = easeInOutCubic(split);
       const narrow = width < NARROW;
-      const cx = narrow ? width / 2 : width / 2 - (width / 4) * along;
-      const cy = narrow ? height / 2 - height * 0.3 * along : height / 2 + height * 0.02;
+      const cx = (narrow ? width / 2 : width / 2 - (width / 4) * along) - lean.x * width * 0.025;
+      const cy = (narrow ? height / 2 - height * 0.3 * along : height / 2 + height * 0.02) - lean.y * height * 0.025;
       const radius = Math.max(width * 0.5, height * 0.8) * (1 - 0.25 * along);
       return { cx, cy, radius };
     };
@@ -276,6 +289,7 @@ export default function Splash({ hold, panel, onDone }: Props) {
       timers.forEach(clearTimeout);
       window.removeEventListener("keydown", skip);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("pointermove", onPointer);
       root.removeEventListener("pointerdown", skip);
     };
 
@@ -310,6 +324,12 @@ export default function Splash({ hold, panel, onDone }: Props) {
       if (finished) return;
       const dt = Math.min(now - last, 32);
       last = now;
+      // The scene follows the pointer with a lag, as a heavy thing would.
+      const ease = 1 - Math.exp(-dt / 260);
+      lean.x += (pointer.x - lean.x) * ease;
+      lean.y += (pointer.y - lean.y) * ease;
+      root.style.setProperty("--lean-x", lean.x.toFixed(3));
+      root.style.setProperty("--lean-y", lean.y.toFixed(3));
       const hold = holdRef.current;
 
       // The panel slides towards where it should be.
@@ -361,6 +381,7 @@ export default function Splash({ hold, panel, onDone }: Props) {
     <div ref={rootRef} className={`splash splash--${phase}${skipped ? " splash--skipped" : ""}`}>
       <canvas ref={canvasRef} className="splash__canvas" aria-hidden="true" />
       <div className="splash__title">
+        <Logo size={112} depth={20} spin className="splash__logo" />
         <h1 className="splash__name" aria-label={NAME}>
           {[...NAME].map((letter, i) => (
             <span

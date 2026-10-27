@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import Logo from "../Logo/Logo";
 import "./SideMenu.css";
 
 // The menu down the left side: the brand, the project, then one item per view, with
@@ -13,7 +14,7 @@ export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" |
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
-  { id: "home", label: "Home", hint: "Your dashboard: AI changes today, projects, the branch and more. Customise it to show what you need", icon: <HomeIcon /> },
+  { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
@@ -183,11 +184,7 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
   return (
     <aside className={`menu${folded ? " menu--collapsed" : ""}`}>
       <div className="menu__head">
-        <span className="menu__brand" aria-label="DevDash">
-          <span className="brand__dev">Dev</span>
-          <span className="brand__tag">&lt;/&gt;</span>
-          <span className="brand__dash">Dash</span>
-        </span>
+        <Logo size={folded ? 30 : 30} wordmark={!folded} className="menu__brand" />
         {!narrow && (
           <button
             type="button"

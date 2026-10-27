@@ -44,21 +44,22 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
         <dd>{repo.ai ? `${NAMES[repo.ai]}, recording each request` : "None, your changes only"}</dd>
       </dl>
       {tools.length > 1 && (
-        <label className="field">
-          <span>{repo.ai ? "Record a different AI tool" : "Record an AI tool's changes"}</span>
-          <select
-            value={repo.ai ?? ""}
-            disabled={busy}
-            onChange={(event) => event.target.value && choose(event.target.value as AiToolId)}
-          >
-            {!repo.ai && <option value="">Pick one…</option>}
-            {tools.map((tool) => (
-              <option key={tool.id} value={tool.id}>
-                {tool.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="panel__tools" disabled={busy}>
+          <legend>{repo.ai ? "Record a different AI tool" : "Record an AI tool's changes"}</legend>
+          {tools.map((tool) => (
+            <label key={tool.id} className={`panel__tool${repo.ai === tool.id ? " panel__tool--on" : ""}`}>
+              <input
+                type="radio"
+                name={`ai-tool-${repo.id}`}
+                value={tool.id}
+                checked={repo.ai === tool.id}
+                onChange={() => choose(tool.id as AiToolId)}
+              />
+              <span className="panel__tool-name">{tool.name}</span>
+              <span className="panel__tool-state">{repo.ai === tool.id ? "Recording" : "Use this"}</span>
+            </label>
+          ))}
+        </fieldset>
       )}
       {repo.ai ? (
         <Button variant="outline" onClick={() => choose(null)} disabled={busy}>

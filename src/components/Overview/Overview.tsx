@@ -9,6 +9,14 @@ import "./Overview.css";
 // left, how big the change is in the middle, where it sits in the project on the right.
 // Every card links to the view with the full detail.
 
+// "merged", "deleted on GitHub", with when DevDash stops showing it; "" for an open branch.
+export function branchNote(branch: BranchInfo): string {
+  const state = branch.gone ? "deleted on GitHub" : branch.merged ? "merged" : "";
+  if (!state || !branch.removes_at) return state;
+  const at = new Date(branch.removes_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${state} · hidden at ${at}`;
+}
+
 type Props = {
   comparison: Comparison;
   branches: BranchInfo[];
@@ -20,7 +28,7 @@ type Props = {
 };
 
 // Review size by lines changed, like a gear selector.
-const SIZES = [
+export const SIZES = [
   { id: "S", label: "Small change", until: 50 },
   { id: "M", label: "Medium change", until: 300 },
   { id: "L", label: "Large change", until: 1000 },
@@ -63,14 +71,16 @@ export default function Overview({ comparison, branches, flow, map, onHeadChange
             {branches.map((branch) => (
               <option key={branch.name} value={branch.name}>
                 {branch.name}
-                {branch.gone ? " · deleted on GitHub" : branch.merged ? " · merged" : ""}
+                {branchNote(branch) && ` · ${branchNote(branch)}`}
               </option>
             ))}
           </select>
           {shown && (shown.merged || shown.gone) && (
             <p className="ov-branch__done">
-              {shown.merged ? `Already merged into ${comparison.base}.` : "Deleted on GitHub."} You can remove it with{" "}
-              <code>git branch {shown.merged ? "-d" : "-D"} {comparison.head}</code>
+              {shown.merged ? `Already merged into ${comparison.base}.` : "Deleted on GitHub."}
+              {shown.removes_at &&
+                ` DevDash stops showing it at ${new Date(shown.removes_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}{" "}
+              You can remove it with <code>git branch {shown.merged ? "-d" : "-D"} {comparison.head}</code>
             </p>
           )}
           {comparison.uncommitted && <span className="ov-branch__tag">Includes uncommitted work</span>}
@@ -129,17 +139,7 @@ export default function Overview({ comparison, branches, flow, map, onHeadChange
       </div>
 
       <section className="card ov-gauge">
-        <div className="ov-gauge__dial">
-          <Gauge lines={lines} size={size.id} />
-          <div className="ov-gauge__center">
-            <strong>{lines.toLocaleString()}</strong>
-            <span>lines changed</span>
-            <span className="ov-gauge__split">
-              <span className="ov-add">+{additions.toLocaleString()}</span>
-              <span className="ov-del">−{deletions.toLocaleString()}</span>
-            </span>
-          </div>
-        </div>
+        <GaugeDial lines={lines} additions={additions} deletions={deletions} size={size.id} />
         <div className="ov-gears" aria-label={size.label}>
           {SIZES.map((s) => (
             <span key={s.id} className={s.id === size.id ? "is-on" : ""}>
@@ -221,9 +221,37 @@ export default function Overview({ comparison, branches, flow, map, onHeadChange
   );
 }
 
+// Up to 9,999 the count shows in full; past that it shortens (17.1k, 1.2M) so it stays
+// inside the dial. The full number is in the tooltip.
+export function compactCount(n: number) {
+  if (n < 10_000) return n.toLocaleString();
+  const [value, unit] = n < 1_000_000 ? [n / 1000, "k"] : [n / 1_000_000, "M"];
+  return `${value < 100 ? value.toFixed(1).replace(/\.0$/, "") : Math.round(value)}${unit}`;
+}
+
+// The speedometer with its readout in the middle. The readout's size follows the dial's
+// width and how many characters it has, so a long count shrinks rather than crossing the arc.
+export function GaugeDial({ lines, additions, deletions, size }: { lines: number; additions: number; deletions: number; size: string }) {
+  const text = compactCount(lines);
+  const split = `+${compactCount(additions)} −${compactCount(deletions)}`;
+  return (
+    <div className="ov-gauge__dial">
+      <Gauge lines={lines} size={size} />
+      <div className="ov-gauge__center" title={`${lines.toLocaleString()} lines changed: +${additions.toLocaleString()} −${deletions.toLocaleString()}`}>
+        <strong style={{ ["--chars" as string]: Math.max(3, text.length) }}>{text}</strong>
+        <span>lines changed</span>
+        <span className="ov-gauge__split" style={{ ["--chars" as string]: split.length }}>
+          <span className="ov-add">+{compactCount(additions)}</span>
+          <span className="ov-del">−{compactCount(deletions)}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // A 240° speedometer arc. Lines changed run on a log scale up to 2,000, so both a
 // ten-line fix and a large feature land somewhere readable.
-function Gauge({ lines, size }: { lines: number; size: string }) {
+export function Gauge({ lines, size }: { lines: number; size: string }) {
   const max = 2000;
   const fraction = Math.min(1, Math.log10(1 + lines) / Math.log10(1 + max));
   const r = 132;

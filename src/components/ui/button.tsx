@@ -15,7 +15,7 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-glass-line",
         ghost: "bg-transparent text-[var(--dd-ink-soft)] hover:bg-secondary hover:text-foreground",
         outline: "border-border bg-transparent text-[var(--dd-ink-soft)] hover:bg-secondary hover:text-foreground",
-        danger: "bg-destructive text-white hover:opacity-90",
+        danger: "bg-destructive text-[var(--dd-on-del)] hover:opacity-90",
       },
       size: {
         default: "h-10 px-4 text-sm",

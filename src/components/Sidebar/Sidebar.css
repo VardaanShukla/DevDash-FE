@@ -37,7 +37,7 @@
 
 .sidebar__item {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -50,12 +50,13 @@
 }
 
 .sidebar__item:hover:not(:disabled) {
-  background: var(--dd-mod-bg);
+  background: var(--dd-accent-soft);
+  color: var(--dd-ink);
 }
 
 .sidebar__item--active {
-  background: var(--dd-mod-bg);
-  box-shadow: inset 3px 0 0 var(--dd-accent);
+  background: var(--dd-accent-soft);
+  box-shadow: var(--dd-bevel), inset 0 0 0 1px color-mix(in srgb, var(--dd-accent) 40%, transparent);
 }
 
 .sidebar__item:disabled {
@@ -121,29 +122,34 @@
   background: var(--dd-accent-soft);
 }
 
-/* Remove sits over the item's right edge: shown on hover or focus, always when the
-   folder is gone, since such a project can't be opened to remove it there. */
+/* Remove has its own column at the row's end, so it never covers the name or the AI tag. It
+   fades in on hover or focus, and always shows when the folder is gone, since such a
+   project can't be opened to remove it there. */
 .sidebar__row {
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
 }
 
 .sidebar__remove {
-  position: absolute;
-  top: 50%;
-  right: 6px;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--dd-line);
-  border-radius: 6px;
-  background: var(--dd-card);
-  color: var(--dd-ink-soft);
-  font-size: 15px;
-  line-height: 1;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-muted);
   cursor: pointer;
   opacity: 0;
-  transform: translateY(-50%);
+  transition: opacity 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.sidebar__remove svg {
+  width: 14px;
+  height: 14px;
 }
 
 .sidebar__row:hover .sidebar__remove,
@@ -154,6 +160,7 @@
 
 .sidebar__remove:hover {
   border-color: var(--dd-del);
+  background: var(--dd-del-bg);
   color: var(--dd-del);
 }
 
