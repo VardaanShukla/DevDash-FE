@@ -1,0 +1,1856 @@
+/* Home's widgets. The board is a 12-column grid of rows var(--row) tall; each widget (.wf)
+   sits on it at its own column, row and size, and draws a panel (.wf__panel) in one of five
+   styles, its highlights in its accent. Below the board's narrow width the widgets stack. */
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: var(--row);
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.board--narrow {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+}
+
+.board--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.board__empty {
+  grid-column: 1 / -1;
+  padding: 48px 16px;
+  color: var(--dd-muted);
+  text-align: center;
+}
+
+.board__said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* One widget: its panel fills its cell. Its size is the container its content adapts to. */
+.wf {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  container: wf / size;
+}
+
+/* Stacked, each widget is as tall as what it shows; the flow graph and calendar, which fill
+   whatever room they get, keep their rows. */
+.board--narrow .wf {
+  container-type: inline-size;
+}
+
+.board--narrow .wf--own {
+  min-height: calc(var(--h) * var(--row));
+}
+
+.wf > .wf__panel,
+.wf--own > .card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 18px 20px;
+  overflow: hidden;
+}
+
+.board--narrow .wf > .wf__panel {
+  overflow: visible;
+}
+
+/* The styles. Glass is the dashboard's own card. */
+.wf--solid > .wf__panel,
+.wf--solid.wf--own > .card {
+  background: var(--dd-card);
+  backdrop-filter: none;
+}
+
+.wf--outline > .wf__panel,
+.wf--outline.wf--own > .card {
+  border-color: var(--dd-line);
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.wf--tinted > .wf__panel,
+.wf--tinted.wf--own > .card {
+  border-color: color-mix(in srgb, var(--dd-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--dd-accent) 9%, var(--dd-card));
+  backdrop-filter: none;
+}
+
+.wf--bare > .wf__panel,
+.wf--bare.wf--own > .card {
+  padding: 4px 2px;
+  border-color: transparent;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+/* The accents: each widget's highlights (links, bars, the picked branch) take its colour,
+   deep enough to read on the light theme's cards and light enough on the dark one's. */
+.wf--accent-blue { --dd-accent: #035e8f; --dd-accent-soft: rgba(3, 94, 143, 0.12); --swatch: #0288d1; }
+.wf--accent-teal { --dd-accent: #0b5f59; --dd-accent-soft: rgba(11, 95, 89, 0.12); --swatch: #14b8a6; }
+.wf--accent-green { --dd-accent: #166534; --dd-accent-soft: rgba(22, 101, 52, 0.12); --swatch: #22c55e; }
+.wf--accent-amber { --dd-accent: #92400e; --dd-accent-soft: rgba(146, 64, 14, 0.12); --swatch: #f59e0b; }
+.wf--accent-red { --dd-accent: #a51b1b; --dd-accent-soft: rgba(165, 27, 27, 0.12); --swatch: #ef4444; }
+.wf--accent-violet { --dd-accent: #6d28d9; --dd-accent-soft: rgba(109, 40, 217, 0.12); --swatch: #8b5cf6; }
+.wf--accent-pink { --dd-accent: #a21caf; --dd-accent-soft: rgba(162, 28, 175, 0.12); --swatch: #ec4899; }
+
+:root[data-theme="dark"] .wf--accent-blue { --dd-accent: #4fc3f7; --dd-accent-soft: rgba(79, 195, 247, 0.14); }
+:root[data-theme="dark"] .wf--accent-teal { --dd-accent: #2dd4bf; --dd-accent-soft: rgba(45, 212, 191, 0.14); }
+:root[data-theme="dark"] .wf--accent-green { --dd-accent: #4ade80; --dd-accent-soft: rgba(74, 222, 128, 0.14); }
+:root[data-theme="dark"] .wf--accent-amber { --dd-accent: #fbbf24; --dd-accent-soft: rgba(251, 191, 36, 0.14); }
+:root[data-theme="dark"] .wf--accent-red { --dd-accent: #fb8a8a; --dd-accent-soft: rgba(251, 138, 138, 0.14); }
+:root[data-theme="dark"] .wf--accent-violet { --dd-accent: #c4b5fd; --dd-accent-soft: rgba(196, 181, 253, 0.14); }
+:root[data-theme="dark"] .wf--accent-pink { --dd-accent: #f9a8d4; --dd-accent-soft: rgba(249, 168, 212, 0.14); }
+
+/* Editing: every widget gets a bar along its top to drag it by, a settings button and a
+   corner to resize it by; the picked one is outlined. */
+.board--editing .wf > .wf__panel,
+.board--editing .wf--own > .card {
+  outline: 1px dashed color-mix(in srgb, var(--dd-ink) 22%, transparent);
+  outline-offset: 3px;
+}
+
+.board--editing .wf--selected > .wf__panel,
+.board--editing .wf--selected.wf--own > .card {
+  outline: 2px solid var(--dd-accent);
+}
+
+.wf--moving {
+  z-index: 5;
+}
+
+.wf--moving > .wf__panel,
+.wf--moving.wf--own > .card {
+  box-shadow: var(--dd-bevel), var(--dd-lift);
+  opacity: 0.94;
+}
+
+/* Where the dragged widget will land. */
+.wf__ghost {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 2px dashed var(--dd-accent);
+  border-radius: 22px;
+  background: var(--dd-accent-soft);
+  pointer-events: none;
+}
+
+.wf__edit {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.wf__edit > * {
+  pointer-events: auto;
+}
+
+/* They sit on the panel's top edge, clear of its title. */
+.wf__grip,
+.wf__settings {
+  position: absolute;
+  top: -11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: var(--dd-card);
+  box-shadow: var(--dd-shadow);
+  color: var(--dd-ink-soft);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wf__grip {
+  left: 50%;
+  max-width: calc(100% - 64px);
+  padding: 0 12px 0 8px;
+  transform: translateX(-50%);
+  cursor: grab;
+  touch-action: none;
+}
+
+.wf__grip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf__grip:disabled {
+  cursor: default;
+}
+
+.board--dragging .wf__grip {
+  cursor: grabbing;
+}
+
+.wf__settings {
+  right: 14px;
+  justify-content: center;
+  width: 28px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.wf__grip:hover:not(:disabled),
+.wf__settings:hover {
+  border-color: var(--dd-accent);
+  color: var(--dd-ink);
+}
+
+.wf__corner {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 22px;
+  height: 22px;
+  cursor: nwse-resize;
+  touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 55%, var(--dd-accent) 55% 62%, transparent 62% 72%, var(--dd-accent) 72% 79%, transparent 79%);
+  border-radius: 0 0 20px 0;
+}
+
+/* --- Inside every widget ------------------------------------------------------------------ */
+
+.wf__head {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  min-width: 0;
+}
+
+.wf__title {
+  flex: none;
+  margin: 0;
+  color: var(--dd-ink);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.wf__aside {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wf__aside code,
+.wf__muted code {
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  font-size: 12px;
+}
+
+.wf__link {
+  flex: none;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dd-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wf__link:hover {
+  text-decoration: underline;
+}
+
+.wf__muted {
+  margin: 0;
+  color: var(--dd-muted);
+  font-size: 13px;
+}
+
+/* An empty widget waits in the middle of its panel rather than under its title. */
+.wf__panel > .wf__muted:last-child {
+  margin: auto 0;
+  text-align: center;
+}
+
+.wf__foot {
+  flex: none;
+  margin: auto 0 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+}
+
+.wf__add {
+  color: var(--dd-add);
+}
+
+.wf__del {
+  color: var(--dd-del);
+}
+
+.wf__button {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
+  box-shadow: var(--dd-bevel), 0 2px 0 var(--dd-key-edge);
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wf__button:hover:not(:disabled) {
+  border-color: var(--dd-accent);
+}
+
+.wf__button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.wf__button--danger {
+  color: var(--dd-del);
+}
+
+/* Lists take the room their widget has and scroll inside it. */
+.people,
+.lines,
+.picker,
+.files,
+.tiles,
+.prompts,
+.cards,
+.pulls,
+.langs,
+.keys {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Greeting. */
+.greet {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  min-width: 0;
+}
+
+.greet__text {
+  min-width: 0;
+}
+
+.greet h1 {
+  margin: 0;
+  overflow: hidden;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.greet__sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  margin: 3px 0 0;
+  color: var(--dd-ink-soft);
+  font-size: 13.5px;
+}
+
+@container wf (max-width: 420px) {
+  .greet h1 {
+    font-size: 22px;
+  }
+
+  .greet__sky {
+    display: none;
+  }
+}
+
+/* The project on show: its name, large, with the branch under it; opens its summary. */
+.onshow {
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 1px;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: right;
+  cursor: pointer;
+}
+
+.onshow__label,
+.onshow__path {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onshow strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onshow code {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onshow:hover strong,
+.onshow:focus-visible strong {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+}
+
+.greet__sky {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.greet__sky--morning {
+  background: linear-gradient(160deg, #fbbf6a, #f0763c);
+}
+
+.greet__sky--afternoon {
+  background: linear-gradient(160deg, #38bdf8, #0e7490);
+}
+
+.greet__sky--evening {
+  background: linear-gradient(160deg, #f97a5a, #9d3c78);
+}
+
+.greet__sky--night {
+  background: linear-gradient(160deg, #4f46e5, #1e1b4b);
+}
+
+
+.greet__mood {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+button.greet__mood {
+  cursor: pointer;
+}
+
+button.greet__mood:hover {
+  text-decoration: underline;
+}
+
+.greet__mood--risk {
+  color: var(--dd-del);
+}
+
+.greet__mood--warn {
+  color: var(--dd-mod);
+}
+
+.greet__mood--calm {
+  color: var(--dd-add);
+}
+
+
+.band {
+  display: grid;
+  grid-template-columns: minmax(170px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 28px;
+  height: 100%;
+}
+
+.band__who {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.band__ai {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  justify-self: start;
+  max-width: 100%;
+  padding: 6px 12px 6px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.band__ai:hover {
+  border-color: var(--dd-accent);
+}
+
+.band__ai strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.band__ai span {
+  grid-column: 2;
+  overflow: hidden;
+  color: var(--dd-muted);
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.band__state {
+  grid-row: span 2;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dd-add);
+  box-shadow: 0 0 0 3px var(--dd-add-bg);
+}
+
+.band__state--off {
+  background: var(--dd-del);
+  box-shadow: 0 0 0 3px var(--dd-del-bg);
+}
+
+.band__today {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(120px, 1fr);
+  align-items: end;
+  gap: 10px 24px;
+  min-width: 0;
+}
+
+.band__numbers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 18px;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 13.5px;
+}
+
+.band__numbers strong,
+.band__numbers b {
+  color: var(--dd-ink);
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.band__numbers b.wf__add {
+  color: var(--dd-add);
+}
+
+.band__numbers b.wf__del {
+  color: var(--dd-del);
+}
+
+.band__none {
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 14px;
+}
+
+/* Today's prompts, one bar each: a low skyline along the band's floor. */
+.band__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 44px;
+  min-width: 0;
+  border-bottom: 1px solid var(--dd-line);
+}
+
+.band__bar {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  max-width: 18px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.band__bar b {
+  display: block;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--dd-accent) 70%, transparent);
+  transform-origin: bottom;
+  animation: bar-grow 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 30ms + 200ms);
+}
+
+.band__bar--risk b {
+  background: var(--dd-del);
+}
+
+.band__bar--undone b {
+  opacity: 0.3;
+}
+
+.band__bar:hover b,
+.band__bar:focus-visible b {
+  background: var(--dd-accent);
+}
+
+.band__bar--risk:hover b,
+.band__bar--risk:focus-visible b {
+  background: var(--dd-del);
+  filter: brightness(1.15);
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.band__more {
+  padding: 9px 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
+  box-shadow: var(--dd-bevel), 0 2px 0 var(--dd-key-edge);
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.band__more:hover {
+  border-color: var(--dd-accent);
+}
+
+.band__more:active {
+  transform: translateY(2px);
+  box-shadow: var(--dd-well);
+}
+
+.band__problems {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  grid-column: 1 / -1;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--dd-del) 40%, transparent);
+  border-radius: 14px;
+  background: var(--dd-del-bg);
+  color: var(--dd-ink);
+  font-size: 13px;
+}
+
+.band__problems p {
+  margin: 0;
+}
+
+.band__problems button {
+  align-self: flex-start;
+}
+
+
+.total__stage {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  perspective: 900px;
+}
+
+/* The glow the dial throws onto the panel under it. */
+.total__stage::after {
+  content: "";
+  position: absolute;
+  inset: auto 8% -6% 8%;
+  height: 34%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--dd-blue) 28%, transparent), transparent);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.total__bezel {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 330px);
+  padding: 7% 7% 0;
+  border-radius: 50% 50% 28% 28% / 58% 58% 22% 22%;
+  background:
+    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--dd-card) 92%, #fff 8%), var(--dd-card) 60%),
+    var(--dd-card);
+  box-shadow:
+    var(--dd-well),
+    0 0 0 1px var(--dd-glass-line),
+    0 0 0 7px color-mix(in srgb, var(--dd-card) 75%, var(--dd-line)),
+    0 0 0 8px var(--dd-glass-line),
+    0 30px 40px -24px rgba(0, 0, 0, 0.6);
+  transform: rotateX(16deg);
+  transform-origin: 50% 100%;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.total__stage:hover .total__bezel,
+.total__stage:focus-visible .total__bezel {
+  transform: rotateX(6deg) translateY(-4px);
+}
+
+.total__bezel .ov-gauge__dial {
+  width: 100%;
+  min-width: 0;
+}
+
+.total__gears {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12px;
+  font-family: var(--dd-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dd-muted);
+}
+
+.total__gears .is-on {
+  color: var(--dd-ink);
+  text-shadow: 0 0 12px var(--dd-blue);
+}
+
+.total__gears em {
+  margin-left: 6px;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-font);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.total__counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.total__counts button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 10px 6px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 14px;
+  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
+  box-shadow: var(--dd-bevel), 0 3px 0 var(--dd-key-edge);
+  color: var(--dd-ink-soft);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, border-color 150ms ease;
+}
+
+.total__counts button:hover {
+  border-color: color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
+  color: var(--dd-ink);
+}
+
+.total__counts button:active {
+  transform: translateY(3px);
+  box-shadow: var(--dd-well);
+}
+
+.total__counts strong {
+  color: var(--dd-ink);
+  font-family: var(--dd-mono);
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* Today's activity: one row per person, the bar their share of today's commits. */
+.people {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) minmax(120px, 1.4fr) 76px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.people li + li {
+  border-top: 1px solid var(--dd-line);
+}
+
+.people__avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: hsl(var(--hue) 55% 42%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.people__name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.people__name strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people__name span {
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+/* The person's day, midnight to midnight: a tick at each commit, the rest of the day after
+   now left faint. */
+.people__day {
+  position: relative;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--dd-accent-soft) var(--now), transparent var(--now));
+  box-shadow: inset 0 0 0 1px var(--dd-line);
+}
+
+.people__day b {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--dd-accent);
+}
+
+.people .people__axis {
+  padding: 0;
+  border: 0;
+}
+
+.people__axis span {
+  display: flex;
+  grid-column: 3;
+  justify-content: space-between;
+  color: var(--dd-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.people__axis i {
+  font-style: normal;
+}
+
+.people__count {
+  color: var(--dd-ink-soft);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.people__note {
+  margin: auto 0 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+}
+
+
+/* Latest commit: the newest one large, the few before it in a quiet list. */
+.latest__top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: 14px;
+  background: var(--dd-card);
+}
+
+.latest__subject {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.latest__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+}
+
+.latest__meta code {
+  font-family: var(--dd-mono);
+  font-size: 11.5px;
+}
+
+.latest__ai {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--dd-ai-bg);
+  color: var(--dd-ai);
+  font-weight: 600;
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+}
+
+.lines li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  font-size: 13px;
+}
+
+.lines__dot {
+    width: 10px;
+  height: 10px;
+    border: 2px solid var(--dd-muted);
+  border-radius: 50%;
+}
+
+.lines__dot--ai {
+  border-color: var(--dd-ai);
+  background: var(--dd-ai);
+  box-shadow: 0 0 8px var(--dd-ai);
+}
+
+.lines__text {
+  overflow: hidden;
+  color: var(--dd-ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lines__when {
+  color: var(--dd-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+
+/* Branches: pick one to show it everywhere. */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.picker__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--dd-ink-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__item:hover {
+  background: var(--dd-accent-soft);
+  color: var(--dd-ink);
+}
+
+.picker__item i {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--dd-muted);
+  border-radius: 50%;
+}
+
+.picker__item code {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--dd-mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__item.is-on {
+  border-color: var(--dd-line);
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  cursor: default;
+}
+
+.picker__item.is-on i {
+  border-color: var(--dd-accent);
+  background: radial-gradient(circle, var(--dd-accent) 0 3px, transparent 3.5px);
+}
+
+.picker__item.is-on code {
+  font-weight: 600;
+}
+
+.picker__tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--dd-mod-bg);
+  color: var(--dd-mod);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.picker__note {
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+
+.files {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.files button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 70px auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.files button:hover {
+  background: var(--dd-accent-soft);
+}
+
+.files__status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dd-mod);
+}
+
+.files__status--added {
+  background: var(--dd-add);
+}
+
+.files__status--deleted {
+  background: var(--dd-del);
+}
+
+.files__status--renamed {
+  background: #a78bfa;
+}
+
+.files__path {
+  overflow: hidden;
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files__path em {
+  color: var(--dd-muted);
+  font-style: normal;
+}
+
+.files__bar {
+  display: flex;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--dd-line);
+}
+
+.files__add {
+  background: var(--dd-add);
+}
+
+.files__del {
+  background: var(--dd-del);
+}
+
+.files__lines {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+
+/* Jump to: a small keyboard. Each key's cap sits on a skirt (the darker edge under it);
+   hovering lifts it a hair, pressing sinks it onto the skirt. */
+.keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 12px 10px;
+  padding-bottom: 4px;
+}
+
+.keycap {
+  position: relative;
+  display: block;
+  height: 100%;
+  min-height: 74px;
+  padding: 0 0 5px;
+  border: 0;
+  border-radius: 13px;
+  background: var(--dd-key-edge);
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 14px -8px rgba(0, 0, 0, 0.55);
+}
+
+.keycap__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 6px;
+  height: 100%;
+  padding: 10px 11px 9px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
+  box-shadow: var(--dd-bevel);
+  transform: translateY(0);
+  transition: transform 110ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.keycap:hover .keycap__top {
+  border-color: color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
+  transform: translateY(-2px);
+}
+
+.keycap:active .keycap__top {
+  transform: translateY(4px);
+  box-shadow: var(--dd-well);
+}
+
+.keycap__icon {
+  grid-row: 1;
+  grid-column: 1;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  color: var(--dd-ink-soft);
+}
+
+.keycap__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.keycap:hover .keycap__icon {
+  color: var(--dd-ink);
+}
+
+.keycap__legend {
+  grid-row: 1;
+  grid-column: 2;
+  min-width: 20px;
+  padding: 1px 5px;
+  border: 1px solid var(--dd-line);
+  border-radius: 6px;
+  background: var(--dd-field);
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.keycap__label {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  align-self: end;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.tiles__part {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.tiles__part:hover {
+  border-color: var(--dd-accent);
+  transform: translateY(-2px);
+}
+
+.tiles__part strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tiles__part span {
+  color: var(--dd-muted);
+  font-size: 11.5px;
+}
+
+.tiles__part em {
+  color: var(--dd-accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.tiles__part i {
+  display: flex;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--dd-line);
+}
+
+.tiles__part--hot {
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, transparent);
+  box-shadow: 0 0 18px -8px var(--dd-accent);
+}
+
+
+.langbar {
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+
+/* A big number with what it counts: Needs a look, Not committed, One number, the dial's
+   number view. */
+.big {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dd-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+}
+
+button.big {
+  cursor: pointer;
+}
+
+.big strong {
+  color: var(--dd-ink);
+  font-size: clamp(26px, min(22cqh, 22cqw), 64px);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.big em {
+  color: var(--dd-muted);
+  font-style: normal;
+}
+
+.big--risk strong {
+  color: var(--dd-del);
+}
+
+.big--warn strong {
+  color: var(--dd-mod);
+}
+
+.big--tile strong {
+  font-size: clamp(24px, min(34cqh, 24cqw), 56px);
+}
+
+button.big:hover strong {
+  color: var(--dd-accent);
+}
+
+/* Total changes as one bar of added and removed. */
+.split {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+}
+
+.split__bar {
+  display: flex;
+  gap: 3px;
+  height: 14px;
+}
+
+.split__bar b {
+  border-radius: 4px;
+}
+
+.split__add {
+  background: var(--dd-add);
+}
+
+.split__del {
+  background: var(--dd-del);
+}
+
+.split p {
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 13.5px;
+}
+
+/* The dial gives way to its number when the widget is too small to draw it. */
+.total__small {
+  display: none;
+}
+
+@container wf (max-height: 400px) {
+  .total__stage,
+  .total__gears {
+    display: none;
+  }
+
+  .total__small {
+    display: flex;
+  }
+}
+
+@container wf (max-width: 300px) {
+  .total__stage,
+  .total__gears {
+    display: none;
+  }
+
+  .total__small {
+    display: flex;
+  }
+}
+
+/* Project map tiles and the language mix. */
+.langs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.langs li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.langs i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.langs b {
+  color: var(--dd-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* AI prompts today. */
+.prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.prompts button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prompts button:hover {
+  background: var(--dd-accent-soft);
+}
+
+.prompts .is-undone {
+  opacity: 0.55;
+}
+
+.prompts__text {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompts__risk {
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--dd-del-bg);
+  color: var(--dd-del);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.prompts__meta {
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+/* Recording. */
+.rec {
+  margin: 0;
+  color: var(--dd-add);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.rec--warn {
+  color: var(--dd-del);
+}
+
+.rec__problem {
+  margin: 0;
+  color: var(--dd-ink);
+  font-size: 13px;
+}
+
+/* Projects. */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  align-content: start;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cards li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+.cards li.is-on {
+  border-color: var(--dd-accent);
+}
+
+.cards strong {
+  overflow: hidden;
+  color: var(--dd-ink);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cards code {
+  overflow: hidden;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cards em {
+  color: var(--dd-mod);
+  font-style: normal;
+}
+
+/* Commits by day. */
+.days {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  gap: 3px;
+  min-height: 0;
+  padding-bottom: 18px;
+}
+
+.days span {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.days b {
+  min-height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--dd-accent);
+}
+
+.days b.is-empty {
+  background: var(--dd-line);
+}
+
+.days i {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-top: 4px;
+  color: var(--dd-muted);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+.days span:first-child i {
+  left: 0;
+  transform: none;
+}
+
+.days span:last-child i {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+/* Clock. */
+.clockface {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  height: 100%;
+}
+
+.clockface strong {
+  color: var(--dd-ink);
+  font-family: var(--dd-mono);
+  font-size: clamp(20px, min(30cqh, 15cqw), 64px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.clockface span {
+  color: var(--dd-muted);
+  font-size: 13px;
+}
+
+/* Pull requests. */
+.pulls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pulls a {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--dd-ink);
+  text-decoration: none;
+}
+
+.pulls a:hover {
+  background: var(--dd-accent-soft);
+}
+
+.pulls__title {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pulls__title b {
+  color: var(--dd-accent);
+}
+
+.pulls__title em {
+  color: var(--dd-muted);
+  font-style: normal;
+}
+
+.pulls__meta {
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+.pulls__meta code {
+  font-family: var(--dd-mono);
+}
+
+/* Note. */
+.note {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  color: var(--dd-ink);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.note--large {
+  font-size: 19px;
+  line-height: 1.45;
+}
+
+/* The flow graph and calendar fill their widget. */
+.wf--own > .flow {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .band__bar b,
+  .total__bezel,
+  .total__counts button,
+  .keycap__top {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Today's activity without the day strip. */
+.people--plain li {
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+}
+
+@container wf (max-width: 460px) {
+  .people li {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+  }
+
+  .people__day,
+  .people .people__axis {
+    display: none;
+  }
+}
+
+@container wf (max-width: 720px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: start;
+  }
+
+  .band__today {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* The editor's own fields. */
+.editor .input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-field);
+  box-shadow: var(--dd-bevel);
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 13.5px;
+}
+
+.editor .input:hover {
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-line));
+}
+
+@container wf (max-width: 300px) {
+  .total__counts {
+    gap: 4px;
+  }
+
+  .total__counts button {
+    padding: 8px 2px 10px;
+    font-size: 10.5px;
+  }
+
+  .total__counts strong {
+    font-size: 17px;
+  }
+}
+
+/* Stacked, the pictures that otherwise fill their widget's rows get a height of their own. */
+.board--narrow .days {
+  min-height: 140px;
+}

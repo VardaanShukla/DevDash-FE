@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
-import type { AiStatus, AuthStatus, Branches, Comparison, Flow, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync } from "./api/types";
+import type { AiStatus, AuthStatus, Branches, Comparison, FileExplanation, Flow, KnowledgeTransfer, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
 import Digest from "./components/Digest/Digest";
 import CommitList from "./components/CommitList/CommitList";
@@ -15,13 +15,15 @@ import Overview, { branchNote } from "./components/Overview/Overview";
 import ProjectMap from "./components/ProjectMap/ProjectMap";
 import ProjectPanel from "./components/ProjectPanel/ProjectPanel";
 import RemoveProject from "./components/RemoveProject/RemoveProject";
-import SideMenu, { SETTINGS_SECTIONS, VIEWS, settingsSectionLabel, type SettingsSection, type View } from "./components/SideMenu/SideMenu";
+import SideMenu, { ProjectPicker, SETTINGS_SECTIONS, VIEWS, settingsSectionLabel, type SettingsSection, type View } from "./components/SideMenu/SideMenu";
 import Sidebar from "./components/Sidebar/Sidebar";
 import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
 import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
+import Ask from "./components/Ask/Ask";
 import Splash from "./components/Splash/Splash";
 import { keyName, typing } from "./shortcuts";
+import { clear, job, result, start, useJobs } from "./lib/aiJobs";
 import "./App.css";
 
 type Theme = "light" | "dark";
@@ -125,6 +127,12 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   const [flow, setFlow] = useState<Flow | null>(null);
   const [map, setMap] = useState<MapData | null>(null);
   const [summary, setSummary] = useState<SummaryData | null>(null);
+  // Every file's note from the knowledge transfer, shown above the file in Changes.
+  const [kt, setKt] = useState<KnowledgeTransfer | null>(null);
+  // The prompt open in AI changes, kept here so coming back to the page finds it open.
+  const [openChange, setOpenChange] = useState<{ id: string; focus: string | null } | null>(null);
+  // Explanations run outside the screens (lib/aiJobs); this re-renders when one finishes.
+  useJobs();
   // Whether Claude Code is installed and signed in, to explain functions and the project.
   const [ai, setAi] = useState<AiStatus | null>(null);
   const refreshAi = useCallback(() => {
@@ -166,15 +174,31 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     setFlow(null);
     setMap(null);
     setSummary(null);
+    setKt(null);
     setError(null);
   };
 
+  // Each screen opened is a step in the browser's history, so its Back button (and a mouse's
+  // back button) returns to the screen before; the first one only names where the page opened.
+  // Each step remembers the screen it was opened from, for the breadcrumb's back arrow.
+  const firstScreen = useRef(true);
+  const [cameFrom, setCameFrom] = useState<string | null>(null);
   useEffect(() => {
     const wanted = view === "settings" ? `settings/${section}` : view;
-    if (window.location.hash.slice(1) !== wanted) history.replaceState(null, "", `#${wanted}`);
+    const here = window.location.hash.slice(1);
+    if (here !== wanted) {
+      if (firstScreen.current) {
+        history.replaceState(null, "", `#${wanted}`);
+      } else {
+        history.pushState({ from: here }, "", `#${wanted}`);
+        setCameFrom(here);
+      }
+    }
+    firstScreen.current = false;
     const onHash = () => {
       setView(viewFromHash());
       setSection(sectionFromHash());
+      setCameFrom((history.state as { from?: string } | null)?.from ?? null);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -298,6 +322,19 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       stale = true;
     };
   }, [repoId, head, revision]);
+
+  // The file notes, read when Changes or Ask is on screen: cheap, since they are only read from disk.
+  useEffect(() => {
+    if ((view !== "changes" && view !== "ask") || repoId === null || head === null) return;
+    let stale = false;
+    api
+      .kt(repoId, head)
+      .then((result) => !stale && setKt(result))
+      .catch(() => !stale && setKt(null));
+    return () => {
+      stale = true;
+    };
+  }, [view, repoId, head, revision]);
 
   useEffect(refreshAi, [refreshAi]);
 
@@ -466,6 +503,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           onPasswordSet={onAuthChange}
           ai={ai}
           onAiRefresh={refreshAi}
+          onCloned={added}
         />
       ) : (
         <Notice title="Loading">Reading your settings…</Notice>
@@ -484,18 +522,26 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           onPrefs={changePrefs}
           username={auth.username}
           repoId={repoId}
-          head={head}
           version={`${repos.length}:${repoId}:${revision}`}
           comparison={comparison}
           branches={details}
+          checkedOut={branches?.current ?? null}
           flow={flow}
           map={map}
+          ai={ai}
           onHeadChange={setHead}
           onView={setView}
           onOpenFile={openFile}
           onAdd={() => setAdding(true)}
-          onDigest={() => setView("digest")}
           onSync={() => syncNow.current()}
+          onDigest={() => {
+            setOpenChange(null);
+            setView("digest");
+          }}
+          onOpenChange={(id) => {
+            setOpenChange({ id, focus: null });
+            setView("digest");
+          }}
         />
       );
     }
@@ -505,6 +551,11 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           connected={repos.filter((item) => item.claude).length}
           version={`${repos.length}:${revision}`}
           onConnect={() => setView("project")}
+          open={openChange}
+          onOpen={setOpenChange}
+          ai={ai}
+          onSignedIn={refreshAi}
+          explain={(change, path, name) => watchSignIn(api.explainChangePart(change, path, name))}
         />
       );
     }
@@ -530,6 +581,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       return summary && repoId !== null && head !== null ? (
         <Summary
           key={`${repoId}:${head}`}
+          scope={`${repoId}:${head}`}
           summary={summary}
           ai={ai}
           explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
@@ -537,6 +589,24 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
           onSignedIn={refreshAi}
           onOpenMap={() => setView("map")}
+        />
+      ) : (
+        <Notice title="Loading">Reading the project…</Notice>
+      );
+    }
+    if (view === "ask") {
+      return repo && head !== null ? (
+        <Ask
+          scope={`${repoId}:${head}`}
+          project={repo.name}
+          ai={ai}
+          kt={kt}
+          summary={summary}
+          ask={(question, history) => watchSignIn(api.ask(repoId, question, history, head))}
+          explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
+          explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
+          loadKt={() => api.kt(repoId, head)}
+          onSignedIn={refreshAi}
         />
       ) : (
         <Notice title="Loading">Reading the project…</Notice>
@@ -587,6 +657,26 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             files={comparison.files}
             focus={focus}
             version={`${comparison.head}:${comparison.base}:${comparison.uncommitted}:${revision}`}
+            scope={`${repoId}:${comparison.base}:${comparison.head}:${comparison.uncommitted}`}
+            fileNote={(path) => {
+              const file = kt?.files.find((item) => item.path === path);
+              if (!file) return null;
+              // The same run as the Full KT's Explain for this file, so either shows it.
+              const key = `file:${repoId}:${head}:${path}`;
+              const run = job(key);
+              return {
+                path,
+                note: file.explanation ?? result<FileExplanation>(key) ?? null,
+                ai,
+                onSignedIn: refreshAi,
+                busy: run?.state === "working",
+                problem: run?.state === "failed" ? run.error : null,
+                explain: () => {
+                  clear(key);
+                  start(key, () => watchSignIn(api.explainFile(repoId, path, head!))).catch(() => {});
+                },
+              };
+            }}
             loadFunctions={(file) => api.functions(repoId, file, compareOptions)}
             explainFunction={(file, name) => watchSignIn(api.explainFunction(repoId, file, name, compareOptions))}
             ai={ai}
@@ -614,13 +704,22 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   if (deeper && section.startsWith("ai/")) crumbs.push({ label: "AI", go: () => setSection("ai") });
   if (deeper) crumbs.push({ label: settingsSectionLabel(section) });
   if (picked && picked.view === view) crumbs.push({ label: picked.label });
+  // The back arrow returns to the screen this one was opened from, as the browser's Back does.
+  const fromView = cameFrom?.split("/")[0];
+  const back = fromView && VIEWS.some((item) => item.id === fromView)
+    ? { label: label(fromView as View), go: () => history.back() }
+    : null;
 
   return (
     <div className="app">
       {repos && repos.length > 0 && (
         <SideMenu
           view={view}
-          onView={setView}
+          onView={(next) => {
+            // AI changes again, from a prompt's own changes: back to the day.
+            if (next === "digest" && view === "digest") setOpenChange(null);
+            setView(next);
+          }}
           settings={section}
           onSettings={setSection}
           aiInUse={prefs?.ai.provider}
@@ -630,42 +729,20 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             commits: comparison?.commits.length,
             help: setup.todo,
           }}
-          project={
-            <>
-              <span className="switcher__label">Project</span>
-              <div className="switcher">
-                <select
-                  className="select switcher__select"
-                  value={repoId ?? ""}
-                  onChange={(event) => selectRepo(Number(event.target.value))}
-                  aria-label="Project"
-                >
-                  {repoId === null && <option value="">Pick a project</option>}
-                  {repos.map((item) => (
-                    <option key={item.id} value={item.id} disabled={!item.exists}>
-                      {item.name}
-                      {item.exists ? "" : " (folder missing)"}
-                    </option>
-                  ))}
-                </select>
-                <button className="switcher__add" onClick={() => setAdding(true)} title="Add a project" aria-label="Add a project">
-                  +
-                </button>
-              </div>
-            </>
-          }
+          project={<ProjectPicker repos={repos} selectedId={repoId} onSelect={selectRepo} onAdd={() => setAdding(true)} />}
         />
       )}
 
       <div className="main">
-        <header className="topbar">
-          {repos && repos.length > 0 ? (
+        <header className={`topbar${repos && repos.length > 0 && view === "home" ? " topbar--bare" : ""}`}>
+          {/* Home has its own greeting, so the bar only carries the controls there. */}
+          {repos && repos.length > 0 && view === "home" ? null : repos && repos.length > 0 ? (
             <div className="topbar__title">
-              <Breadcrumb crumbs={crumbs} />
+              <Breadcrumb crumbs={crumbs} back={back} />
               <h1>{current.label}</h1>
               <p>
                 {current.hint}
-                {repo && comparison && view !== "home" && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
+                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
                   <>
                     {" "}
                     · <code>{comparison.head}</code> in {repo.name}
@@ -708,7 +785,17 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       </div>
 
       {asking && <AskUncommitted onAnswer={answer} />}
-      {adding && <AddProject onClose={() => setAdding(false)} onAdded={added} />}
+      {adding && (
+        <AddProject
+          onClose={() => setAdding(false)}
+          onAdded={added}
+          onGitHub={() => {
+            setAdding(false);
+            setSection("github");
+            setView("settings");
+          }}
+        />
+      )}
       {removing && <RemoveProject repo={removing} onClose={() => setRemoving(null)} onRemoved={removed} />}
     </div>
   );
@@ -741,12 +828,22 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 }
 
 // Screens about one project; the breadcrumb names the project before them.
-const PROJECT_VIEWS = new Set<View>(["summary", "overview", "flow", "map", "changes", "commits", "help"]);
+const PROJECT_VIEWS = new Set<View>(["summary", "ask", "overview", "flow", "map", "changes", "commits", "help"]);
 
-// Where you are: Home › project › screen › what's picked. Every step but the last goes back to it.
-function Breadcrumb({ crumbs }: { crumbs: { label: string; go?: () => void }[] }) {
+// Where you are: Home › project › screen › what's picked. Every step but the last goes back to
+// it. The arrow in front goes back to the previous screen, or, on a screen opened straight
+// from the address bar, one step up the trail.
+function Breadcrumb({ crumbs, back }: { crumbs: { label: string; go?: () => void }[]; back: { label: string; go: () => void } | null }) {
+  const up = back ?? crumbs.slice(0, -1).reverse().find((crumb) => crumb.go);
   return (
     <nav className="crumbs" aria-label="Where you are">
+      {up && (
+        <button className="crumbs__back" onClick={up.go} aria-label={`Back to ${up.label}`} title={`Back to ${up.label}`}>
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+        </button>
+      )}
       <ol>
         {crumbs.map((crumb, i) => (
           <li key={i}>

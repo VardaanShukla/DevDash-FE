@@ -12,10 +12,16 @@ import type {
   Preferences,
   AiTool,
   AiToolId,
+  AskAnswer,
+  AskTurn,
   Branches,
   Comparison,
   Digest,
+  DigestChangeDetail,
   Flow,
+  GitHubRepo,
+  GitHubStatus,
+  PullRequests,
   FunctionDetail,
   FileExplanation,
   FunctionExplanation,
@@ -153,8 +159,27 @@ export const api = {
   kt: (repoId: number, head: string) => get<KnowledgeTransfer>(`/api/repos/${repoId}/kt?${new URLSearchParams({ head })}`),
   explainFile: (repoId: number, path: string, head: string) =>
     request<FileExplanation>(`/api/repos/${repoId}/explain/file`, "POST", { path, head }),
+  github: () => get<GitHubStatus>("/api/github"),
+  // Starts GitHub's device sign-in; the answer has the code to enter on GitHub.
+  githubConnect: (method: "app" | "gh" = "app") => request<GitHubStatus>("/api/github/connect", "POST", { method }),
+  // Connects with a token pasted from GitHub's settings.
+  githubToken: (token: string) => request<GitHubStatus>("/api/github/token", "POST", { token }),
+  // Whether the code was entered yet; connected once it was.
+  githubPoll: () => request<GitHubStatus>("/api/github/poll", "POST", {}),
+  githubDisconnect: () => request<GitHubStatus>("/api/github", "DELETE", {}),
+  githubRepos: () => get<GitHubRepo[]>("/api/github/repos"),
+  // Clones one of your repositories into the folder and adds it as a project.
+  githubClone: (fullName: string, folder: string) => request<Repo>("/api/github/clone", "POST", { full_name: fullName, folder }),
+  pulls: (repoId: number) => get<PullRequests>(`/api/repos/${repoId}/pulls`),
+  // A question about the project, answered in plain words; history is the conversation so far.
+  ask: (repoId: number, question: string, history: AskTurn[], head: string) =>
+    request<AskAnswer>(`/api/repos/${repoId}/ask`, "POST", { question, history, head }),
   home: () => get<ProjectCard[]>("/api/home"),
   digest: (day?: string) => get<Digest>(`/api/digest${day ? `?day=${day}` : ""}`),
+  digestChange: (id: string) => get<DigestChangeDetail>(`/api/digest/change?${new URLSearchParams({ id })}`),
+  // What one function (or file) of a prompt's change does, and what the prompt changed in it.
+  explainChangePart: (change: string, path: string, name: string) =>
+    request<FunctionExplanation>("/api/digest/explain", "POST", { change, path, name }),
   undoChange: (change: string) =>
     request<{ change: string; undone_at: string | null }>("/api/digest/undo", "POST", { change }),
   putBackChange: (change: string) =>

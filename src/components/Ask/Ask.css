@@ -1,0 +1,558 @@
+/* One chat panel filling the view: a bar naming who answers on top, the conversation in
+   the middle over a faint DevDash mark, and the question box docked at the bottom. */
+.qa {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.qa .qa__panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* The bar: the mark, the name, and whether the AI is ready. */
+.qa__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--dd-glass-line);
+}
+
+.qa__brand .logo__key,
+.qa__avatar.logo .logo__key {
+  /* Sits still here; the tilt on hover is for the menu. */
+  transition: none;
+}
+
+.qa__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.qa__title h2 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.qa__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--dd-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.qa__status i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dd-muted);
+}
+
+.qa__status--on i {
+  background: var(--dd-add);
+  box-shadow: 0 0 0 3px var(--dd-add-bg);
+}
+
+.qa__status--busy i {
+  background: var(--dd-ai);
+  box-shadow: 0 0 0 3px var(--dd-ai-bg);
+  animation: qa-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes qa-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.qa__restart {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-field);
+  box-shadow: var(--dd-bevel);
+  color: var(--dd-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.qa__restart svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.qa__restart:hover:not(:disabled) {
+  border-color: var(--dd-accent);
+}
+
+.qa__restart:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.qa__coverage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 14px;
+  margin: 0;
+  padding: 9px 22px;
+  border-bottom: 1px solid var(--dd-glass-line);
+  background: var(--dd-ai-bg);
+  color: var(--dd-ink-soft);
+  font-size: 12.5px;
+}
+
+.qa__coverage--failed {
+  background: var(--dd-del-bg);
+}
+
+/* How much of the KT is written, while it is being written. */
+.qa__meter {
+  flex-basis: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--dd-line);
+  overflow: hidden;
+}
+
+.qa__meter i {
+  display: block;
+  height: 100%;
+  background: var(--dd-ai);
+  transition: width 300ms ease;
+}
+
+.qa__link:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.qa__link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dd-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The conversation, over the watermark. The mark stays put while the turns scroll. */
+.qa__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qa__watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.07;
+  filter: saturate(0.6);
+  pointer-events: none;
+  user-select: none;
+}
+
+.qa__watermark .logo__key {
+  transition: none;
+}
+
+.qa__log {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 26px;
+}
+
+/* Before the first question: one quiet line, so the conversation keeps the room. */
+.qa__empty {
+  margin: auto 0 0;
+  align-self: center;
+  max-width: 56ch;
+  font-size: 12.5px;
+  color: var(--dd-muted);
+  text-align: center;
+}
+
+/* A turn: the avatar, then who spoke, what they said and what can be done with it. */
+.qa__turn {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 86%;
+}
+
+.qa__turn--user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.qa__avatar {
+  flex: none;
+  margin-top: 18px;
+}
+
+.qa__avatar--user {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.qa__body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.qa__turn--user .qa__body {
+  align-items: flex-end;
+}
+
+.qa__who {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dd-muted);
+}
+
+.qa__bubble {
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.qa__turn--user .qa__bubble {
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  border-top-right-radius: 6px;
+}
+
+.qa__turn--assistant .qa__bubble {
+  background: color-mix(in srgb, var(--dd-field) 88%, transparent);
+  color: var(--dd-ink);
+  border: 1px solid var(--dd-line);
+  border-top-left-radius: 6px;
+  box-shadow: var(--dd-bevel);
+}
+
+.qa__bubble p,
+.qa__bubble ul {
+  margin: 0;
+}
+
+.qa__bubble p + p,
+.qa__bubble p + ul,
+.qa__bubble ul + p,
+.qa__bubble ul + ul {
+  margin-top: 10px;
+}
+
+.qa__bubble ul {
+  padding-left: 18px;
+}
+
+.qa__bubble li + li {
+  margin-top: 4px;
+}
+
+.qa__bubble code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--dd-accent-soft);
+  font-family: var(--dd-mono);
+  font-size: 12px;
+}
+
+.qa__bubble--thinking {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--dd-muted);
+}
+
+.qa__bubble--thinking i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dd-ai);
+  animation: qa-dot 1.2s infinite ease-in-out;
+}
+
+.qa__bubble--thinking i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.qa__bubble--thinking i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.qa__bubble--thinking span {
+  margin-left: 6px;
+  font-size: 12.5px;
+}
+
+@keyframes qa-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qa__bubble--thinking i,
+  .qa__status--busy i {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.qa__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.qa__tool {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--dd-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qa__tool:hover {
+  color: var(--dd-ink);
+}
+
+.qa__files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--dd-muted);
+}
+
+.qa__files button {
+  padding: 3px 9px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: var(--dd-field);
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.qa__files button:hover:not(:disabled) {
+  border-color: var(--dd-accent);
+  color: var(--dd-ink);
+}
+
+.qa__files button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qa__failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--dd-del-bg);
+  color: var(--dd-ink);
+  font-size: 12.5px;
+}
+
+.qa__failed button {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--dd-del);
+  color: var(--dd-on-del);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* The question box, docked under the conversation. */
+.qa__composer {
+  padding: 12px 18px 10px;
+  border-top: 1px solid var(--dd-glass-line);
+}
+
+.qa__field {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 6px 6px 6px 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: 16px;
+  background: var(--dd-field);
+  box-shadow: var(--dd-well);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.qa__field:focus-within {
+  border-color: var(--dd-accent);
+  box-shadow: var(--dd-well), 0 0 0 3px var(--dd-accent-soft);
+}
+
+.qa__field textarea {
+  flex: 1;
+  min-height: 24px;
+  max-height: 180px;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.qa__field textarea::placeholder {
+  color: var(--dd-muted);
+}
+
+.qa__send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 12px;
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.qa__send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.qa__send:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.qa__send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.qa__hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 7px 4px 0;
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.qa__hint kbd {
+  padding: 0 5px;
+  border: 1px solid var(--dd-line);
+  border-radius: 5px;
+  background: var(--dd-field);
+  font-family: var(--dd-mono);
+  font-size: 10.5px;
+}
+
+.qa__setup {
+  padding: 16px 22px;
+  border-top: 1px solid var(--dd-glass-line);
+}
+
+@media (max-width: 700px) {
+  .qa__bar,
+  .qa__coverage {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .qa__log {
+    padding: 16px;
+  }
+
+  .qa__turn {
+    max-width: 100%;
+  }
+
+  .qa__composer {
+    padding: 10px 12px 8px;
+  }
+
+  .qa__hint span:first-child {
+    display: none;
+  }
+}

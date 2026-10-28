@@ -322,6 +322,70 @@ export type KtFile = {
 
 export type KnowledgeTransfer = { files: KtFile[]; explained: number };
 
+// Your GitHub account, connected through DevDash's GitHub App.
+export type GitHubStatus = {
+  // DevDash's GitHub App is set up (its client ID is known).
+  configured: boolean;
+  // GitHub's gh tool is installed, to sign in through.
+  gh: boolean;
+  connected: boolean;
+  // How the account was connected.
+  via: "app" | "gh" | "token" | null;
+  login: string | null;
+  name: string | null;
+  avatar: string | null;
+  // Where to pick the repositories DevDash may read.
+  install_url: string | null;
+  // While signing in: the code to enter at verify_url, and when it runs out (Unix time).
+  code: string | null;
+  verify_url: string | null;
+  expires_at: number | null;
+};
+
+export type GitHubRepo = {
+  full_name: string;
+  private: boolean;
+  description: string | null;
+  default_branch: string | null;
+  url: string | null;
+  clone_url: string | null;
+  updated_at: string | null;
+  // The folder of the DevDash project cloned from it.
+  tracked: string | null;
+};
+
+export type PullRequest = {
+  number: number;
+  title: string;
+  author: string | null;
+  branch: string | null;
+  base: string | null;
+  draft: boolean;
+  url: string;
+  updated_at: string | null;
+};
+
+export type PullRequests = {
+  // owner/name on GitHub; null when the project has no GitHub remote.
+  repo: string | null;
+  connected: boolean;
+  pulls: PullRequest[];
+  error: string | null;
+};
+
+// One turn of a conversation on the Ask screen.
+export type AskTurn = { role: "user" | "assistant"; text: string };
+
+export type AskAnswer = {
+  answer: string;
+  // The files the answer is about, and those whose code the AI read for it.
+  files: string[];
+  read: string[];
+  // How many of the project's files have a KT note, which the AI reads too.
+  explained: number;
+  total: number;
+};
+
 export type Summary = {
   revision: string;
   name: string;
@@ -417,11 +481,31 @@ export type Preferences = {
   shortcuts: Record<string, string>;
   // Which AI writes explanations, and the model picked for each (missing: its cheapest).
   ai: { provider: AiProvider; models: Partial<Record<AiProvider, string>> };
-  // Home's widgets in the order shown, and the ones hidden.
+  // Home's widgets, each placed on the grid with its style and settings.
   home: HomeLayout;
 };
-export type Widget = "pulse" | "ai" | "branch" | "keys" | "flow" | "commits" | "map" | "calendar";
-export type HomeLayout = { order: Widget[]; hidden: Widget[] };
+export type WidgetType =
+  | "greeting" | "project" | "ai-today" | "total-changes" | "activity" | "latest-commit" | "branches"
+  | "changed-files" | "commits" | "branch-flow" | "project-map" | "languages" | "ai-prompts" | "needs-a-look"
+  | "recording" | "projects" | "uncommitted" | "commit-days" | "jump-to" | "calendar" | "clock" | "pull-requests"
+  | "note" | "number";
+export type WidgetStyle = "glass" | "solid" | "outline" | "tinted" | "bare";
+export type WidgetAccent = "" | "blue" | "teal" | "green" | "amber" | "red" | "violet" | "pink";
+// One widget on Home's 12-column grid: its column and row, its width in columns and height
+// in rows, how its panel looks, the person's own title ("" for the usual one) and its options.
+export type PlacedWidget = {
+  id: string;
+  type: WidgetType;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  style: WidgetStyle;
+  accent: WidgetAccent;
+  title: string;
+  options: Record<string, string | number | boolean>;
+};
+export type HomeLayout = { widgets: PlacedWidget[] };
 // What a change sends: only the settings to change; for the AI, the provider and/or the
 // models of the AIs to change ("" goes back to that AI's default).
 export type PreferenceChange = Omit<Partial<Preferences>, "ai"> & {
@@ -469,6 +553,17 @@ export type DigestChange = {
   // Undone from the digest and not put back since.
   undone_at: string | null;
 };
+// One prompt's change opened from the digest, with its lines: each file's hunks and each
+// part it touched (a function, or the whole file when it has none) with only its own lines.
+export type DigestUnit = {
+  name: string;
+  kind: "function" | "file";
+  change: "added" | "deleted" | "modified";
+  diff: string;
+  explanation: FunctionExplanation | null;
+};
+export type DigestChangeFile = DigestFile & { hunks: Hunk[]; units: DigestUnit[] };
+export type DigestChangeDetail = Omit<DigestChange, "files"> & { files: DigestChangeFile[] };
 export type Digest = {
   date: string;
   // Undone changes stay in `changes` but are left out of these numbers (`undone` counts them).

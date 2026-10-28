@@ -374,13 +374,14 @@
   margin-left: auto;
 }
 
-.summary__avatar {
+.summary__people .summary__avatar {
   display: grid;
   place-items: center;
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--dd-accent), var(--dd-blue));
+  /* Solid accent: its letter is the accent's own text colour, which reads on it in both themes. */
+  background: var(--dd-accent);
   color: var(--dd-on-accent);
   font-size: 11px;
   font-weight: 800;
@@ -700,4 +701,83 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "hero" "stats" "how" "parts" "tech";
   }
+}
+
+/* What one file is for, shown above its change in Changes and a prompt's changes. */
+.filenote {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--dd-line);
+  border-left: 3px solid var(--dd-ai);
+  border-radius: 12px;
+  background: var(--dd-ai-bg);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.filenote--empty {
+  border-left-color: var(--dd-line);
+  background: none;
+}
+
+.filenote__label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dd-ai);
+}
+
+.filenote--empty .filenote__label {
+  color: var(--dd-muted);
+}
+
+.filenote__purpose {
+  margin: 0;
+  color: var(--dd-ink);
+}
+
+.filenote__more {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dd-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filenote .kt__note {
+  padding: 4px 0 0;
+}
+
+.filenote__ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--dd-ink-soft);
+}
+
+.filenote__ask button {
+  padding: 7px 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filenote__ask button:disabled {
+  opacity: 0.7;
+  cursor: progress;
 }

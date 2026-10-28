@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api/client";
-import type { Digest as DigestData, DigestChange, DigestFile, DigestFlag } from "../../api/types";
+import type { AiStatus, Digest as DigestData, DigestChange, DigestFile, DigestFlag, FunctionExplanation } from "../../api/types";
+import PromptChanges from "./PromptChanges";
 import "./Digest.css";
 
 // The daily digest: what Claude changed on one day across every connected project, prompt
@@ -14,11 +15,34 @@ type Props = {
   // Changes when git changes underneath, so the day is read again.
   version: string;
   onConnect: () => void;
+  // The prompt whose own changes are open, and the part of it to scroll to; null for the day.
+  open: { id: string; focus: string | null } | null;
+  onOpen: (open: { id: string; focus: string | null } | null) => void;
+  ai: AiStatus | null;
+  onSignedIn: () => void;
+  explain: (change: string, path: string, name: string) => Promise<FunctionExplanation>;
 };
 
 const RISKY = new Set(["auth", "payments", "database", "tests", "secret"]);
 
-export default function Digest({ connected, version, onConnect }: Props) {
+export default function Digest(props: Props) {
+  if (props.open) {
+    return (
+      <PromptChanges
+        key={props.open.id}
+        id={props.open.id}
+        focus={props.open.focus}
+        ai={props.ai}
+        onSignedIn={props.onSignedIn}
+        explain={props.explain}
+        onBack={() => props.onOpen(null)}
+      />
+    );
+  }
+  return <Day {...props} />;
+}
+
+function Day({ connected, version, onConnect, onOpen }: Props) {
   const [day, setDay] = useState(today);
   const [data, setData] = useState<DigestData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,13 +171,13 @@ export default function Digest({ connected, version, onConnect }: Props) {
         {risky.length > 0 && (
           <section className="digest__group">
             <h3 className="digest__group-title digest__group-title--risk">Needs a look</h3>
-            {risky.map((change) => <Change key={change.id} change={change} onUndone={mark} />)}
+            {risky.map((change) => <Change key={change.id} change={change} onUndone={mark} onOpen={(focus) => onOpen({ id: change.id, focus })} />)}
           </section>
         )}
         {rest.length > 0 && (
           <section className="digest__group">
             {risky.length > 0 && <h3 className="digest__group-title">Everything else</h3>}
-            {rest.map((change) => <Change key={change.id} change={change} onUndone={mark} />)}
+            {rest.map((change) => <Change key={change.id} change={change} onUndone={mark} onOpen={(focus) => onOpen({ id: change.id, focus })} />)}
           </section>
         )}
         {data && !loading && data.changes.length > 0 && (
@@ -185,7 +209,12 @@ function Placeholders() {
   );
 }
 
-function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: string, at: string | null) => void }) {
+function Change({ change, onUndone, onOpen }: {
+  change: DigestChange;
+  onUndone: (id: string, at: string | null) => void;
+  // Opens this prompt's own changes, scrolled to a file or function when one was clicked.
+  onOpen: (focus: string | null) => void;
+}) {
   const [open, setOpen] = useState(change.risky);
   const [whole, setWhole] = useState(false);
   // Undo asks once, inside the card, before it touches any file.
@@ -212,9 +241,13 @@ function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: str
   return (
     <article className={`card digest__change${change.risky ? " digest__change--risk" : ""}${change.undone_at ? " digest__change--undone" : ""}`}>
       <header className="digest__change-head">
-        <p className={`digest__prompt${long && !whole ? " digest__prompt--clamped" : ""}`}>
+        <button
+          className={`digest__prompt digest__prompt--open${long && !whole ? " digest__prompt--clamped" : ""}`}
+          onClick={() => onOpen(null)}
+          title="See exactly what this prompt changed"
+        >
           {change.prompt ?? <i>No prompt was recorded</i>}
-        </p>
+        </button>
         {long && (
           <button className="digest__link" onClick={() => setWhole((v) => !v)}>
             {whole ? "Less" : "Whole prompt"}
@@ -248,16 +281,21 @@ function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: str
           </div>
         )}
       </header>
-      <button className="digest__toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span>{open ? "▾" : "▸"}</span>
-        {change.files.length} {change.files.length === 1 ? "file" : "files"}
-        {functions > 0 && `, ${functions} ${functions === 1 ? "function" : "functions"}`}
-        <b className="digest__add">+{change.additions}</b>
-        <b className="digest__del">−{change.deletions}</b>
-      </button>
+      <div className="digest__actions">
+        <button className="digest__toggle" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          <span>{open ? "▾" : "▸"}</span>
+          {change.files.length} {change.files.length === 1 ? "file" : "files"}
+          {functions > 0 && `, ${functions} ${functions === 1 ? "function" : "functions"}`}
+          <b className="digest__add">+{change.additions}</b>
+          <b className="digest__del">−{change.deletions}</b>
+        </button>
+        <button className="digest__see" onClick={() => onOpen(null)}>
+          See the changes and explain them ›
+        </button>
+      </div>
       {open && (
         <ul className="digest__files">
-          {change.files.map((file) => <File key={file.path} file={file} />)}
+          {change.files.map((file) => <File key={file.path} file={file} onOpen={onOpen} />)}
         </ul>
       )}
       <div className="digest__undo">
@@ -300,11 +338,13 @@ function Change({ change, onUndone }: { change: DigestChange; onUndone: (id: str
   );
 }
 
-function File({ file }: { file: DigestFile }) {
+function File({ file, onOpen }: { file: DigestFile; onOpen: (focus: string | null) => void }) {
   return (
     <li className="digest__file">
       <div className="digest__file-head">
-        <code className="digest__path">{file.path}</code>
+        <button className="digest__path digest__path--open" onClick={() => onOpen(file.path)} title="See what this prompt changed in this file">
+          {file.path}
+        </button>
         {file.status !== "modified" && <span className={`pill ${file.status === "added" ? "pill--add" : "pill--del"}`}>{file.status === "added" ? "new" : "deleted"}</span>}
         {file.watched && (
           <span
@@ -320,10 +360,15 @@ function File({ file }: { file: DigestFile }) {
       {file.functions.length > 0 && (
         <div className="digest__functions">
           {file.functions.map((fn) => (
-            <span key={fn.name} className={`digest__fn digest__fn--${fn.change}`} title={fn.change}>
+            <button
+              key={fn.name}
+              className={`digest__fn digest__fn--${fn.change}`}
+              title={`See and explain what this prompt ${fn.change === "added" ? "added" : fn.change === "deleted" ? "removed" : "changed"} in ${fn.name}`}
+              onClick={() => onOpen(`${file.path}\n${fn.name}`)}
+            >
               {fn.change === "added" ? "+ " : fn.change === "deleted" ? "− " : ""}
               {fn.name}
-            </span>
+            </button>
           ))}
         </div>
       )}

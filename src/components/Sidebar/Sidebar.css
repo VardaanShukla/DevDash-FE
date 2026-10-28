@@ -70,7 +70,8 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--dd-blue-strong), var(--dd-blue));
+  /* The brand blue, deep enough for its white letter (the light end of the gradient wasn't). */
+  background: linear-gradient(135deg, var(--dd-blue-strong), #01579b);
   color: #fff;
   font-weight: 700;
 }
