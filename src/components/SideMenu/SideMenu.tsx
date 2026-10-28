@@ -25,7 +25,7 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
@@ -39,6 +39,7 @@ export type SettingsSection =
   | "ai/hosted"
   | "recording"
   | "github"
+  | "codecommit"
   | "shortcuts";
 
 export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: ReactNode; children?: { id: SettingsSection; label: string }[] }[] = [
@@ -58,6 +59,7 @@ export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: Reac
   },
   { id: "recording", label: "Recording", icon: <RecordIcon /> },
   { id: "github", label: "GitHub", icon: <GitHubIcon /> },
+  { id: "codecommit", label: "CodeCommit", icon: <CodeCommitIcon /> },
   { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
 ];
 
@@ -481,6 +483,18 @@ function GitHubIcon() {
   return (
     <svg {...iconProps}>
       <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />
+    </svg>
+  );
+}
+
+// A branch splitting and merging back, for CodeCommit (whose own mark is AWS's to use).
+function CodeCommitIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="6" cy="19" r="2" />
+      <circle cx="18" cy="9" r="2" />
+      <path d="M6 7v10M18 11c0 4-5 4-11.2 6.6" />
     </svg>
   );
 }

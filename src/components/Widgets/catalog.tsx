@@ -216,7 +216,7 @@ export const CATALOG: WidgetSpec[] = [
     render: (p) => <Clock {...p} />,
   },
   {
-    type: "pull-requests", name: "Pull requests", description: "Open pull requests on GitHub for this project.",
+    type: "pull-requests", name: "Pull requests", description: "Open pull requests on GitHub or CodeCommit for this project.",
     size: { w: 6, h: 4 }, min: { w: 3, h: 3 },
     options: [count("count", "Pull requests to list", 5, 1, 20), toggle("drafts", "List drafts")],
     render: (p) => <PullRequestList {...p} />,
@@ -1063,11 +1063,11 @@ function PullRequestList({ data, title, o }: WidgetProps) {
     <>
       <Head title={title} aside={found?.repo ?? undefined} />
       {!found ? (
-        <Muted>Reading GitHub…</Muted>
+        <Muted>Reading pull requests…</Muted>
       ) : found.error ? (
         <Muted>{found.error}</Muted>
       ) : !found.connected ? (
-        <Muted>Connect GitHub in Settings to see pull requests.</Muted>
+        <Muted>Connect {found.host === "codecommit" ? "CodeCommit" : "GitHub"} in Settings to see pull requests.</Muted>
       ) : pulls.length === 0 ? (
         <Muted>No open pull requests.</Muted>
       ) : (

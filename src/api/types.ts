@@ -365,9 +365,38 @@ export type PullRequest = {
   updated_at: string | null;
 };
 
+// Your AWS CodeCommit repositories, read through the AWS CLI with one of your AWS profiles.
+// DevDash keeps no AWS keys, only the profile's name and the region.
+export type CodeCommitStatus = {
+  // The AWS CLI is installed, to sign requests with.
+  cli: boolean;
+  connected: boolean;
+  profile: string | null;
+  region: string | null;
+  // The AWS account the profile is in, and who the profile is as AWS names it.
+  account: string | null;
+  arn: string | null;
+  // The profiles on this computer, to pick from, with the region each is set to.
+  profiles: { name: string; region: string | null }[];
+};
+
+export type CodeCommitRepo = {
+  name: string;
+  description: string | null;
+  default_branch: string | null;
+  // The repository in the AWS console.
+  url: string | null;
+  clone_url: string | null;
+  updated_at: string | null;
+  // The folder of the DevDash project cloned from it.
+  tracked: string | null;
+};
+
 export type PullRequests = {
-  // owner/name on GitHub; null when the project has no GitHub remote.
+  // owner/name on GitHub or the name on CodeCommit; null when the project has neither remote.
   repo: string | null;
+  // Where the pull requests live; null when the project has neither remote.
+  host?: "github" | "codecommit" | null;
   connected: boolean;
   pulls: PullRequest[];
   error: string | null;
