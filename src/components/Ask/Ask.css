@@ -1,52 +1,115 @@
-/* A conversation down the page: what it's for on top, the turns in the middle, the
-   question box at the bottom. */
+/* One chat panel filling the view: a bar naming who answers on top, the conversation in
+   the middle over a faint DevDash mark, and the question box docked at the bottom. */
 .qa {
   display: flex;
   flex-direction: column;
-  gap: 14px;
   height: 100%;
   min-height: 0;
   max-width: 980px;
   margin: 0 auto;
 }
 
-.qa__head {
+.qa .qa__panel {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
-.qa__eyebrow {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--dd-muted);
+/* The bar: the mark, the name, and whether the AI is ready. */
+.qa__bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--dd-glass-line);
 }
 
-.qa__head h2 {
-  margin: 4px 0 6px;
-  font-size: 22px;
+.qa__brand .logo__key,
+.qa__avatar.logo .logo__key {
+  /* Sits still here; the tilt on hover is for the menu. */
+  transition: none;
 }
 
-.qa__head p {
+.qa__title {
+  flex: 1;
+  min-width: 0;
+}
+
+.qa__title h2 {
   margin: 0;
-  max-width: 64ch;
-  font-size: 13px;
-  color: var(--dd-ink-soft);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.qa__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--dd-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.qa__status i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--dd-muted);
+}
+
+.qa__status--on i {
+  background: var(--dd-add);
+  box-shadow: 0 0 0 3px var(--dd-add-bg);
+}
+
+.qa__status--busy i {
+  background: var(--dd-ai);
+  box-shadow: 0 0 0 3px var(--dd-ai-bg);
+  animation: qa-pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes qa-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .qa__restart {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 7px 12px;
   border: 1px solid var(--dd-line);
   border-radius: 10px;
   background: var(--dd-field);
+  box-shadow: var(--dd-bevel);
   color: var(--dd-ink);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  transition: border-color 150ms ease;
+}
+
+.qa__restart svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.qa__restart:hover:not(:disabled) {
+  border-color: var(--dd-accent);
 }
 
 .qa__restart:disabled {
@@ -55,12 +118,42 @@
 }
 
 .qa__coverage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 14px;
   margin: 0;
-  padding: 10px 14px;
-  border-radius: 12px;
+  padding: 9px 22px;
+  border-bottom: 1px solid var(--dd-glass-line);
   background: var(--dd-ai-bg);
   color: var(--dd-ink-soft);
   font-size: 12.5px;
+}
+
+.qa__coverage--failed {
+  background: var(--dd-del-bg);
+}
+
+/* How much of the KT is written, while it is being written. */
+.qa__meter {
+  flex-basis: 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--dd-line);
+  overflow: hidden;
+}
+
+.qa__meter i {
+  display: block;
+  height: 100%;
+  background: var(--dd-ai);
+  transition: width 300ms ease;
+}
+
+.qa__link:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 
 .qa__link {
@@ -69,63 +162,96 @@
   background: none;
   color: var(--dd-accent);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The conversation, over the watermark. The mark stays put while the turns scroll. */
+.qa__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.qa__watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.07;
+  filter: saturate(0.6);
+  pointer-events: none;
+  user-select: none;
+}
+
+.qa__watermark .logo__key {
+  transition: none;
 }
 
 .qa__log {
+  position: relative;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 22px 24px;
+  gap: 20px;
+  padding: 24px 26px;
 }
 
-.qa__empty p {
-  margin: 0 0 12px;
-  font-size: 13px;
+/* Before the first question: one quiet line, so the conversation keeps the room. */
+.qa__empty {
+  margin: auto 0 0;
+  align-self: center;
+  max-width: 56ch;
+  font-size: 12.5px;
   color: var(--dd-muted);
+  text-align: center;
 }
 
-.qa__starters {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 10px;
-}
-
-.qa__starters button {
-  padding: 12px 14px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: var(--dd-field);
-  color: var(--dd-ink);
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s;
-}
-
-.qa__starters button:hover:not(:disabled) {
-  border-color: var(--dd-accent);
-  transform: translateY(-1px);
-}
-
-.qa__starters button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
+/* A turn: the avatar, then who spoke, what they said and what can be done with it. */
 .qa__turn {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-width: 82%;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 86%;
 }
 
 .qa__turn--user {
   align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.qa__avatar {
+  flex: none;
+  margin-top: 18px;
+}
+
+.qa__avatar--user {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.qa__body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.qa__turn--user .qa__body {
   align-items: flex-end;
 }
 
@@ -137,23 +263,24 @@
 
 .qa__bubble {
   padding: 12px 16px;
-  border-radius: 16px;
+  border-radius: 18px;
   font-size: 13.5px;
-  line-height: 1.55;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
 .qa__turn--user .qa__bubble {
   background: var(--dd-accent);
   color: var(--dd-on-accent);
-  border-bottom-right-radius: 6px;
+  border-top-right-radius: 6px;
 }
 
 .qa__turn--assistant .qa__bubble {
-  background: var(--dd-well);
+  background: color-mix(in srgb, var(--dd-field) 88%, transparent);
   color: var(--dd-ink);
   border: 1px solid var(--dd-line);
-  border-bottom-left-radius: 6px;
+  border-top-left-radius: 6px;
+  box-shadow: var(--dd-bevel);
 }
 
 .qa__bubble p,
@@ -179,7 +306,7 @@
 .qa__bubble code {
   padding: 1px 5px;
   border-radius: 5px;
-  background: var(--dd-field);
+  background: var(--dd-accent-soft);
   font-family: var(--dd-mono);
   font-size: 12px;
 }
@@ -226,10 +353,32 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .qa__bubble--thinking i {
+  .qa__bubble--thinking i,
+  .qa__status--busy i {
     animation: none;
     opacity: 0.6;
   }
+}
+
+.qa__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+.qa__tool {
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--dd-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.qa__tool:hover {
+  color: var(--dd-ink);
 }
 
 .qa__files {
@@ -242,7 +391,7 @@
 }
 
 .qa__files button {
-  padding: 3px 8px;
+  padding: 3px 9px;
   border: 1px solid var(--dd-line);
   border-radius: 999px;
   background: var(--dd-field);
@@ -257,11 +406,17 @@
   color: var(--dd-ink);
 }
 
+.qa__files button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .qa__failed {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  align-self: center;
   padding: 10px 14px;
   border-radius: 12px;
   background: var(--dd-del-bg);
@@ -280,65 +435,124 @@
   cursor: pointer;
 }
 
-.qa__form {
+/* The question box, docked under the conversation. */
+.qa__composer {
+  padding: 12px 18px 10px;
+  border-top: 1px solid var(--dd-glass-line);
+}
+
+.qa__field {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding: 12px 12px 12px 18px;
+  padding: 6px 6px 6px 16px;
+  border: 1px solid var(--dd-line);
+  border-radius: 16px;
+  background: var(--dd-field);
+  box-shadow: var(--dd-well);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.qa__form textarea {
+.qa__field:focus-within {
+  border-color: var(--dd-accent);
+  box-shadow: var(--dd-well), 0 0 0 3px var(--dd-accent-soft);
+}
+
+.qa__field textarea {
   flex: 1;
-  min-height: 44px;
-  max-height: 160px;
-  padding: 10px 0;
+  min-height: 24px;
+  max-height: 180px;
+  padding: 8px 0;
   border: none;
   background: transparent;
   color: var(--dd-ink);
   font: inherit;
   font-size: 14px;
-  resize: vertical;
+  line-height: 1.5;
+  resize: none;
   outline: none;
 }
 
-.qa__form textarea::placeholder {
+.qa__field textarea::placeholder {
   color: var(--dd-muted);
 }
 
-.qa__form button {
-  padding: 10px 18px;
+.qa__send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
   border: none;
   border-radius: 12px;
   background: var(--dd-accent);
   color: var(--dd-on-accent);
-  font-size: 13.5px;
-  font-weight: 700;
   cursor: pointer;
+  transition: opacity 150ms ease, transform 150ms ease;
 }
 
-.qa__form button:disabled {
-  opacity: 0.55;
+.qa__send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.qa__send:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.qa__send:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.qa__form:focus-within {
-  border-color: var(--dd-accent);
+.qa__hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 7px 4px 0;
+  font-size: 11px;
+  color: var(--dd-muted);
+}
+
+.qa__hint kbd {
+  padding: 0 5px;
+  border: 1px solid var(--dd-line);
+  border-radius: 5px;
+  background: var(--dd-field);
+  font-family: var(--dd-mono);
+  font-size: 10.5px;
 }
 
 .qa__setup {
-  padding: 16px 20px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--dd-glass-line);
 }
 
 @media (max-width: 700px) {
-  .qa__head {
-    flex-direction: column;
+  .qa__bar,
+  .qa__coverage {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .qa__log {
+    padding: 16px;
   }
 
   .qa__turn {
     max-width: 100%;
   }
 
-  .qa__log {
-    padding: 16px;
+  .qa__composer {
+    padding: 10px 12px 8px;
+  }
+
+  .qa__hint span:first-child {
+    display: none;
   }
 }

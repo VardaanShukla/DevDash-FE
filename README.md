@@ -51,7 +51,8 @@ that on http://localhost:4173.
 - `src/api/` talks to the backend: `client.ts` for requests, `types.ts` for what each
   endpoint returns.
 - `src/components/<Name>/` holds one screen or part of a screen each, with its own CSS:
-  Home, Summary, Overview (this branch), FlowGraph (branch flow), ProjectMap,
+  Home (and Widgets, the grid of widgets it's made of, with every kind of widget in
+  `catalog.tsx`), Summary, Overview (this branch), FlowGraph (branch flow), ProjectMap,
   Constellation, FileChanges, CommitList, Digest (Claude's changes), Agenda and Todos
   (my day), and the menus, sign-in and help around them.
 - `src/styles/` has the colours and type shared by every screen, in dark and light themes.

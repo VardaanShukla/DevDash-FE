@@ -1,167 +1,61 @@
-/* A greeting on top, then the widgets the person picked, in their order, on a 12-column
-   grid: each widget has its own width, and gaps a narrow one leaves are filled by the next
-   that fits, so the screen fills edge to edge. Widths follow the space Home has (the menu
-   can fold), not the window. The page scrolls on its own when it's taller than the screen. */
+/* Home: a quiet toolbar over the widget board (see Widgets/Widgets.css), and while editing,
+   a panel at the right to add widgets or set one up. Home scrolls on its own when it's taller
+   than the screen; the panel stays put beside it. */
 .home {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-auto-flow: row dense;
-  align-content: start;
+  display: flex;
   gap: 18px;
   min-height: 0;
-  overflow-y: auto;
   container: home / inline-size;
-  /* Room for the panels' shadows and tilt at the edges of the scroll area. */
+}
+
+.home__main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  /* Room for the panels' shadows at the edges of the scroll area. */
   padding: 4px 6px 24px;
   margin: -4px -6px 0;
 }
 
-.home__hello {
-  grid-column: 1 / -1;
-}
-
-/* No min-height: 0 here: rows must grow to fit their widgets, or the page's fixed height
-   squeezes them. */
-.widget {
-  position: relative;
+.home__bar {
   display: flex;
-  min-width: 0;
-  animation: widget-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 60ms);
-}
-
-.widget > * {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Wide screens: the dial stands two rows tall at the left; everything else pairs a third
-   with two thirds, so any order the person picks still packs without holes. */
-.widget--pulse {
-  grid-column: span 4;
-  grid-row: span 2;
-}
-
-.widget--ai,
-.widget--branch,
-.widget--flow,
-.widget--map {
-  grid-column: span 8;
-}
-
-.widget--keys,
-.widget--commits,
-.widget--calendar {
-  grid-column: span 4;
-}
-
-@container home (max-width: 1180px) {
-  .widget--pulse,
-  .widget--keys,
-  .widget--commits,
-  .widget--calendar {
-    grid-column: span 5;
-  }
-
-  .widget--ai,
-  .widget--branch,
-  .widget--flow,
-  .widget--map {
-    grid-column: span 7;
-  }
-}
-
-/* Tablets and small laptops: halves. The dial still stands two rows tall beside AI today
-   and the branch; the wide pictures (flow, map) take whole rows. */
-@container home (max-width: 900px) {
-  .widget--pulse {
-    grid-column: span 6;
-    grid-row: span 2;
-  }
-
-  .widget--ai,
-  .widget--branch,
-  .widget--keys,
-  .widget--commits,
-  .widget--calendar {
-    grid-column: span 6;
-  }
-
-  .widget--flow,
-  .widget--map {
-    grid-column: span 12;
-  }
-}
-
-@container home (max-width: 640px) {
-  .home > * {
-    grid-column: 1 / -1 !important;
-  }
-}
-
-/* The tilt: set from the pointer (see useTilt), eased back when it leaves. The glare is a
-   soft light at the pointer, over the panel but under its controls' clicks. */
-.widget {
-  --rx: 0deg;
-  --ry: 0deg;
-  --mx: 50%;
-  --my: 0%;
-  --glare: 0;
-  container: widget / inline-size;
-  perspective: 1400px;
-}
-
-.widget > .card {
-  position: relative;
-  transform: rotateX(var(--rx)) rotateY(var(--ry));
-  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 300ms ease;
-  will-change: transform;
-}
-
-.widget:hover > .card {
-  box-shadow: var(--dd-bevel), var(--dd-lift);
-  transition: transform 120ms linear, box-shadow 300ms ease;
-}
-
-.widget > .card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(520px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.07), transparent 45%);
-  opacity: var(--glare);
-  pointer-events: none;
-  transition: opacity 300ms ease;
-}
-
-:root[data-theme="light"] .widget > .card::after {
-  background: radial-gradient(520px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.5), transparent 45%);
-}
-
-@keyframes widget-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .widget,
-  .widget > .card,
-  .ai__bar b,
-  .ai__live::after {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Customising: each widget gets a bar to move or hide it; hidden ones stay as slim rows to
-   bring back. */
-.home__tools {
-  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  min-height: 26px;
+  margin-bottom: 2px;
+}
+
+.home__bar--editing {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  margin-bottom: 22px;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 16px;
+  background: var(--dd-glass);
+  box-shadow: var(--dd-shadow);
+  backdrop-filter: blur(14px);
+}
+
+.home__hint {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+}
+
+.home__all {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.home__all .select {
+  max-width: 140px;
 }
 
 .home__tool {
@@ -182,1062 +76,314 @@
   color: var(--dd-ink);
 }
 
-.home__tool--on {
-  border-color: var(--dd-accent);
-  background: var(--dd-accent);
-  box-shadow: var(--dd-well);
-  color: var(--dd-on-accent);
-}
-
-.home__tool--on:hover {
-  color: var(--dd-on-accent);
-}
-
-.home--editing .widget > :not(.widget__bar) {
-  outline: 2px dashed var(--dd-accent-soft);
-  outline-offset: 4px;
-}
-
-.widget__bar {
-  position: absolute;
-  z-index: 2;
-  top: 10px;
-  right: 12px;
-  display: inline-flex;
-  flex: none;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--dd-line);
-  border-radius: 999px;
-  background: var(--dd-card);
-  box-shadow: var(--dd-shadow);
-}
-
-.widget__bar button {
-  display: grid;
-  place-items: center;
-  min-width: 30px;
-  height: 30px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 999px;
+.home__tool--quiet {
+  padding: 4px 12px;
+  border-color: transparent;
   background: none;
-  color: var(--dd-ink-soft);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.widget__bar button:hover:not(:disabled) {
-  background: var(--dd-accent-soft);
-  color: var(--dd-ink);
-}
-
-.widget__bar button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.widget--hidden {
-  grid-column: span 12;
-}
-
-.widget--hidden > .widget__ghost {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
-  border: 1px dashed var(--dd-line);
-  border-radius: 16px;
-  color: var(--dd-muted);
-  font-size: 14px;
-}
-
-.widget--hidden .widget__bar {
-  position: static;
   box-shadow: none;
-}
-
-/* AI today: the recording's state, today's numbers and one bar per prompt. */
-.ai {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px 28px;
-  padding: 20px 22px;
-}
-
-.ai__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 14px;
-  grid-column: 1 / -1;
-}
-
-.ai__head h2 {
-  margin: 0;
-}
-
-.ai__live {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 12px 5px 22px;
-  border-radius: 999px;
-  background: var(--dd-add-bg);
-  color: var(--dd-add);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.ai__live::before,
-.ai__live::after {
-  content: "";
-  position: absolute;
-  left: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.ai__live::after {
-  animation: live-ping 1.8s ease-out infinite;
-}
-
-.ai__live--warn {
-  background: var(--dd-del-bg);
-  color: var(--dd-del);
-}
-
-.ai__live--warn::after {
-  animation: none;
-}
-
-@keyframes live-ping {
-  to {
-    transform: scale(2.8);
-    opacity: 0;
-  }
-}
-
-.ai__numbers {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ai__numbers li {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px 14px;
-  border: 1px solid var(--dd-line);
-  border-radius: 14px;
-  background: var(--dd-card);
-  color: var(--dd-ink-soft);
-  font-size: 12.5px;
-}
-
-.ai__numbers strong {
-  color: var(--dd-ink);
-  font-size: 24px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
-.ai__numbers .ai__risk strong {
-  color: var(--dd-del);
-}
-
-.ai__timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.ai__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 90px;
-  padding: 10px 12px 0;
-  border-bottom: 1px solid var(--dd-line);
-}
-
-.ai__bar {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: flex-end;
-  max-width: 34px;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-.ai__bar b {
-  display: block;
-  min-height: 4px;
-  border-radius: 6px 6px 0 0;
-  background: linear-gradient(180deg, var(--dd-accent), color-mix(in srgb, var(--dd-accent) 55%, transparent));
-  transform-origin: bottom;
-  animation: bar-grow 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(var(--i, 0) * 40ms + 150ms);
-}
-
-.ai__bar--risk b {
-  background: linear-gradient(180deg, var(--dd-del), color-mix(in srgb, var(--dd-del) 50%, transparent));
-}
-
-.ai__bar--undone b {
-  opacity: 0.3;
-}
-
-.ai__bar:hover b,
-.ai__bar:focus-visible b {
-  filter: brightness(1.15);
-}
-
-@keyframes bar-grow {
-  from {
-    transform: scaleY(0);
-  }
-}
-
-.ai__notes {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
   color: var(--dd-muted);
   font-size: 12.5px;
 }
 
-.ai__problems {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  grid-column: 1 / -1;
-  padding: 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--dd-del) 40%, transparent);
-  border-radius: 14px;
+.home__tool--quiet:hover {
+  border-color: var(--dd-line);
+}
+
+.home__error {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
   background: var(--dd-del-bg);
   color: var(--dd-ink);
   font-size: 13px;
 }
 
-.ai__problems p {
-  margin: 0;
-}
-
-.ai__problems button {
-  align-self: flex-start;
-}
-
-.home__section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  padding: 20px 22px;
-}
-
-.home__section .card__header {
-  margin: 0;
-}
-
-/* Every section on Home titled alike, the flow graph's own card included. */
-.home .card__title,
-.home .flow__title {
-  color: var(--dd-ink);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0;
-}
-
-.home__links {
-  display: inline-flex;
-  gap: 14px;
-}
-
-/* Branch changes. */
-.home__changes {
-  max-height: 520px;
-}
-
-.home__branch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.home__picker {
-  max-width: 260px;
-  font-family: var(--dd-mono);
-}
-
-.home__branch code,
-.home__muted code {
-  font-family: var(--dd-mono);
-  font-size: 12px;
-  color: var(--dd-accent);
-}
-
-.home__numbers {
-  display: grid;
-  grid-template-columns: 1.4fr repeat(3, 1fr);
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.home__numbers li,
-.home__numbers button {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: var(--dd-card);
-  color: var(--dd-ink-soft);
-  font-size: 12px;
-}
-
-.home__numbers li:has(button) {
-  padding: 0;
-  border: 0;
-  background: none;
-}
-
-.home__numbers button {
-  width: 100%;
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.home__numbers button:hover {
-  border-color: var(--dd-accent);
-}
-
-.home__numbers strong {
-  color: var(--dd-ink);
-  font-size: 19px;
-}
-
-.home__add {
-  color: var(--dd-add);
-}
-
-.home__del {
-  color: var(--dd-del);
-}
-
-.home__files {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.home__files button {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 70px auto;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 7px 8px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--dd-ink);
-  font: inherit;
-  font-size: 12.5px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.home__files button:hover {
-  background: var(--dd-accent-soft);
-}
-
-.home__status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--dd-mod);
-}
-
-.home__status--added {
-  background: var(--dd-add);
-}
-
-.home__status--deleted {
-  background: var(--dd-del);
-}
-
-.home__status--renamed {
-  background: #a78bfa;
-}
-
-.home__path {
-  overflow: hidden;
-  font-family: var(--dd-mono);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.home__path em {
+.home__loading {
   color: var(--dd-muted);
-  font-style: normal;
-}
-
-.home__bar {
-  display: flex;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--dd-line);
-}
-
-.home__bar-add {
-  background: var(--dd-add);
-}
-
-.home__bar-del {
-  background: var(--dd-del);
-}
-
-.home__lines {
-  font-size: 11.5px;
-  white-space: nowrap;
-}
-
-.home__all {
-  align-self: flex-start;
-}
-
-/* Branch flow: the compact graph, filling its spot. */
-.home__flow {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-}
-
-.home__flow > .card {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Project map preview. */
-.home__map {
-}
-
-.home__langs {
-  display: flex;
-  height: 6px;
-  overflow: hidden;
-  border-radius: 3px;
-}
-
-.home__parts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.home__part {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: var(--dd-card);
-  color: var(--dd-ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
-}
-
-.home__part:hover {
-  border-color: var(--dd-accent);
-  transform: translateY(-2px);
-}
-
-.home__part strong {
-  overflow: hidden;
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.home__part span {
-  color: var(--dd-muted);
-  font-size: 11.5px;
-}
-
-.home__part em {
-  color: var(--dd-accent);
-  font-style: normal;
-  font-weight: 600;
-}
-
-.home__part i {
+/* The editing panel. */
+.editor {
   display: flex;
-  height: 3px;
-  overflow: hidden;
-  border-radius: 2px;
-  background: var(--dd-line);
-}
-
-.home__part--hot {
-  border-color: color-mix(in srgb, var(--dd-accent) 55%, transparent);
-  box-shadow: 0 0 18px -8px var(--dd-accent);
-}
-
-.home__hello {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
-}
-
-/* The greeting: a small sky for the time of day, "Good afternoon, name", then the date
-   and the one thing that most needs you. */
-.home__greet {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-}
-
-.home__sky {
-  display: grid;
   flex: none;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  color: #fff;
-  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.home__sky--morning {
-  background: linear-gradient(160deg, #fbbf6a, #f0763c);
-}
-
-.home__sky--afternoon {
-  background: linear-gradient(160deg, #38bdf8, #0e7490);
-}
-
-.home__sky--evening {
-  background: linear-gradient(160deg, #f97a5a, #9d3c78);
-}
-
-.home__sky--night {
-  background: linear-gradient(160deg, #4f46e5, #1e1b4b);
-}
-
-.home__hello h2 {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: -0.045em;
-  line-height: 1.15;
-}
-
-.home__sub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 4px;
-  margin: 3px 0 0;
-  color: var(--dd-ink-soft);
-  font-size: 13.5px;
-}
-
-.home__mood {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-weight: 650;
-  white-space: nowrap;
-}
-
-button.home__mood {
-  cursor: pointer;
-}
-
-button.home__mood:hover {
-  text-decoration: underline;
-}
-
-.home__mood--risk {
-  color: var(--dd-del);
-}
-
-.home__mood--warn {
-  color: var(--dd-mod);
-}
-
-.home__mood--calm {
-  color: var(--dd-add);
-}
-
-.home__stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.home__stat {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel), 0 2px 0 var(--dd-key-edge);
-  font-size: 12.5px;
-  color: var(--dd-ink-soft);
-}
-
-.home__stat strong {
-  color: var(--dd-ink);
-  font-size: 18px;
-}
-
-.home__claude {
-  font: inherit;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.home__claude:hover {
-  border-color: var(--dd-accent);
-}
-
-.home__claude--risk strong {
-  color: var(--dd-del);
-}
-
-.home__stat--warn strong {
-  color: var(--dd-mod);
-}
-
-.home__link {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--dd-accent);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.home__muted {
-  margin: 0;
-  color: var(--dd-muted);
-  font-size: 13px;
-}
-
-@container widget (max-width: 560px) {
-  .ai__numbers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@container widget (max-width: 460px) {
-  .home__numbers {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* The branch dial: the speedometer stands in a recessed bezel, tipped back like an
-   instrument behind a steering wheel, its glow pooling on the panel below. */
-.pulse {
-  display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 20px 22px;
-  overflow: hidden;
+  width: 320px;
+  min-height: 0;
+  padding: 18px 18px 24px;
+  overflow-y: auto;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 20px;
+  background: var(--dd-card);
+  box-shadow: var(--dd-bevel), var(--dd-raise);
 }
 
-.pulse .card__header {
-  align-items: flex-start;
-  margin: 0;
-}
-
-.pulse__branch {
+.editor__head {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.pulse__branch .card__title {
+.editor__head h2 {
+  margin: 0;
   overflow: hidden;
-  font-family: var(--dd-mono);
+  font-size: 17px;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.pulse__branch span {
-  color: var(--dd-muted);
-  font-size: 12.5px;
-}
-
-.pulse__branch code {
-  color: var(--dd-ink-soft);
-  font-family: var(--dd-mono);
-}
-
-/* The header stays on top; the dial and its readouts sit together in the middle of
-   whatever height the two rows beside it give. */
-.pulse .card__header {
-  margin-bottom: auto;
-}
-
-.pulse__counts {
-  margin-bottom: auto;
-}
-
-.pulse__stage {
-  position: relative;
+.editor__close {
   display: grid;
   flex: none;
   place-items: center;
-  margin-top: 8px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--dd-line);
+  border-radius: 9px;
+  background: var(--dd-field);
+  color: var(--dd-ink-soft);
+  cursor: pointer;
+}
+
+.editor__close:hover {
+  border-color: var(--dd-accent);
+  color: var(--dd-ink);
+}
+
+.editor__note {
+  margin: -8px 0 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
   padding: 0;
   border: 0;
-  background: none;
-  color: inherit;
-  cursor: pointer;
-  perspective: 900px;
 }
 
-/* The glow the dial throws onto the panel under it. */
-.pulse__stage::after {
-  content: "";
-  position: absolute;
-  inset: auto 8% -6% 8%;
-  height: 34%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--dd-blue) 28%, transparent), transparent);
-  filter: blur(8px);
-  pointer-events: none;
-}
-
-.pulse__bezel {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: min(100%, 400px);
-  padding: 7% 7% 0;
-  border-radius: 50% 50% 28% 28% / 58% 58% 22% 22%;
-  background:
-    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--dd-card) 92%, #fff 8%), var(--dd-card) 60%),
-    var(--dd-card);
-  box-shadow:
-    var(--dd-well),
-    0 0 0 1px var(--dd-glass-line),
-    0 0 0 7px color-mix(in srgb, var(--dd-card) 75%, var(--dd-line)),
-    0 0 0 8px var(--dd-glass-line),
-    0 30px 40px -24px rgba(0, 0, 0, 0.6);
-  transform: rotateX(16deg);
-  transform-origin: 50% 100%;
-  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.pulse__stage:hover .pulse__bezel,
-.pulse__stage:focus-visible .pulse__bezel {
-  transform: rotateX(6deg) translateY(-4px);
-}
-
-.pulse__bezel .ov-gauge__dial {
-  width: 100%;
-  min-width: 0;
-}
-
-.pulse__gears {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 12px;
-  font-family: var(--dd-mono);
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--dd-muted);
-}
-
-.pulse__gears .is-on {
+.editor__field > span,
+.editor__field legend {
+  margin-bottom: 0;
+  padding: 0;
   color: var(--dd-ink);
-  text-shadow: 0 0 12px var(--dd-blue);
-}
-
-.pulse__gears em {
-  margin-left: 6px;
-  color: var(--dd-ink-soft);
-  font-family: var(--dd-font);
   font-size: 13px;
-  font-style: normal;
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.pulse__counts {
+.editor__field legend {
+  margin-bottom: 8px;
+}
+
+.editor__styles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
-.pulse__counts button {
+.editor__style {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 10px 6px 12px;
+  gap: 6px;
+  padding: 8px 4px;
   border: 1px solid var(--dd-line);
-  border-radius: 14px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel), 0 3px 0 var(--dd-key-edge);
+  border-radius: 10px;
+  background: none;
   color: var(--dd-ink-soft);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 150ms ease;
 }
 
-.pulse__counts button:hover {
-  border-color: color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
+.editor__style i {
+  width: 34px;
+  height: 22px;
+  border-radius: 6px;
+}
+
+.editor__style--glass i {
+  border: 1px solid var(--dd-glass-line);
+  background: var(--dd-glass);
+  box-shadow: var(--dd-bevel), 0 4px 8px -4px rgba(0, 0, 0, 0.5);
+}
+
+.editor__style--solid i {
+  background: var(--dd-ink-soft);
+}
+
+.editor__style--outline i {
+  border: 1.5px solid var(--dd-ink-soft);
+}
+
+.editor__style--tinted i {
+  border: 1px solid color-mix(in srgb, var(--dd-accent) 40%, transparent);
+  background: var(--dd-accent-soft);
+}
+
+.editor__style--bare i {
+  border: 1.5px dashed var(--dd-line);
+}
+
+.editor__style:hover {
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-line));
+}
+
+.editor__style.is-on {
+  border-color: var(--dd-accent);
+  background: var(--dd-accent-soft);
   color: var(--dd-ink);
 }
 
-.pulse__counts button:active {
-  transform: translateY(3px);
-  box-shadow: var(--dd-well);
+.editor__accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.pulse__counts strong {
-  color: var(--dd-ink);
-  font-family: var(--dd-mono);
-  font-size: 21px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Jump to: a small keyboard. Each key's cap sits on a skirt (the darker edge under it);
-   hovering lifts it a hair, pressing sinks it onto the skirt. */
-.keys__board {
+.editor__accent {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: 12px 10px;
-  padding-bottom: 4px;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
 }
 
-.keycap {
-  position: relative;
-  display: block;
-  height: 100%;
-  min-height: 74px;
-  padding: 0 0 5px;
-  border: 0;
-  border-radius: 13px;
-  background: var(--dd-key-edge);
+.editor__accent i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--swatch, var(--dd-ink-soft));
+}
+
+.editor__accent.wf--accent-theme i {
+  background: conic-gradient(var(--dd-ink) 0 50%, var(--dd-card) 50%);
+  box-shadow: inset 0 0 0 1px var(--dd-line);
+}
+
+.editor__accent.is-on {
+  border-color: var(--dd-ink);
+}
+
+.editor__size {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.editor__size label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--dd-ink-soft);
+  font-size: 12px;
+}
+
+.editor__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editor__check input {
+  accent-color: var(--dd-accent);
+}
+
+.editor__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--dd-ink-soft);
+  font-size: 13px;
+}
+
+.editor__line .select {
+  max-width: 170px;
+}
+
+.editor .editor__number {
+  width: 76px;
+}
+
+.editor .editor__text {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.editor__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.editor__catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editor__catalog button {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
   color: var(--dd-ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  box-shadow: 0 8px 14px -8px rgba(0, 0, 0, 0.55);
 }
 
-.keycap__top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto 1fr;
-  align-items: start;
-  gap: 6px;
-  height: 100%;
-  padding: 10px 11px 9px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel);
-  transform: translateY(0);
-  transition: transform 110ms ease, border-color 150ms ease, background 150ms ease;
+.editor__catalog button:hover,
+.editor__catalog button:focus-visible {
+  border-color: var(--dd-line);
+  background: var(--dd-accent-soft);
 }
 
-.keycap:hover .keycap__top {
-  border-color: color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
-  transform: translateY(-2px);
-}
-
-.keycap:active .keycap__top {
-  transform: translateY(4px);
-  box-shadow: var(--dd-well);
-}
-
-.keycap__icon {
-  grid-row: 1;
-  grid-column: 1;
-  display: grid;
-  width: 22px;
-  height: 22px;
-  color: var(--dd-ink-soft);
-}
-
-.keycap__icon svg {
-  width: 100%;
-  height: 100%;
-}
-
-.keycap:hover .keycap__icon {
-  color: var(--dd-ink);
-}
-
-.keycap__legend {
-  grid-row: 1;
-  grid-column: 2;
-  min-width: 20px;
-  padding: 1px 5px;
-  border: 1px solid var(--dd-line);
-  border-radius: 6px;
-  background: var(--dd-field);
-  color: var(--dd-ink-soft);
-  font-family: var(--dd-mono);
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.keycap__label {
-  grid-row: 2;
-  grid-column: 1 / -1;
-  align-self: end;
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-/* Latest commits. */
-.latest__list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  list-style: none;
-}
-
-.latest__list li {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr);
-  column-gap: 10px;
-}
-
-.latest__dot {
-  grid-row: span 2;
-  width: 10px;
-  height: 10px;
-  margin-top: 5px;
-  border: 2px solid var(--dd-muted);
-  border-radius: 50%;
-}
-
-.latest__dot--ai {
-  border-color: var(--dd-ai);
-  background: var(--dd-ai);
-  box-shadow: 0 0 8px var(--dd-ai);
-}
-
-.latest__subject {
-  overflow: hidden;
+.editor__catalog strong {
   font-size: 13.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.latest__meta {
-  overflow: hidden;
+.editor__catalog span {
   color: var(--dd-muted);
   font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
 }
 
-.latest__meta code {
-  margin-left: 4px;
-  font-family: var(--dd-mono);
-  font-size: 11px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pulse__bezel,
-  .keycap__top,
-  .pulse__counts button {
-    transition: none;
-  }
-}
-
-/* Phones: the greeting's numbers sit three across under it, Customise beside them. */
-@container home (max-width: 640px) {
-  .home__hello h2 {
-    font-size: 25px;
-  }
-
-  .home__tools {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    width: 100%;
-  }
-
-  .home__stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .home__stat {
-    flex-direction: column;
-    gap: 0;
-    padding: 6px 10px;
-    font-size: 11px;
-    line-height: 1.25;
+/* Narrow: the panel comes in over the bottom of the screen instead of beside the board. */
+@container home (max-width: 900px) {
+  .editor {
+    position: fixed;
+    z-index: 30;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-height: 60vh;
   }
 }

@@ -178,12 +178,27 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     setError(null);
   };
 
+  // Each screen opened is a step in the browser's history, so its Back button (and a mouse's
+  // back button) returns to the screen before; the first one only names where the page opened.
+  // Each step remembers the screen it was opened from, for the breadcrumb's back arrow.
+  const firstScreen = useRef(true);
+  const [cameFrom, setCameFrom] = useState<string | null>(null);
   useEffect(() => {
     const wanted = view === "settings" ? `settings/${section}` : view;
-    if (window.location.hash.slice(1) !== wanted) history.replaceState(null, "", `#${wanted}`);
+    const here = window.location.hash.slice(1);
+    if (here !== wanted) {
+      if (firstScreen.current) {
+        history.replaceState(null, "", `#${wanted}`);
+      } else {
+        history.pushState({ from: here }, "", `#${wanted}`);
+        setCameFrom(here);
+      }
+    }
+    firstScreen.current = false;
     const onHash = () => {
       setView(viewFromHash());
       setSection(sectionFromHash());
+      setCameFrom((history.state as { from?: string } | null)?.from ?? null);
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -507,16 +522,18 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           onPrefs={changePrefs}
           username={auth.username}
           repoId={repoId}
-          head={head}
           version={`${repos.length}:${repoId}:${revision}`}
           comparison={comparison}
           branches={details}
+          checkedOut={branches?.current ?? null}
           flow={flow}
           map={map}
+          ai={ai}
           onHeadChange={setHead}
           onView={setView}
           onOpenFile={openFile}
           onAdd={() => setAdding(true)}
+          onSync={() => syncNow.current()}
           onDigest={() => {
             setOpenChange(null);
             setView("digest");
@@ -525,7 +542,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             setOpenChange({ id, focus: null });
             setView("digest");
           }}
-          onSync={() => syncNow.current()}
         />
       );
     }
@@ -585,9 +601,12 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           project={repo.name}
           ai={ai}
           kt={kt}
+          summary={summary}
           ask={(question, history) => watchSignIn(api.ask(repoId, question, history, head))}
+          explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
+          explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
+          loadKt={() => api.kt(repoId, head)}
           onSignedIn={refreshAi}
-          onOpenKt={() => setView("summary")}
         />
       ) : (
         <Notice title="Loading">Reading the project…</Notice>
@@ -685,6 +704,11 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   if (deeper && section.startsWith("ai/")) crumbs.push({ label: "AI", go: () => setSection("ai") });
   if (deeper) crumbs.push({ label: settingsSectionLabel(section) });
   if (picked && picked.view === view) crumbs.push({ label: picked.label });
+  // The back arrow returns to the screen this one was opened from, as the browser's Back does.
+  const fromView = cameFrom?.split("/")[0];
+  const back = fromView && VIEWS.some((item) => item.id === fromView)
+    ? { label: label(fromView as View), go: () => history.back() }
+    : null;
 
   return (
     <div className="app">
@@ -710,14 +734,15 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       )}
 
       <div className="main">
-        <header className="topbar">
-          {repos && repos.length > 0 ? (
+        <header className={`topbar${repos && repos.length > 0 && view === "home" ? " topbar--bare" : ""}`}>
+          {/* Home has its own greeting, so the bar only carries the controls there. */}
+          {repos && repos.length > 0 && view === "home" ? null : repos && repos.length > 0 ? (
             <div className="topbar__title">
-              <Breadcrumb crumbs={crumbs} />
+              <Breadcrumb crumbs={crumbs} back={back} />
               <h1>{current.label}</h1>
               <p>
                 {current.hint}
-                {repo && comparison && view !== "home" && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
+                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
                   <>
                     {" "}
                     · <code>{comparison.head}</code> in {repo.name}
@@ -805,10 +830,20 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 // Screens about one project; the breadcrumb names the project before them.
 const PROJECT_VIEWS = new Set<View>(["summary", "ask", "overview", "flow", "map", "changes", "commits", "help"]);
 
-// Where you are: Home › project › screen › what's picked. Every step but the last goes back to it.
-function Breadcrumb({ crumbs }: { crumbs: { label: string; go?: () => void }[] }) {
+// Where you are: Home › project › screen › what's picked. Every step but the last goes back to
+// it. The arrow in front goes back to the previous screen, or, on a screen opened straight
+// from the address bar, one step up the trail.
+function Breadcrumb({ crumbs, back }: { crumbs: { label: string; go?: () => void }[]; back: { label: string; go: () => void } | null }) {
+  const up = back ?? crumbs.slice(0, -1).reverse().find((crumb) => crumb.go);
   return (
     <nav className="crumbs" aria-label="Where you are">
+      {up && (
+        <button className="crumbs__back" onClick={up.go} aria-label={`Back to ${up.label}`} title={`Back to ${up.label}`}>
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+        </button>
+      )}
       <ol>
         {crumbs.map((crumb, i) => (
           <li key={i}>

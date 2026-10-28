@@ -481,11 +481,31 @@ export type Preferences = {
   shortcuts: Record<string, string>;
   // Which AI writes explanations, and the model picked for each (missing: its cheapest).
   ai: { provider: AiProvider; models: Partial<Record<AiProvider, string>> };
-  // Home's widgets in the order shown, and the ones hidden.
+  // Home's widgets, each placed on the grid with its style and settings.
   home: HomeLayout;
 };
-export type Widget = "pulse" | "ai" | "branch" | "keys" | "flow" | "commits" | "map" | "calendar";
-export type HomeLayout = { order: Widget[]; hidden: Widget[] };
+export type WidgetType =
+  | "greeting" | "project" | "ai-today" | "total-changes" | "activity" | "latest-commit" | "branches"
+  | "changed-files" | "commits" | "branch-flow" | "project-map" | "languages" | "ai-prompts" | "needs-a-look"
+  | "recording" | "projects" | "uncommitted" | "commit-days" | "jump-to" | "calendar" | "clock" | "pull-requests"
+  | "note" | "number";
+export type WidgetStyle = "glass" | "solid" | "outline" | "tinted" | "bare";
+export type WidgetAccent = "" | "blue" | "teal" | "green" | "amber" | "red" | "violet" | "pink";
+// One widget on Home's 12-column grid: its column and row, its width in columns and height
+// in rows, how its panel looks, the person's own title ("" for the usual one) and its options.
+export type PlacedWidget = {
+  id: string;
+  type: WidgetType;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  style: WidgetStyle;
+  accent: WidgetAccent;
+  title: string;
+  options: Record<string, string | number | boolean>;
+};
+export type HomeLayout = { widgets: PlacedWidget[] };
 // What a change sends: only the settings to change; for the AI, the provider and/or the
 // models of the AIs to change ("" goes back to that AI's default).
 export type PreferenceChange = Omit<Partial<Preferences>, "ai"> & {
