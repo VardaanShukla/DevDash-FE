@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { AiStatus, FileChange, FunctionDetail, FunctionExplanation, Hunk, Line } from "../../api/types";
 import FunctionChanges from "../FunctionChanges/FunctionChanges";
+import { FileNote, type FileNoteProps } from "../Summary/Summary";
 import Pill from "../Pill/Pill";
 import { keyName, typing } from "../../shortcuts";
 import { wordDiff, type Segment } from "./wordDiff";
@@ -39,6 +40,10 @@ type Props = {
   focus?: { path: string; count: number } | null;
   // Says when what was compared changed, so each file's functions are read again.
   version: string;
+  // Names what is compared (project, branches), for explanations running in the background.
+  scope: string;
+  // What a file is for, from the project's knowledge transfer, with a button to ask for it.
+  fileNote?: (path: string) => FileNoteProps | null;
   loadFunctions: (file: FileChange) => Promise<FunctionDetail[]>;
   explainFunction: (file: FileChange, name: string) => Promise<FunctionExplanation>;
   ai: AiStatus | null;
@@ -49,7 +54,7 @@ type Props = {
   keys?: { next?: string; previous?: string };
 };
 
-export default function FileChanges({ files, focus, version, loadFunctions, explainFunction, ai, onSignedIn, onSelect, keys }: Props) {
+export default function FileChanges({ files, focus, version, scope, fileNote, loadFunctions, explainFunction, ai, onSignedIn, onSelect, keys }: Props) {
   const nextKey = keys?.next ?? "j";
   const previousKey = keys?.previous ?? "k";
   // Real code first, by folder; generated files such as lockfiles go last.
@@ -168,8 +173,10 @@ export default function FileChanges({ files, focus, version, loadFunctions, expl
           // rules, docs by their sections, anything else as a whole file.
           mode={file.binary || file.generated ? "lines" : mode}
           onShowLines={() => setMode("lines")}
+          note={fileNote?.(file.path) ?? null}
           functions={{
             version: `${version}:${file.path}:${file.additions}:${file.deletions}`,
+            scope: `${scope}:${file.path}:${file.additions}:${file.deletions}`,
             load: () => loadFunctions(file),
             explain: (name) => explainFunction(file, name),
             ai,
@@ -215,8 +222,10 @@ type ViewProps = {
   sideBySide: boolean;
   mode: Mode;
   onShowLines: () => void;
+  note: FileNoteProps | null;
   functions: {
     version: string;
+    scope: string;
     load: () => Promise<FunctionDetail[]>;
     explain: (name: string) => Promise<FunctionExplanation>;
     ai: AiStatus | null;
@@ -227,7 +236,7 @@ type ViewProps = {
   onNext?: () => void;
 };
 
-function FileView({ file, layout, sideBySide, mode, onShowLines, functions, position, onPrevious, onNext }: ViewProps) {
+function FileView({ file, layout, sideBySide, mode, onShowLines, note, functions, position, onPrevious, onNext }: ViewProps) {
   const status = STATUS[file.status];
   const slash = file.path.lastIndexOf("/");
 
@@ -256,6 +265,9 @@ function FileView({ file, layout, sideBySide, mode, onShowLines, functions, posi
           </button>
         </div>
       </header>
+
+      {/* What the whole file is for, right above its change, where it's looked for. */}
+      {note && <FileNote {...note} />}
 
       {mode === "lines" && file.functions.length > 0 && (
         <ul className="view__functions">

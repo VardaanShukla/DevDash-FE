@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AiStatus, FileExplanation, KnowledgeTransfer, KtFile, ProjectExplanation, Summary as SummaryData } from "../../api/types";
 import { languageColor } from "../ProjectMap/ProjectMap";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
+import { batch, clear, job, result, start, startBatch, stopBatch, useJobs } from "../../lib/aiJobs";
 import "./Summary.css";
 
 // The whole project on one screen: what it is, how it works, what it's built with, its
@@ -11,6 +12,9 @@ import "./Summary.css";
 
 type Props = {
   summary: SummaryData;
+  // The project and branch, naming the explanations that run in the background: they keep
+  // going when the page is left, and show when it's opened again.
+  scope: string;
   ai: AiStatus | null;
   // fresh: write it again, from the file notes written since.
   explain: (fresh?: boolean) => Promise<ProjectExplanation>;
@@ -22,8 +26,11 @@ type Props = {
 
 export default function Summary(props: Props) {
   const [tab, setTab] = useState<"overview" | "kt">("overview");
-  // Shared by both tabs, so a description written on one shows on the other.
-  const [explanation, setExplanation] = useState(props.summary.explanation?.overview?.trim() ? props.summary.explanation : null);
+  useJobs();
+  // Shared by both tabs, so a description written on one shows on the other: the newest
+  // rewrite, else one asked for here, else the one saved with the summary.
+  const saved = props.summary.explanation?.overview?.trim() ? props.summary.explanation : null;
+  const explanation = result<ProjectExplanation>(`project-fresh:${props.scope}`) ?? result<ProjectExplanation>(`project:${props.scope}`) ?? saved;
   return (
     <div className="summary-page">
       <div className="segmented summary-page__tabs" role="tablist" aria-label="Project">
@@ -35,9 +42,9 @@ export default function Summary(props: Props) {
         </button>
       </div>
       {tab === "overview" ? (
-        <Overview {...props} explanation={explanation} setExplanation={setExplanation} onOpenKt={() => setTab("kt")} />
+        <Overview {...props} explanation={explanation} onOpenKt={() => setTab("kt")} />
       ) : (
-        <FullKt {...props} explanation={explanation} setExplanation={setExplanation} />
+        <FullKt {...props} explanation={explanation} />
       )}
     </div>
   );
@@ -45,28 +52,25 @@ export default function Summary(props: Props) {
 
 type Shared = Props & {
   explanation: ProjectExplanation | null;
-  setExplanation: (explanation: ProjectExplanation) => void;
 };
 
-function Overview({ summary, ai, explain, onSignedIn, onOpenMap, explanation, setExplanation, onOpenKt }: Shared & { onOpenKt: () => void }) {
-  const [state, setState] = useState<"idle" | "working" | string>("idle");
+function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanation, onOpenKt }: Shared & { onOpenKt: () => void }) {
+  const describing = job(`project:${scope}`);
+  const state = describing?.state === "working" ? "working" : describing?.state === "failed" ? describing.error : "idle";
   const history = summary.history;
   const languageFiles = summary.languages.reduce((sum, l) => sum + l.files, 0);
   const names = new Map(summary.parts.map((part) => [part.id, part.name]));
   const partWhat = new Map((explanation?.parts ?? []).map((part) => [part.name, part.what]));
 
   const run = () => {
-    setState("working");
-    explain().then(
-      (result) => {
-        // An answer with no overview would leave the box empty: treated as no answer, so it can be asked again.
-        if (result.overview?.trim()) {
-          setExplanation(result);
-          setState("idle");
-        } else setState("The AI's answer left out the description. Try again, or pick another model in Settings.");
-      },
-      (e: Error) => setState(e.message),
-    );
+    clear(`project:${scope}`);
+    // An answer with no overview would leave the box empty: treated as a failure, so it can be asked again.
+    start(`project:${scope}`, () =>
+      explain().then((answer) => {
+        if (!answer.overview?.trim()) throw new Error("The AI's answer left out the description. Try again, or pick another model in Settings.");
+        return answer;
+      }),
+    ).catch(() => {});
   };
 
   return (
@@ -288,14 +292,22 @@ function Overview({ summary, ai, explain, onSignedIn, onOpenMap, explanation, se
 // what to read first, and every file with its purpose and each of its functions. Files are
 // explained one at a time, so even a small local model only ever reads one file; the notes
 // are saved, and only a changed file is asked about again.
-function FullKt({ summary, ai, explain, loadKt, explainFile, onSignedIn, explanation, setExplanation }: Shared) {
-  const [kt, setKt] = useState<KnowledgeTransfer | null>(null);
+function FullKt({ summary, scope, ai, explain, loadKt, explainFile, onSignedIn, explanation }: Shared) {
+  const [loaded, setKt] = useState<KnowledgeTransfer | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [running, setRunning] = useState<"files" | "overview" | null>(null);
-  const [current, setCurrent] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const stop = useRef(false);
+  const fileKey = (path: string) => `file:${scope}:${path}`;
+  const freshKey = `project-fresh:${scope}`;
+  const batchKey = `kt:${scope}`;
+  const files = batch(batchKey);
+  const rewriting = job(freshKey)?.state === "working";
+  // A file being read on its own, outside Explain all.
+  const single = loaded?.files.find((f) => job(fileKey(f.path))?.state === "working")?.path ?? null;
+  const running: "files" | "overview" | null = rewriting ? "overview" : files?.running || single ? "files" : null;
+  const current = files?.running && files.current !== freshKey ? files.label : single;
+  const failed = loaded?.files.map((f) => job(fileKey(f.path))).find((j) => j?.state === "failed");
+  const problem = error ?? files?.error ?? (failed?.state === "failed" ? failed.error : null);
 
   useEffect(() => {
     let stale = false;
@@ -309,13 +321,9 @@ function FullKt({ summary, ai, explain, loadKt, explainFile, onSignedIn, explana
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setFile = (path: string, note: FileExplanation) =>
-    setKt((list) =>
-      list && {
-        files: list.files.map((f) => (f.path === path ? { ...f, explanation: note } : f)),
-        explained: list.explained + (list.files.find((f) => f.path === path)?.explanation ? 0 : 1),
-      },
-    );
+  // Notes written while the page was off screen, or from Changes, show here too.
+  const merged = loaded?.files.map((f) => ({ ...f, explanation: f.explanation ?? result<FileExplanation>(fileKey(f.path)) ?? null }));
+  const kt: KnowledgeTransfer | null = merged ? { files: merged, explained: merged.filter((f) => f.explanation).length } : null;
 
   const groups = useMemo(() => {
     const words = filter.trim().toLowerCase();
@@ -327,47 +335,34 @@ function FullKt({ summary, ai, explain, loadKt, explainFile, onSignedIn, explana
     return [...byPart.entries()];
   }, [kt, filter]);
 
-  if (error) return <p className="summary__muted">{error}</p>;
+  if (error && !kt) return <p className="summary__muted">{error}</p>;
   if (!kt) return <p className="summary__muted">Listing the project's files…</p>;
 
   const ready = ai?.available && ai.signed_in !== false;
   const left = kt.files.filter((f) => !f.explanation);
 
-  const explainOne = async (path: string) => {
-    setCurrent(path);
+  const explainOne = (path: string) => {
     setError(null);
-    try {
-      setFile(path, await explainFile(path));
-      return true;
-    } catch (e) {
-      setError(`${path}: ${(e as Error).message}`);
-      return false;
-    } finally {
-      setCurrent(null);
-    }
+    clear(fileKey(path));
+    start(fileKey(path), () => explainFile(path)).then(
+      () => setOpen((was) => new Set(was).add(path)),
+      () => {},
+    );
   };
 
-  const explainAll = async () => {
-    stop.current = false;
-    setRunning("files");
-    // One file at a time: each is its own AI run, and notes show as they come.
-    for (const file of left) {
-      if (stop.current || !(await explainOne(file.path))) break;
-    }
-    setRunning(null);
-    // The overview is rewritten from the notes once the files are done.
-    if (!stop.current) await rewriteOverview();
+  // One file at a time: each is its own AI run, and notes show as they come. The overview
+  // is rewritten from the notes once the files are done.
+  const explainAll = () => {
+    setError(null);
+    startBatch(batchKey, [
+      ...left.map((file) => ({ key: fileKey(file.path), label: file.path, run: () => explainFile(file.path) })),
+      { key: freshKey, label: "The overview", run: () => explain(true), again: true },
+    ]);
   };
 
-  const rewriteOverview = async () => {
-    setRunning("overview");
-    try {
-      const result = await explain(true);
-      if (result.overview?.trim()) setExplanation(result);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-    setRunning(null);
+  const rewriteOverview = () => {
+    setError(null);
+    start(freshKey, () => explain(true), true).catch((e: Error) => setError(e.message));
   };
 
   const toggle = (path: string) =>
@@ -395,9 +390,9 @@ function FullKt({ summary, ai, explain, loadKt, explainFile, onSignedIn, explana
         </div>
         <div className="kt__actions">
           {ai && !ready && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
-          {ready && running === "files" && (
-            <button className="kt__button kt__button--quiet" onClick={() => (stop.current = true)}>
-              Stop after this file
+          {ready && running === "files" && files?.running && (
+            <button className="kt__button kt__button--quiet" onClick={() => stopBatch(batchKey)} disabled={files?.stopping}>
+              {files?.stopping ? "Stopping after this file…" : "Stop after this file"}
             </button>
           )}
           {ready && running !== "files" && left.length > 0 && (
@@ -416,7 +411,7 @@ function FullKt({ summary, ai, explain, loadKt, explainFile, onSignedIn, explana
             Download as Markdown
           </button>
         </div>
-        {error && <p className="kt__error">{error}</p>}
+        {problem && <p className="kt__error">{problem}</p>}
       </section>
 
       {explanation && (
@@ -548,6 +543,82 @@ function KtRow({ file, open, onToggle, busy, onExplain }: {
         </div>
       )}
     </li>
+  );
+}
+
+export type FileNoteProps = {
+  path: string;
+  note: FileExplanation | null;
+  ai: AiStatus | null;
+  onSignedIn: () => void;
+  explain: () => void;
+  busy: boolean;
+  problem: string | null;
+};
+
+// What one file is for, from the knowledge transfer, shown where the file itself is shown
+// (Changes, a prompt's changes), with a button to ask for it when it isn't written yet.
+export function FileNote({ path, note, ai, onSignedIn, explain, busy, problem }: FileNoteProps) {
+  const [open, setOpen] = useState(false);
+  const ready = ai?.available && ai.signed_in !== false;
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  if (!note) {
+    if (!ai) return null;
+    return (
+      <section className="filenote filenote--empty">
+        <span className="filenote__label">About {name}</span>
+        {ready ? (
+          <div className="filenote__ask">
+            <button onClick={explain} disabled={busy}>
+              {busy ? `${ai.name} is reading the file…` : `What is this file for? Ask ${ai.name}`}
+            </button>
+            <span>{problem ?? "Its purpose, what each function does, and what it connects to. Saved in the project's Full KT."}</span>
+          </div>
+        ) : (
+          <ClaudeSetup ai={ai} onRefresh={onSignedIn} />
+        )}
+      </section>
+    );
+  }
+  const more = note.functions.length > 0 || note.connects || note.notes.length > 0;
+  return (
+    <section className="filenote">
+      <span className="filenote__label">About {name}</span>
+      <p className="filenote__purpose">{note.purpose}</p>
+      {more && (
+        <button className="filenote__more" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+          {open ? "Less" : note.functions.length > 1 ? `Each of its ${note.functions.length} functions, and what it connects to` : note.functions.length === 1 ? "Its function, and what it connects to" : "What it connects to"}
+        </button>
+      )}
+      {open && (
+        <div className="kt__note">
+          {note.functions.length > 0 && (
+            <dl className="kt__functions">
+              {note.functions.map((fn) => (
+                <div key={fn.name}>
+                  <dt>
+                    <code>{fn.name}</code>
+                  </dt>
+                  <dd>{fn.what}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {note.connects && (
+            <p>
+              <strong>Connects to:</strong> {note.connects}
+            </p>
+          )}
+          {note.notes.length > 0 && (
+            <ul className="kt__watch">
+              {note.notes.map((text) => (
+                <li key={text}>{text}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 

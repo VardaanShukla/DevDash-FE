@@ -9,7 +9,7 @@
   --dd-brand-ink: #0369a1;
   --dd-brand-red: #b91c1c;
   /* Text that warns (trade-offs, behind its base): amber, deep enough to read. */
-  --dd-warn: #b45309;
+  --dd-warn: #92400e;
   /* The glow colour of the dashboard: gauges, active menu items, changed parts. Every text
      colour in the light theme reads at 4.5:1 or more on the cards and the page (WCAG AA). */
   --dd-accent: #0b5f59;
@@ -31,6 +31,8 @@
   --dd-shadow: 0 18px 40px -22px rgba(74, 46, 20, 0.32), 0 1px 3px rgba(74, 46, 20, 0.07);
   /* The thin scroll bar thumb, shown only while the pointer is over what scrolls. */
   --dd-scroll: rgba(94, 70, 48, 0.4);
+  /* What dims the page behind a dialog. */
+  --dd-scrim: rgba(36, 24, 15, 0.38);
   /* Depth. Raised parts are lit from above: a bright top edge (bevel) and a shadow that
      grows with height (raise, lift for something pressed toward you). Wells are pressed in. */
   --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(84, 56, 30, 0.08);
@@ -47,7 +49,7 @@
   /* Change colours: added, removed, changed. */
   --dd-add: #166534;
   --dd-add-bg: #dcfce7;
-  --dd-del: #b91c1c;
+  --dd-del: #a51b1b;
   --dd-del-bg: #fee2e2;
   /* Text on a solid red button. */
   --dd-on-del: #fff;
@@ -90,6 +92,7 @@
   --dd-line: rgba(75, 85, 99, 0.5);
   --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --dd-scroll: rgba(156, 163, 175, 0.3);
+  --dd-scrim: rgba(0, 0, 0, 0.6);
   --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
   --dd-raise: 0 1px 1px rgba(0, 0, 0, 0.7), 0 12px 22px -10px rgba(0, 0, 0, 0.85), 0 40px 64px -32px rgba(0, 0, 0, 0.95);
   --dd-lift: 0 2px 2px rgba(0, 0, 0, 0.7), 0 20px 34px -12px rgba(0, 0, 0, 0.9), 0 60px 90px -40px rgba(0, 0, 0, 1);
@@ -101,7 +104,7 @@
   --dd-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23d1d5db' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --dd-add: #4ade80;
   --dd-add-bg: rgba(74, 222, 128, 0.14);
-  --dd-del: #f87171;
+  --dd-del: #fb8a8a;
   --dd-del-bg: rgba(248, 113, 113, 0.14);
   /* Dark red reads on the light red that dark mode's buttons use; white wouldn't. */
   --dd-on-del: #2a0707;
@@ -170,11 +173,17 @@ body {
   transition: background 200ms ease, color 200ms ease;
 }
 
-button,
-select,
-input {
-  font: inherit;
-  color: inherit;
+/* In the base layer, under Tailwind's utilities: unlayered, this `color: inherit` beat every
+   text-* class, so the main button took the page's ink on its own ink-coloured fill (white on
+   white in dark, coffee on coffee in light). A screen's own unlayered CSS still wins over it. */
+@layer base {
+  button,
+  select,
+  input,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
 }
 
 /* One keyboard focus ring for every control, in the theme's accent instead of the browser's

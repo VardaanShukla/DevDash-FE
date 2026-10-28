@@ -625,3 +625,144 @@
     padding: 16px;
   }
 }
+
+/* Opening a prompt's own changes: the prompt, a file's path and a function each lead there. */
+.digest__prompt--open,
+.digest__path--open {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.digest__path--open {
+  font-family: var(--dd-mono);
+}
+
+.digest__prompt--open:hover,
+.digest__path--open:hover {
+  color: var(--dd-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+button.digest__fn {
+  border: none;
+  cursor: pointer;
+}
+
+button.digest__fn:hover {
+  outline: 1px solid currentColor;
+}
+
+.digest__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.digest__see {
+  padding: 6px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+  color: var(--dd-accent);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.digest__see:hover {
+  border-color: var(--dd-accent);
+}
+
+/* One prompt's own changes. */
+.pc__back {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dd-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pc__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.pc__prompt {
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.pc__muted {
+  margin: 0;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+}
+
+.pc__jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pc__jump a {
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  color: var(--dd-ink);
+  font-family: var(--dd-mono);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.pc__jump a:hover {
+  border-color: var(--dd-accent);
+}
+
+.pc__jump span {
+  color: var(--dd-muted);
+}
+
+.pc__all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.pc__explain-all {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pc__file {
+  scroll-margin-top: 12px;
+}
+
+.pc__part {
+  scroll-margin-top: 12px;
+}

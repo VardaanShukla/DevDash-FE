@@ -281,6 +281,8 @@
   padding: 0 4px;
   font-size: 10px;
   line-height: 18px;
+  /* Sits on the item's edge: a ring of the menu's colour keeps it apart from the icon. */
+  box-shadow: 0 0 0 2px var(--dd-card);
 }
 
 .menu--collapsed .menu__sub {
@@ -350,6 +352,169 @@
 @media (prefers-reduced-motion: reduce) {
   .menu,
   .menu__chevron {
+    transition: none;
+  }
+}
+
+/* The project picker. Closed, it's one row; open, its list slides down in the menu itself
+   and the items below move down with it (the row's height animates from 0fr to 1fr). */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.picker__current {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 8px 5px 5px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.picker__current:hover,
+.picker--open .picker__current {
+  background: var(--dd-accent-soft);
+}
+
+.picker__current:focus-visible,
+.picker__option:focus-visible {
+  outline: 2px solid var(--dd-accent);
+  outline-offset: 1px;
+}
+
+.picker__initial {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.picker__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker__name em {
+  color: var(--dd-muted);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* Points down when closed and turns up when open, then back again. */
+.picker__chevron {
+  flex: none;
+  color: var(--dd-muted);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.picker--open .picker__chevron {
+  transform: rotate(180deg);
+}
+
+.picker__drawer {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 240ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease;
+}
+
+.picker--open .picker__drawer {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  max-height: 40vh;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.picker--open .picker__list {
+  padding: 4px;
+  border: 1px solid var(--dd-glass-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+}
+
+.picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px 6px 6px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--dd-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.picker__option .picker__initial {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+  font-size: 11px;
+}
+
+.picker__option:hover:not(:disabled) {
+  background: var(--dd-accent-soft);
+  color: var(--dd-ink);
+}
+
+.picker__option--on {
+  color: var(--dd-ink);
+  font-weight: 700;
+}
+
+.picker__option--on svg {
+  flex: none;
+  color: var(--dd-accent);
+}
+
+.picker__option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picker__chevron,
+  .picker__drawer {
     transition: none;
   }
 }

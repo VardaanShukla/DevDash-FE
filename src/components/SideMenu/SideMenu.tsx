@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { Repo } from "../../api/types";
 import Logo from "../Logo/Logo";
 import "./SideMenu.css";
 
@@ -10,20 +11,21 @@ import "./SideMenu.css";
 // Settings opens like a folder: its parts (and AI's, one per AI) show under it while it's
 // on screen, and pick what Settings shows.
 
-export type View = "home" | "digest" | "summary" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
+export type View = "home" | "digest" | "summary" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
   { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
+  { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
   { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
   { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon />, inMenu: false },
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
@@ -36,6 +38,7 @@ export type SettingsSection =
   | "ai/antigravity"
   | "ai/hosted"
   | "recording"
+  | "github"
   | "shortcuts";
 
 export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: ReactNode; children?: { id: SettingsSection; label: string }[] }[] = [
@@ -54,6 +57,7 @@ export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: Reac
     ],
   },
   { id: "recording", label: "Recording", icon: <RecordIcon /> },
+  { id: "github", label: "GitHub", icon: <GitHubIcon /> },
   { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
 ];
 
@@ -97,6 +101,11 @@ function savedCollapsed(): boolean {
 }
 
 // A narrow window always gets the icons, whatever was picked.
+// A count past 99 shows as 99+, so the badge stays a dot beside an icon; the tooltip has it all.
+function badgeText(count: number): string {
+  return count > 99 ? "99+" : String(count);
+}
+
 const NARROW = "(max-width: 1100px)";
 
 function useNarrow(): boolean {
@@ -134,7 +143,11 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
     >
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
-      {badges[entry.id] ? <span className="menu__badge">{badges[entry.id]}</span> : null}
+      {badges[entry.id] ? (
+        <span className="menu__badge" title={String(badges[entry.id])}>
+          {badgeText(badges[entry.id]!)}
+        </span>
+      ) : null}
       {entry.id === "settings" && <ChevronIcon open={view === "settings"} />}
     </button>
   );
@@ -207,6 +220,97 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
         {MENU.slice(-1).map(item)}
       </nav>
     </aside>
+  );
+}
+
+// The project picker under the brand. It opens in place: the list slides open and pushes
+// the menu's items down, and folds away again (its arrow turning back) once a project is
+// picked, on a second click, on Escape or on a click anywhere else.
+export function ProjectPicker({ repos, selectedId, onSelect, onAdd }: {
+  repos: Repo[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  onAdd: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const current = repos.find((repo) => repo.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (!box.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => event.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+
+  const pick = (id: number) => {
+    setOpen(false);
+    if (id !== selectedId) onSelect(id);
+  };
+
+  return (
+    <div className={`picker${open ? " picker--open" : ""}`} ref={box}>
+      <span className="switcher__label">Project</span>
+      <div className="switcher">
+        <button
+          type="button"
+          className="picker__current"
+          onClick={() => setOpen((was) => !was)}
+          aria-expanded={open}
+          aria-controls="project-picker-list"
+          title={current ? current.path : "Pick a project"}
+        >
+          <span className="picker__initial" aria-hidden="true">
+            {(current?.name ?? "?").slice(0, 1).toUpperCase()}
+          </span>
+          <span className="picker__name">{current?.name ?? "Pick a project"}</span>
+          <svg {...iconProps} width={14} height={14} className="picker__chevron" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <button className="switcher__add" onClick={onAdd} title="Add a project" aria-label="Add a project">
+          +
+        </button>
+      </div>
+      {/* Always in the page, so opening and closing can slide: its row grows from nothing. */}
+      <div className="picker__drawer" inert={!open}>
+        <ul className="picker__list" id="project-picker-list" role="listbox" aria-label="Projects">
+          {repos.map((repo) => (
+            <li key={repo.id}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={repo.id === selectedId}
+                className={`picker__option${repo.id === selectedId ? " picker__option--on" : ""}`}
+                onClick={() => pick(repo.id)}
+                disabled={!repo.exists}
+                title={repo.exists ? repo.path : `${repo.path} (folder missing)`}
+              >
+                <span className="picker__initial" aria-hidden="true">
+                  {repo.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="picker__name">
+                  {repo.name}
+                  {!repo.exists && <em> folder missing</em>}
+                </span>
+                {repo.id === selectedId && (
+                  <svg {...iconProps} width={14} height={14} aria-hidden="true">
+                    <path d="M5 12l5 5 9-10" />
+                  </svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -317,6 +421,15 @@ function DigestIcon() {
   );
 }
 
+function AskIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+      <path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.3M12 14h.01" />
+    </svg>
+  );
+}
+
 function SummaryIcon() {
   return (
     <svg {...iconProps}>
@@ -360,6 +473,14 @@ function PaletteIcon() {
       <circle cx="7.5" cy="11" r="1" fill="currentColor" />
       <circle cx="10.5" cy="7" r="1" fill="currentColor" />
       <circle cx="15" cy="7.5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />
     </svg>
   );
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { ApiError, api } from "../../api/client";
-import type { AiProvider, AiStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth } from "../../api/types";
+import type { AiProvider, AiStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
@@ -27,9 +27,11 @@ type Props = {
   // The AI picked for explanations: installed, signed in, and as whom; null while checked.
   ai: AiStatus | null;
   onAiRefresh: () => void;
+  // A repository cloned from GitHub, now a project.
+  onCloned?: (repo: Repo) => void;
 };
 
-export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh }: Props) {
+export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh, onCloned }: Props) {
   // An AI can be installed, signed in or out outside DevDash: look again on opening Settings.
   useEffect(() => onAiRefresh(), [onAiRefresh]);
   const [list, setList] = useState<AiStatus[] | null>(null);
@@ -57,6 +59,8 @@ export default function Settings({ section, onSection, standalone, prefs, onPref
         return <Appearance prefs={prefs} onPrefs={onPrefs} />;
       case "recording":
         return <Recording />;
+      case "github":
+        return <GitHub onCloned={onCloned} />;
       case "shortcuts":
         return <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />;
       case "ai":
@@ -1257,6 +1261,300 @@ function Recording() {
         </p>
       ) : (
         <p className="settings__note">No hook errors in the last {health.days} days. Every call is listed in <code>{health.hook_log}</code>.</p>
+      )}
+    </section>
+  );
+}
+
+// Where clones go, remembered in this browser.
+const CLONE_FOLDER = "devdash:clone-folder";
+
+function savedCloneFolder(): string {
+  try {
+    return localStorage.getItem(CLONE_FOLDER) || "~/Projects";
+  } catch {
+    return "~/Projects";
+  }
+}
+
+// Your GitHub account, connected with GitHub's device sign-in: DevDash shows a code, you
+// enter it on github.com. Then your repositories, to clone one as a project.
+function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
+  const [status, setStatus] = useState<GitHubStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [token, setToken] = useState("");
+  const [pasting, setPasting] = useState(false);
+
+  const reload = useCallback(() => {
+    api.github().then(setStatus, (e: Error) => setError(e.message));
+  }, []);
+  useEffect(reload, [reload]);
+
+  // While a code is on screen, ask every five seconds whether it was entered (the backend
+  // asks GitHub no more often than GitHub allows).
+  const waiting = !!status?.code && !status.connected;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setInterval(() => {
+      api.githubPoll().then(setStatus, (e: Error) => {
+        setError(e.message);
+        api.github().then(setStatus, () => {});
+      });
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [waiting]);
+
+  const connect = (method: "app" | "gh") => {
+    setBusy(true);
+    setError(null);
+    setCopied(false);
+    api.githubConnect(method).then(
+      (found) => (setStatus(found), setBusy(false)),
+      (e: Error) => (setError(e.message), setBusy(false)),
+    );
+  };
+
+  const submitToken = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    api.githubToken(token).then(
+      (found) => (setStatus(found), setToken(""), setPasting(false), setBusy(false)),
+      (e: Error) => (setError(e.message), setBusy(false)),
+    );
+  };
+
+  const disconnect = () => {
+    setBusy(true);
+    api.githubDisconnect().then(
+      (found) => (setStatus(found), setBusy(false)),
+      (e: Error) => (setError(e.message), setBusy(false)),
+    );
+  };
+
+  const copy = () => {
+    if (!status?.code) return;
+    navigator.clipboard?.writeText(status.code).then(() => setCopied(true), () => {});
+  };
+
+  if (!status) {
+    return (
+      <section className="card settings__section">
+        <h2>GitHub</h2>
+        {error ? <p className="settings__message settings__message--error">{error}</p> : <p className="settings__note">Checking…</p>}
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="card settings__section">
+        <div className="settings__head">
+          <h2>GitHub</h2>
+          {status.connected && (
+            <button className="settings__button settings__button--quiet" onClick={disconnect} disabled={busy}>
+              Disconnect
+            </button>
+          )}
+        </div>
+        {status.connected ? (
+          <>
+            <div className="github__account">
+              {status.avatar && <img src={status.avatar} alt="" width={40} height={40} />}
+              <div>
+                <strong>{status.name || status.login}</strong>
+                <span className="settings__note">
+                  Connected as @{status.login}
+                  {status.via === "gh" ? " through the gh tool" : status.via === "token" ? " with a token you pasted" : ""}
+                </span>
+              </div>
+            </div>
+            <p className="settings__note">{CONNECTED_NOTE[status.via ?? "app"]}</p>
+          </>
+        ) : status.code ? (
+          <div className="github__code">
+            <p className="settings__note">Enter this code on the GitHub page that opened. DevDash connects as soon as you have.</p>
+            <div className="github__code-row">
+              <code aria-label="Your code">{status.code}</code>
+              <button className="settings__button settings__button--quiet" onClick={copy}>
+                {copied ? "Copied" : "Copy"}
+              </button>
+              <a className="settings__button" href={status.verify_url ?? "https://github.com/login/device"} target="_blank" rel="noreferrer">
+                Open GitHub
+              </a>
+            </div>
+            <p className="settings__note">Waiting for GitHub… The code works for 15 minutes.</p>
+            <div>
+              <button className="settings__button settings__button--quiet" onClick={disconnect} disabled={busy}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="settings__note">
+              Sign in to see your repositories here, clone one as a project in a click, and see each project's open pull
+              requests. Your password never passes through DevDash: you sign in on GitHub's own page.
+            </p>
+            {(status.configured || status.gh) && (
+              <div className="github__signin">
+                <button className="github__signin-button" onClick={() => connect(status.configured ? "app" : "gh")} disabled={busy}>
+                  <GitHubMark />
+                  {busy ? "Opening GitHub…" : "Sign in with GitHub"}
+                </button>
+                {status.configured && status.gh && (
+                  <button className="github__alt" onClick={() => connect("gh")} disabled={busy}>
+                    Use the gh tool's sign-in instead
+                  </button>
+                )}
+              </div>
+            )}
+            {!status.configured && !status.gh && (
+              <p className="settings__note">
+                For one-click sign-in, install GitHub's <a href="https://cli.github.com" target="_blank" rel="noreferrer">gh tool</a>{" "}
+                and come back. Or paste a token below.
+              </p>
+            )}
+            {pasting || (!status.configured && !status.gh) ? (
+              <form className="github__token" onSubmit={submitToken}>
+                <label>
+                  <span>
+                    Token from{" "}
+                    <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">
+                      GitHub → Settings → Fine-grained tokens
+                    </a>
+                    . Give it read-only Contents and Pull requests.
+                  </span>
+                  <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="github_pat_…" autoComplete="off" spellCheck={false} />
+                </label>
+                <button className="settings__button" type="submit" disabled={busy || !token.trim()}>
+                  {busy ? "Checking…" : "Connect"}
+                </button>
+              </form>
+            ) : (
+              <button className="github__alt" onClick={() => setPasting(true)}>
+                Paste a token instead
+              </button>
+            )}
+          </>
+        )}
+        {error && <p className="settings__message settings__message--error">{error}</p>}
+      </section>
+      {status.connected && <GitHubRepos installUrl={status.via === "app" ? status.install_url : null} onCloned={onCloned} onSignedOut={reload} />}
+    </>
+  );
+}
+
+// What DevDash can see, for each way of connecting.
+const CONNECTED_NOTE: Record<NonNullable<GitHubStatus["via"]>, string> = {
+  app: "DevDash can read only the repositories you installed its app on, and can't change anything there. To stop it reading them, disconnect here and revoke DevDash under GitHub → Settings → Applications.",
+  gh: "DevDash borrows the gh tool's sign-in, which can see every repository your account can and also change them. DevDash only reads. Disconnecting here leaves gh signed in; run gh auth logout to sign it out.",
+  token: "DevDash can do what the token allows, and keeps it only on this computer. Disconnecting forgets it here; delete it on GitHub to end it everywhere.",
+};
+
+function GitHubMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  );
+}
+
+function GitHubRepos({ installUrl, onCloned, onSignedOut }: { installUrl: string | null; onCloned?: (repo: Repo) => void; onSignedOut: () => void }) {
+  const [repos, setRepos] = useState<GitHubRepo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [folder, setFolder] = useState(savedCloneFolder);
+  const [cloning, setCloning] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+
+  const load = useCallback(() => {
+    setError(null);
+    api.githubRepos().then(setRepos, (e: unknown) => {
+      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) onSignedOut();
+    });
+  }, [onSignedOut]);
+  useEffect(load, [load]);
+
+  const clone = (repo: GitHubRepo) => {
+    setCloning(repo.full_name);
+    setError(null);
+    try {
+      localStorage.setItem(CLONE_FOLDER, folder);
+    } catch {
+      /* storage unavailable */
+    }
+    api.githubClone(repo.full_name, folder).then(
+      (made) => {
+        setCloning(null);
+        setRepos((list) => list?.map((r) => (r.full_name === repo.full_name ? { ...r, tracked: made.path } : r)) ?? null);
+        onCloned?.(made);
+      },
+      (e: Error) => (setError(e.message), setCloning(null)),
+    );
+  };
+
+  const shown = (repos ?? []).filter((r) => r.full_name.toLowerCase().includes(filter.trim().toLowerCase()));
+
+  return (
+    <section className="card settings__section">
+      <div className="settings__head">
+        <h2>Your repositories</h2>
+        <div className="github__actions">
+          {installUrl && (
+            <a className="settings__button settings__button--quiet" href={installUrl} target="_blank" rel="noreferrer">
+              Pick repositories
+            </a>
+          )}
+          <button className="settings__button settings__button--quiet" onClick={load}>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div className="github__fields">
+        <label>
+          <span>Clone into</span>
+          <input value={folder} onChange={(e) => setFolder(e.target.value)} spellCheck={false} />
+        </label>
+        {(repos?.length ?? 0) > 6 && (
+          <label>
+            <span>Find</span>
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="owner/name" spellCheck={false} />
+          </label>
+        )}
+      </div>
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+      {repos === null && !error && <p className="settings__note">Asking GitHub…</p>}
+      {repos?.length === 0 && (
+        <p className="settings__note">
+          DevDash's app isn't installed on any repository yet. Press Pick repositories, choose some on GitHub, then Refresh.
+        </p>
+      )}
+      {shown.length > 0 && (
+        <ul className="github__repos">
+          {shown.map((repo) => (
+            <li key={repo.full_name}>
+              <div className="github__repo">
+                <a href={repo.url ?? undefined} target="_blank" rel="noreferrer">
+                  {repo.full_name}
+                </a>
+                {repo.private && <span className="github__badge">Private</span>}
+                {repo.description && <span className="settings__note">{repo.description}</span>}
+              </div>
+              {repo.tracked ? (
+                <span className="github__tracked" title={repo.tracked}>
+                  A project here
+                </span>
+              ) : (
+                <button className="settings__button" onClick={() => clone(repo)} disabled={cloning !== null || !folder.trim()}>
+                  {cloning === repo.full_name ? "Cloning…" : "Clone"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
       )}
     </section>
   );

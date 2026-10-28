@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
+import { batch, clear, job, result, start, startBatch, useJobs } from "../../lib/aiJobs";
 import type { AiStatus, FunctionDetail, FunctionExplanation, UnitSide } from "../../api/types";
 import "./FunctionChanges.css";
 
@@ -11,6 +12,9 @@ import "./FunctionChanges.css";
 type Props = {
   // Changes whenever the file's change does, so the functions are read again.
   version: string;
+  // Names this file's change for the explanations running in the background, so one keeps
+  // going, and shows, when the page is left and opened again.
+  scope: string;
   load: () => Promise<FunctionDetail[]>;
   explain: (name: string) => Promise<FunctionExplanation>;
   ai: AiStatus | null;
@@ -43,10 +47,13 @@ const NO_FACTS = new Set<FunctionDetail["kind"]>(["type", "class", "style", "sec
 // Short code shows at once; longer code waits for a click.
 const OPEN_LINES = 40;
 
-export default function FunctionChanges({ version, load, explain, ai, onSignedIn, sideBySide, onShowLines }: Props) {
+export default function FunctionChanges({ version, scope, load, explain, ai, onSignedIn, sideBySide, onShowLines }: Props) {
   const [functions, setFunctions] = useState<FunctionDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [explaining, setExplaining] = useState(false);
+  useJobs();
+  const keyOf = (name: string) => `fn:${scope}:${name}`;
+  const batchKey = `fns:${scope}`;
+  const explaining = batch(batchKey)?.running ?? false;
 
   useEffect(() => {
     let stale = false;
@@ -62,9 +69,6 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
-  const setExplanation = (name: string, explanation: FunctionExplanation) =>
-    setFunctions((list) => list && list.map((item) => (item.name === name ? { ...item, explanation } : item)));
-
   if (error) return <p className="view__note">{error}</p>;
   if (!functions) return <p className="view__note">Reading the functions…</p>;
   if (functions.length === 0) {
@@ -78,25 +82,24 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
     );
   }
 
-  const unexplained = functions.filter((item) => !item.explanation);
-  const explainAll = async () => {
-    setExplaining(true);
-    // One at a time: each is a separate AI run, and the first answers show sooner.
-    for (const item of unexplained) {
-      try {
-        setExplanation(item.name, await explain(item.name));
-      } catch {
-        break;
-      }
-    }
-    setExplaining(false);
+  // Answers that came in while this file was off screen show too.
+  const shown = functions.map((item) => ({ ...item, explanation: item.explanation ?? result<FunctionExplanation>(keyOf(item.name)) ?? null }));
+  const unexplained = shown.filter((item) => !item.explanation);
+  const explainOne = (name: string) => {
+    clear(keyOf(name));
+    return start(keyOf(name), () => explain(name)).then(() => {});
   };
+  const explainAll = () =>
+    startBatch(
+      batchKey,
+      unexplained.map((item) => ({ key: keyOf(item.name), label: item.name, run: () => explain(item.name) })),
+    );
 
   return (
     <div className="fns">
       <div className="fns__bar">
         <ul className="fns__index">
-          {functions.map((item) => (
+          {shown.map((item) => (
             <li key={item.name}>
               <a href={`#fn-${item.name}`} className={`fns__chip fns__chip--${BADGE[item.change].tone}`}>
                 {item.name}
@@ -104,23 +107,27 @@ export default function FunctionChanges({ version, load, explain, ai, onSignedIn
             </li>
           ))}
         </ul>
-        {ai?.available && ai.signed_in !== false && unexplained.length > 1 && (
+        {ai?.available && ai.signed_in !== false && (explaining || unexplained.length > 1) && (
           <button className="fns__explain-all" onClick={explainAll} disabled={explaining}>
             {explaining ? `${ai.name} is explaining…` : `Explain all ${unexplained.length} with ${ai.name}`}
           </button>
         )}
       </div>
-      {functions.map((item) => (
-        <FunctionCard
-          key={item.name}
-          item={item}
-          ai={ai}
-          onSignedIn={onSignedIn}
-          sideBySide={sideBySide}
-          explain={() => explain(item.name).then((result) => setExplanation(item.name, result))}
-          busy={explaining && !item.explanation}
-        />
-      ))}
+      {shown.map((item) => {
+        const run = job(keyOf(item.name));
+        return (
+          <FunctionCard
+            key={item.name}
+            item={item}
+            ai={ai}
+            onSignedIn={onSignedIn}
+            sideBySide={sideBySide}
+            explain={() => explainOne(item.name)}
+            busy={run?.state === "working"}
+            problem={run?.state === "failed" ? run.error : null}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -132,6 +139,7 @@ function FunctionCard(props: {
   sideBySide: boolean;
   explain: () => Promise<void>;
   busy: boolean;
+  problem: string | null;
 }) {
   const { item } = props;
   const now = item.after ?? item.before!;
@@ -161,7 +169,7 @@ function FunctionCard(props: {
 
       <Facts item={item} />
 
-      <Explanation item={item} ai={props.ai} onSignedIn={props.onSignedIn} explain={props.explain} busy={props.busy} />
+      <Explanation explanation={item.explanation} ai={props.ai} onSignedIn={props.onSignedIn} explain={props.explain} busy={props.busy} problem={props.problem} />
 
       <div className="fn__code-head">
         <button className="fns__link" onClick={() => setShowCode((open) => !open)}>
@@ -300,15 +308,17 @@ function Change({ from, to, unit }: { from: number; to: number; unit?: string })
   );
 }
 
-function Explanation(props: {
-  item: FunctionDetail;
+// An AI's take on one change, or the button that asks for it. The run itself lives in
+// lib/aiJobs, so busy and problem come from there and survive leaving the page.
+export function Explanation(props: {
+  explanation: FunctionExplanation | null | undefined;
   ai: AiStatus | null;
   onSignedIn: () => void;
   explain: () => Promise<void>;
   busy: boolean;
+  problem: string | null;
 }) {
-  const [state, setState] = useState<"idle" | "working" | string>("idle");
-  const explanation = props.item.explanation;
+  const explanation = props.explanation;
   if (explanation) {
     return (
       <section className="fn__ai">
@@ -348,24 +358,12 @@ function Explanation(props: {
   if (!props.ai) return null;
   // Not ready (not installed, not running, signed out): how to get it ready, right here.
   if (!props.ai.available || props.ai.signed_in === false) return <ClaudeSetup ai={props.ai} onRefresh={props.onSignedIn} />;
-  const working = state === "working" || props.busy;
-  const run = () => {
-    setState("working");
-    props.explain().then(
-      () => setState("idle"),
-      (e: Error) => setState(e.message),
-    );
-  };
   return (
     <div className="fn__ai-ask">
-      <button onClick={run} disabled={working}>
-        {working ? `${props.ai.name} is reading the code…` : `Explain with ${props.ai.name}`}
+      <button onClick={() => props.explain().catch(() => {})} disabled={props.busy}>
+        {props.busy ? `${props.ai.name} is reading the code…` : `Explain with ${props.ai.name}`}
       </button>
-      <span>
-        {state !== "idle" && state !== "working"
-          ? state
-          : "What it does, what the change improves, and its trade-offs, in plain words."}
-      </span>
+      <span>{props.problem ?? "What it does, what the change improves, and its trade-offs, in plain words."}</span>
     </div>
   );
 }
@@ -408,7 +406,7 @@ function CodeBlock({ title, side, marks, tone }: { title: string; side: UnitSide
 }
 
 // A whole file's change: only the lines that changed, with a little around them.
-function DiffBlock({ diff }: { diff: string }) {
+export function DiffBlock({ diff }: { diff: string }) {
   return (
     <div className="fn__code">
       <figure className="fn__block">

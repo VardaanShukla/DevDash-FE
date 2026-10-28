@@ -36,6 +36,8 @@ type Props = {
   onOpenFile: (path: string) => void;
   onAdd: () => void;
   onDigest: () => void;
+  // Opens one prompt's own changes in AI changes.
+  onOpenChange: (id: string) => void;
   onSync: () => void;
   // The signed-in DevDash username, for the greeting; none before a password is set.
   username?: string;
@@ -126,7 +128,7 @@ export default function Home(props: Props) {
 
   const widgets: Record<Widget, () => ReactNode> = {
     pulse: () => <Pulse comparison={props.comparison} project={picked?.name ?? null} onView={props.onView} />,
-    ai: () => <AiToday digest={digest} health={health} onHealth={setHealth} onDigest={onDigest} />,
+    ai: () => <AiToday digest={digest} health={health} onHealth={setHealth} onDigest={onDigest} onOpenChange={props.onOpenChange} />,
     keys: () => <Keys shortcuts={props.prefs?.shortcuts ?? {}} onView={props.onView} onAdd={onAdd} onSync={props.onSync} />,
     commits: () => <LatestCommits comparison={props.comparison} onView={props.onView} />,
     branch: () => <BranchChanges {...props} project={picked?.name ?? null} />,
@@ -261,11 +263,12 @@ export default function Home(props: Props) {
 // What the AI changed today, and whether the hooks that record it work. The numbers are the
 // digest's, which leave out undone changes; each bar is one prompt, its height the lines it
 // changed, red when it touched something risky. Any recording problem comes first, with a fix.
-function AiToday({ digest, health, onHealth, onDigest }: {
+function AiToday({ digest, health, onHealth, onDigest, onOpenChange }: {
   digest: Digest | null;
   health: RecordingHealth | null;
   onHealth: (health: RecordingHealth) => void;
   onDigest: () => void;
+  onOpenChange: (id: string) => void;
 }) {
   const [repairing, setRepairing] = useState(false);
   const [repairError, setRepairError] = useState<string | null>(null);
@@ -347,7 +350,7 @@ function AiToday({ digest, health, onHealth, onDigest }: {
                     <button
                       key={change.id}
                       className={`ai__bar${change.risky ? " ai__bar--risk" : ""}${change.undone_at ? " ai__bar--undone" : ""}`}
-                      onClick={onDigest}
+                      onClick={() => onOpenChange(change.id)}
                       style={{ ["--i" as string]: i }}
                       title={`${new Date(change.at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} · ${
                         change.repo.name

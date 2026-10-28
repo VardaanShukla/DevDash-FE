@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "../../api/client";
-import type { AiTool, AiToolId, Repo } from "../../api/types";
+import type { AiTool, AiToolId, PullRequests, Repo } from "../../api/types";
 import "./ProjectPanel.css";
 
 type Props = {
@@ -11,6 +11,50 @@ type Props = {
 };
 
 const NAMES: Record<AiToolId, string> = { claude: "Claude Code", codex: "ChatGPT Codex", antigravity: "Gemini Antigravity" };
+
+// The project's open pull requests, when it has a GitHub remote and an account is connected
+// (Settings → GitHub).
+function Pulls({ repoId }: { repoId: number }) {
+  const [found, setFound] = useState<PullRequests | null>(null);
+  useEffect(() => {
+    let stale = false;
+    setFound(null);
+    api.pulls(repoId).then((result) => !stale && setFound(result), () => {});
+    return () => {
+      stale = true;
+    };
+  }, [repoId]);
+  if (!found?.repo) return null;
+  return (
+    <div className="panel__pulls">
+      <h3>Open pull requests on {found.repo}</h3>
+      {!found.connected ? (
+        <p className="panel__note">
+          <a href="#settings/github">Connect GitHub</a> in Settings to see them here.
+        </p>
+      ) : found.error ? (
+        <p className="panel__note">{found.error}</p>
+      ) : found.pulls.length === 0 ? (
+        <p className="panel__note">None open.</p>
+      ) : (
+        <ul>
+          {found.pulls.map((pull) => (
+            <li key={pull.number}>
+              <a href={pull.url} target="_blank" rel="noreferrer">
+                #{pull.number} {pull.title}
+              </a>
+              <span className="panel__note">
+                {pull.draft ? "Draft · " : ""}
+                {pull.author ? `@${pull.author} · ` : ""}
+                <code>{pull.branch}</code> into <code>{pull.base}</code>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // The selected project: where it lives and which AI tool is recorded. Setup steps are
 // in the Help popup.
@@ -75,6 +119,7 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
       {repo.ai === "codex" && <p className="panel__note">In Codex, type /hooks once and trust DevDash's hooks.</p>}
       {repo.ai && <p className="panel__note">Stopping keeps everything already recorded.</p>}
       {error && <p className="panel__error">{error}</p>}
+      <Pulls repoId={repo.id} />
       <button className="panel__remove" onClick={onRemove}>
         Remove project from DevDash
       </button>
