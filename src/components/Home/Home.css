@@ -387,3 +387,47 @@
     max-height: 60vh;
   }
 }
+
+/* Edit mode arrives, rather than appearing: the toolbar drops in and the panel slides in
+   from the side it sits on. */
+.home__bar--editing {
+  animation: edit-bar-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.editor {
+  animation: editor-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes edit-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes editor-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@container home (max-width: 900px) {
+  .editor {
+    animation-name: editor-up;
+  }
+}
+
+@keyframes editor-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home__bar--editing,
+  .editor {
+    animation: none;
+  }
+}

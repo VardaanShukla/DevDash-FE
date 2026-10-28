@@ -1854,3 +1854,44 @@ button.big:hover strong {
 .board--narrow .days {
   min-height: 140px;
 }
+
+/* Each widget's editing handles fade in with edit mode, and the picked widget's outline and
+   the dragged one's lift ease rather than snap. */
+.wf__edit > * {
+  animation: handles-in 220ms ease-out both;
+}
+
+.wf__ghost {
+  animation: handles-in 160ms ease-out both;
+}
+
+@keyframes handles-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.wf > .wf__panel,
+.wf--own > .card {
+  transition: outline-color 200ms ease, box-shadow 220ms ease, opacity 220ms ease;
+}
+
+.wf--moving > .wf__panel,
+.wf--moving.wf--own > .card {
+  transform: scale(1.01);
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms ease, opacity 220ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wf__edit > *,
+  .wf__ghost {
+    animation: none;
+  }
+
+  .wf > .wf__panel,
+  .wf--own > .card,
+  .wf--moving > .wf__panel {
+    transition: none;
+    transform: none;
+  }
+}

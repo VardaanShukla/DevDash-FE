@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { PlacedWidget } from "../../api/types";
 import { CATALOG, option, spec, type HomeData } from "./catalog";
-import { COLUMNS, GAP, place, reading, ROW } from "./layout";
+import { COLUMNS, GAP, MAX_ROWS, place, reading, ROW } from "./layout";
 import "./Widgets.css";
 
 // Home's widgets on a 12-column grid. While editing, a widget is dragged by its bar to move it
@@ -38,6 +38,8 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
   const [said, setSaid] = useState("");
   // The layout as the drag began, so each step is worked out from it, not from the last step.
   const before = useRef<PlacedWidget[]>(widgets);
+  // Whether the pointer went anywhere, so letting go after a drag doesn't count as a click.
+  const moved = useRef(false);
 
   useEffect(() => {
     const node = board.current;
@@ -48,20 +50,26 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
   }, []);
 
   const narrow = width > 0 && width < NARROW;
+  useGlide(board, widgets, drag?.id ?? null);
   const column = (width - GAP * (COLUMNS - 1)) / COLUMNS;
+  // How many pixels n cells take, gaps between them included.
+  const across = (n: number) => n * column + (n - 1) * GAP;
+  const down = (n: number) => n * ROW + (n - 1) * GAP;
 
   const start = (event: PointerEvent, widget: PlacedWidget, mode: Drag["mode"]) => {
     if (!editing || narrow || event.button !== 0) return;
     event.preventDefault();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     before.current = widgets;
-    onSelect(widget.id);
+    moved.current = false;
+    // Settings open on a click, not here: the panel would narrow the board under the pointer.
     setDrag({ id: widget.id, mode, startX: event.clientX, startY: event.clientY, from: widget, dx: 0, dy: 0 });
   };
   const follow = (event: PointerEvent) => {
     if (!drag) return;
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
+    if (Math.abs(dx) + Math.abs(dy) > 3) moved.current = true;
     const cols = Math.round(dx / (column + GAP));
     const rows = Math.round(dy / (ROW + GAP));
     const box = drag.mode === "move"
@@ -103,18 +111,27 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
         const about = spec(widget.type);
         const moving = drag?.id === widget.id;
         const title = widget.title || about.name;
+        // While dragged, the widget follows the pointer pixel by pixel, moved or stretched, and
+        // the ghost marks the cells it will snap to when let go.
+        const min = about.min;
+        const trail = moving && drag.mode === "move"
+          ? { transform: `translate(${drag.dx - (widget.x - drag.from.x) * (column + GAP)}px, ${drag.dy - (widget.y - drag.from.y) * (ROW + GAP)}px)` }
+          : moving
+            ? {
+                width: `${Math.min(across(COLUMNS - widget.x), Math.max(across(min.w), across(drag.from.w) + drag.dx))}px`,
+                height: `${Math.min(down(MAX_ROWS), Math.max(down(min.h), down(drag.from.h) + drag.dy))}px`,
+              }
+            : {};
+        const ghost = moving && drag.mode === "move"
+          ? { transform: `translate(${-(drag.dx - (widget.x - drag.from.x) * (column + GAP))}px, ${-(drag.dy - (widget.y - drag.from.y) * (ROW + GAP))}px)` }
+          : { inset: "0 auto auto 0", width: `${across(widget.w)}px`, height: `${down(widget.h)}px` };
         const style = narrow
           ? { ["--h" as string]: widget.h }
-          : {
-              gridColumn: `${widget.x + 1} / span ${widget.w}`,
-              gridRow: `${widget.y + 1} / span ${widget.h}`,
-              ...(moving && drag.mode === "move"
-                ? { transform: `translate(${drag.dx - (widget.x - drag.from.x) * (column + GAP)}px, ${drag.dy - (widget.y - drag.from.y) * (ROW + GAP)}px)` }
-                : {}),
-            };
+          : { gridColumn: `${widget.x + 1} / span ${widget.w}`, gridRow: `${widget.y + 1} / span ${widget.h}`, ...trail };
         return (
           <div
             key={widget.id}
+            data-widget={widget.id}
             className={[
               "wf",
               `wf--${widget.type}`,
@@ -127,13 +144,7 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
             style={style}
           >
             {moving && !narrow && (
-              <span
-                className="wf__ghost"
-                aria-hidden="true"
-                style={{
-                  transform: `translate(${-(drag.dx - (widget.x - drag.from.x) * (column + GAP))}px, ${-(drag.dy - (widget.y - drag.from.y) * (ROW + GAP))}px)`,
-                }}
-              />
+              <span className="wf__ghost" aria-hidden="true" style={ghost} />
             )}
             {about.ownCard ? (
               about.render({ data, widget, title, o: (key) => option(widget, key) })
@@ -148,7 +159,7 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
                   className="wf__grip"
                   onPointerDown={(event) => start(event, widget, "move")}
                   onKeyDown={(event) => key(event, widget)}
-                  onClick={() => onSelect(widget.id)}
+                  onClick={() => moved.current || onSelect(widget.id)}
                   aria-label={`${title}. Drag, or use the arrow keys, to move it; Shift and an arrow to resize it`}
                   title="Drag to move. Arrow keys move it; Shift and an arrow resize it."
                   disabled={narrow}
@@ -180,6 +191,58 @@ export default function Grid({ widgets, data, editing, selected, onChange, onSel
       </span>
     </div>
   );
+}
+
+// Widgets glide from where they were to where the layout puts them, rather than jumping:
+// the others making room while one is dragged or resized, one let go settling into its
+// cell at its new size, the rest closing up after one is removed. A new widget fades in.
+// Where each widget was is read while React renders, before the page changes, so a widget
+// still gliding starts again from where it is on screen. Reduced motion turns it off.
+const EASE = "cubic-bezier(0.16, 1, 0.3, 1)";
+
+function useGlide(board: React.RefObject<HTMLDivElement | null>, widgets: PlacedWidget[], held: string | null) {
+  const last = useRef<PlacedWidget[]>(widgets);
+  const lastHeld = useRef<string | null>(held);
+  const from = useRef(new Map<string, DOMRect>());
+  const still = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if ((last.current !== widgets || lastHeld.current !== held) && board.current && !still) {
+    from.current = new Map();
+    for (const node of board.current.querySelectorAll<HTMLElement>("[data-widget]")) {
+      from.current.set(node.dataset.widget!, node.getBoundingClientRect());
+    }
+  }
+  useLayoutEffect(() => {
+    const changed = last.current !== widgets || lastHeld.current !== held;
+    const before = last.current;
+    last.current = widgets;
+    lastHeld.current = held;
+    if (!changed || still || !board.current) return;
+    for (const node of board.current.querySelectorAll<HTMLElement>("[data-widget]")) {
+      const id = node.dataset.widget!;
+      // The widget under the pointer follows it; it glides once it's let go.
+      if (id === held) continue;
+      const was = from.current.get(id);
+      node.getAnimations().forEach((animation) => animation.cancel());
+      if (!was) {
+        if (before.length && !before.some((w) => w.id === id)) {
+          node.animate([{ opacity: 0, transform: "scale(0.96)" }, { opacity: 1, transform: "none" }], { duration: 320, easing: EASE });
+        }
+        continue;
+      }
+      const now = node.getBoundingClientRect();
+      const dx = was.left - now.left;
+      const dy = was.top - now.top;
+      const resized = Math.abs(was.width - now.width) >= 1 || Math.abs(was.height - now.height) >= 1;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && !resized) continue;
+      node.animate(
+        [
+          { transform: `translate(${dx}px, ${dy}px)`, ...(resized && { width: `${was.width}px`, height: `${was.height}px` }) },
+          { transform: "none", ...(resized && { width: `${now.width}px`, height: `${now.height}px` }) },
+        ],
+        { duration: 280, easing: EASE },
+      );
+    }
+  }, [widgets, held, still, board]);
 }
 
 function name(widget: PlacedWidget) {
