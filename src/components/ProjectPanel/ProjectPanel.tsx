@@ -12,8 +12,8 @@ type Props = {
 
 const NAMES: Record<AiToolId, string> = { claude: "Claude Code", codex: "ChatGPT Codex", antigravity: "Gemini Antigravity" };
 
-// The project's open pull requests, when it has a GitHub remote and an account is connected
-// (Settings → GitHub).
+// The project's open pull requests, when it has a GitHub or CodeCommit remote and that account
+// is connected (Settings → GitHub or CodeCommit).
 function Pulls({ repoId }: { repoId: number }) {
   const [found, setFound] = useState<PullRequests | null>(null);
   useEffect(() => {
@@ -30,7 +30,8 @@ function Pulls({ repoId }: { repoId: number }) {
       <h3>Open pull requests on {found.repo}</h3>
       {!found.connected ? (
         <p className="panel__note">
-          <a href="#settings/github">Connect GitHub</a> in Settings to see them here.
+          {found.host === "codecommit" ? <a href="#settings/codecommit">Connect CodeCommit</a> : <a href="#settings/github">Connect GitHub</a>}{" "}
+          in Settings to see them here.
         </p>
       ) : found.error ? (
         <p className="panel__note">{found.error}</p>
@@ -45,7 +46,7 @@ function Pulls({ repoId }: { repoId: number }) {
               </a>
               <span className="panel__note">
                 {pull.draft ? "Draft · " : ""}
-                {pull.author ? `@${pull.author} · ` : ""}
+                {pull.author ? `${found.host === "codecommit" ? "" : "@"}${pull.author} · ` : ""}
                 <code>{pull.branch}</code> into <code>{pull.base}</code>
               </span>
             </li>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { ApiError, api } from "../../api/client";
-import type { AiProvider, AiStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
+import type { AiProvider, AiStatus, CodeCommitRepo, CodeCommitStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
@@ -27,7 +27,7 @@ type Props = {
   // The AI picked for explanations: installed, signed in, and as whom; null while checked.
   ai: AiStatus | null;
   onAiRefresh: () => void;
-  // A repository cloned from GitHub, now a project.
+  // A repository cloned from GitHub or CodeCommit, now a project.
   onCloned?: (repo: Repo) => void;
 };
 
@@ -61,6 +61,8 @@ export default function Settings({ section, onSection, standalone, prefs, onPref
         return <Recording />;
       case "github":
         return <GitHub onCloned={onCloned} />;
+      case "codecommit":
+        return <CodeCommit onCloned={onCloned} />;
       case "shortcuts":
         return <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />;
       case "ai":
@@ -1550,6 +1552,245 @@ function GitHubRepos({ installUrl, onCloned, onSignedOut }: { installUrl: string
               ) : (
                 <button className="settings__button" onClick={() => clone(repo)} disabled={cloning !== null || !folder.trim()}>
                   {cloning === repo.full_name ? "Cloning…" : "Clone"}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// Your AWS CodeCommit repositories, through one of this computer's AWS profiles: DevDash asks
+// the AWS CLI to sign each request with it and keeps no keys. Then the region's repositories,
+// to clone one as a project.
+function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
+  const [status, setStatus] = useState<CodeCommitStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [profile, setProfile] = useState("");
+  const [region, setRegion] = useState("");
+
+  const reload = useCallback(() => {
+    api.codecommit().then(
+      (found) => {
+        setStatus(found);
+        // Start from the connected profile, else the default one, with the region it's set to.
+        const picked = found.profiles.find((p) => p.name === found.profile) ?? found.profiles[0];
+        setProfile((now) => now || picked?.name || "");
+        setRegion((now) => now || found.region || picked?.region || "");
+      },
+      (e: Error) => setError(e.message),
+    );
+  }, []);
+  useEffect(reload, [reload]);
+
+  const pick = (name: string) => {
+    setProfile(name);
+    const set = status?.profiles.find((p) => p.name === name)?.region;
+    if (set) setRegion(set);
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    api.codecommitConnect(profile, region).then(
+      (found) => (setStatus(found), setBusy(false)),
+      (e: Error) => (setError(e.message), setBusy(false)),
+    );
+  };
+
+  const disconnect = () => {
+    setBusy(true);
+    api.codecommitDisconnect().then(
+      (found) => (setStatus(found), setBusy(false)),
+      (e: Error) => (setError(e.message), setBusy(false)),
+    );
+  };
+
+  if (!status) {
+    return (
+      <section className="card settings__section">
+        <h2>CodeCommit</h2>
+        {error ? <p className="settings__message settings__message--error">{error}</p> : <p className="settings__note">Checking…</p>}
+      </section>
+    );
+  }
+
+  const form = (
+    <form className="github__token" onSubmit={submit}>
+      <label>
+        <span>AWS profile</span>
+        {status.profiles.length > 0 ? (
+          <select className="select" value={profile} onChange={(e) => pick(e.target.value)}>
+            {status.profiles.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}
+                {p.region ? ` (${p.region})` : ""}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input value={profile} onChange={(e) => setProfile(e.target.value)} placeholder="default" spellCheck={false} />
+        )}
+      </label>
+      <label>
+        <span>Region</span>
+        <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="us-east-1" spellCheck={false} />
+      </label>
+      <button className="settings__button" type="submit" disabled={busy || !profile.trim() || !region.trim()}>
+        {busy ? "Checking…" : status.connected ? "Switch" : "Connect"}
+      </button>
+    </form>
+  );
+
+  return (
+    <>
+      <section className="card settings__section">
+        <div className="settings__head">
+          <h2>CodeCommit</h2>
+          {status.connected && (
+            <button className="settings__button settings__button--quiet" onClick={disconnect} disabled={busy}>
+              Disconnect
+            </button>
+          )}
+        </div>
+        {!status.cli ? (
+          <p className="settings__note">
+            DevDash reads CodeCommit through the{" "}
+            <a href="https://aws.amazon.com/cli/" target="_blank" rel="noreferrer">
+              AWS CLI
+            </a>
+            , which isn't installed on this computer. Install it, run <code>aws configure</code> (or{" "}
+            <code>aws configure sso</code>), then come back.
+          </p>
+        ) : status.connected ? (
+          <>
+            <div className="github__account">
+              <div>
+                <strong>{status.arn?.split(/[:/]/).pop() ?? status.profile}</strong>
+                <span className="settings__note">
+                  Connected with the {status.profile} profile in {status.region}
+                  {status.account ? `, account ${status.account}` : ""}
+                </span>
+              </div>
+            </div>
+            <p className="settings__note">
+              DevDash keeps no AWS keys: it asks the AWS CLI to sign each request with this profile, so it can do what the
+              profile's IAM permissions allow, and only reads. Clones are set up to sign git with the same profile.
+            </p>
+            <details className="codecommit__switch">
+              <summary>Use another profile or region</summary>
+              {form}
+            </details>
+          </>
+        ) : (
+          <>
+            <p className="settings__note">
+              Pick one of your AWS profiles to see your CodeCommit repositories here, clone one as a project in a click, and
+              see each project's open pull requests. DevDash keeps no keys: it uses the profile the way the AWS CLI does.
+            </p>
+            {status.profiles.length === 0 && (
+              <p className="settings__note">
+                No AWS profiles found on this computer. Run <code>aws configure</code> in a terminal first, or type a
+                profile's name.
+              </p>
+            )}
+            {form}
+          </>
+        )}
+        {error && <p className="settings__message settings__message--error">{error}</p>}
+      </section>
+      {status.connected && <CodeCommitRepos key={`${status.profile}/${status.region}`} region={status.region ?? ""} onCloned={onCloned} onSignedOut={reload} />}
+    </>
+  );
+}
+
+function CodeCommitRepos({ region, onCloned, onSignedOut }: { region: string; onCloned?: (repo: Repo) => void; onSignedOut: () => void }) {
+  const [repos, setRepos] = useState<CodeCommitRepo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [folder, setFolder] = useState(savedCloneFolder);
+  const [cloning, setCloning] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+
+  const load = useCallback(() => {
+    setError(null);
+    api.codecommitRepos().then(setRepos, (e: unknown) => {
+      setError((e as Error).message);
+      if (e instanceof ApiError && e.status === 409) onSignedOut();
+    });
+  }, [onSignedOut]);
+  useEffect(load, [load]);
+
+  const clone = (repo: CodeCommitRepo) => {
+    setCloning(repo.name);
+    setError(null);
+    try {
+      localStorage.setItem(CLONE_FOLDER, folder);
+    } catch {
+      /* storage unavailable */
+    }
+    api.codecommitClone(repo.name, folder).then(
+      (made) => {
+        setCloning(null);
+        setRepos((list) => list?.map((r) => (r.name === repo.name ? { ...r, tracked: made.path } : r)) ?? null);
+        onCloned?.(made);
+      },
+      (e: Error) => (setError(e.message), setCloning(null)),
+    );
+  };
+
+  const shown = (repos ?? []).filter((r) => r.name.toLowerCase().includes(filter.trim().toLowerCase()));
+
+  return (
+    <section className="card settings__section">
+      <div className="settings__head">
+        <h2>Repositories in {region}</h2>
+        <div className="github__actions">
+          <button className="settings__button settings__button--quiet" onClick={load}>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div className="github__fields">
+        <label>
+          <span>Clone into</span>
+          <input value={folder} onChange={(e) => setFolder(e.target.value)} spellCheck={false} />
+        </label>
+        {(repos?.length ?? 0) > 6 && (
+          <label>
+            <span>Find</span>
+            <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="name" spellCheck={false} />
+          </label>
+        )}
+      </div>
+      {error && <p className="settings__message settings__message--error">{error}</p>}
+      {repos === null && !error && <p className="settings__note">Asking CodeCommit…</p>}
+      {repos?.length === 0 && (
+        <p className="settings__note">
+          No repositories in {region}. CodeCommit keeps each region's repositories apart: if yours are elsewhere, switch the
+          region above.
+        </p>
+      )}
+      {shown.length > 0 && (
+        <ul className="github__repos">
+          {shown.map((repo) => (
+            <li key={repo.name}>
+              <div className="github__repo">
+                <a href={repo.url ?? undefined} target="_blank" rel="noreferrer">
+                  {repo.name}
+                </a>
+                {repo.description && <span className="settings__note">{repo.description}</span>}
+              </div>
+              {repo.tracked ? (
+                <span className="github__tracked" title={repo.tracked}>
+                  A project here
+                </span>
+              ) : (
+                <button className="settings__button" onClick={() => clone(repo)} disabled={cloning !== null || !folder.trim()}>
+                  {cloning === repo.name ? "Cloning…" : "Clone"}
                 </button>
               )}
             </li>

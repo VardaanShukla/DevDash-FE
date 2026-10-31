@@ -794,6 +794,11 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             setSection("github");
             setView("settings");
           }}
+          onCodeCommit={() => {
+            setAdding(false);
+            setSection("codecommit");
+            setView("settings");
+          }}
         />
       )}
       {removing && <RemoveProject repo={removing} onClose={() => setRemoving(null)} onRemoved={removed} />}

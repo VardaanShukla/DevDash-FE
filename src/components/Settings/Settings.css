@@ -1439,3 +1439,21 @@
   font-family: var(--dd-mono);
   font-size: 13px;
 }
+
+/* Switching CodeCommit to another profile or region, folded away once connected. */
+.codecommit__switch {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.codecommit__switch summary {
+  color: var(--dd-accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.codecommit__switch[open] summary {
+  margin-bottom: 10px;
+}

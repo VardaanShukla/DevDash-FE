@@ -19,6 +19,8 @@ import type {
   Digest,
   DigestChangeDetail,
   Flow,
+  CodeCommitRepo,
+  CodeCommitStatus,
   GitHubRepo,
   GitHubStatus,
   PullRequests,
@@ -170,6 +172,13 @@ export const api = {
   githubRepos: () => get<GitHubRepo[]>("/api/github/repos"),
   // Clones one of your repositories into the folder and adds it as a project.
   githubClone: (fullName: string, folder: string) => request<Repo>("/api/github/clone", "POST", { full_name: fullName, folder }),
+  codecommit: () => get<CodeCommitStatus>("/api/codecommit"),
+  // Connects with one of this computer's AWS profiles, in one region.
+  codecommitConnect: (profile: string, region: string) => request<CodeCommitStatus>("/api/codecommit/connect", "POST", { profile, region }),
+  codecommitDisconnect: () => request<CodeCommitStatus>("/api/codecommit", "DELETE", {}),
+  codecommitRepos: () => get<CodeCommitRepo[]>("/api/codecommit/repos"),
+  // Clones one of the region's repositories into the folder and adds it as a project.
+  codecommitClone: (name: string, folder: string) => request<Repo>("/api/codecommit/clone", "POST", { name, folder }),
   pulls: (repoId: number) => get<PullRequests>(`/api/repos/${repoId}/pulls`),
   // A question about the project, answered in plain words; history is the conversation so far.
   ask: (repoId: number, question: string, history: AskTurn[], head: string) =>
