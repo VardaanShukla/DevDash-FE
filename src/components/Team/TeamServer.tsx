@@ -41,7 +41,7 @@ export default function TeamServer() {
   );
 }
 
-function Hosting({ host, onHost }: { host: HostStatus; onHost: (host: HostStatus) => void }) {
+export function Hosting({ host, onHost }: { host: HostStatus; onHost: (host: HostStatus) => void }) {
   const [tunnel, setTunnel] = useState<Tunnel>(host.tools.caddy ? "network" : host.tools.cloudflare ? "cloudflare" : "none");
   const [domain, setDomain] = useState("");
   const [addresses, setAddresses] = useState(host.tools.addresses.join(", "));
@@ -164,7 +164,7 @@ function Hosting({ host, onHost }: { host: HostStatus; onHost: (host: HostStatus
   );
 }
 
-function Linking({ link, onLink, suggested }: { link: LinkStatus; onLink: (link: LinkStatus) => void; suggested: string | null }) {
+export function Linking({ link, onLink, suggested }: { link: LinkStatus; onLink: (link: LinkStatus) => void; suggested: string | null }) {
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

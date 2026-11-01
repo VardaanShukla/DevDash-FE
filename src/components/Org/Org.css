@@ -1,0 +1,355 @@
+/* Joining or making an organisation, and setting it up. */
+.org {
+  display: grid;
+  gap: 16px;
+  padding: 28px 32px;
+  max-width: 1100px;
+  margin: 16px auto 0;
+  align-content: start;
+}
+.screen > .org {
+  height: auto;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+}
+.org--compact {
+  margin: 0;
+  max-width: none;
+  padding: 24px;
+}
+.org h1 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+}
+.org__intro p {
+  margin: 8px 0 0;
+  color: var(--dd-muted);
+  max-width: 60ch;
+}
+.org__choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.org__choice {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  text-align: left;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-field);
+  color: var(--dd-muted);
+  font: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.org__choice:hover,
+.org__choice:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 1px var(--dd-accent), var(--dd-shadow);
+}
+.org__choice strong {
+  color: var(--dd-ink);
+  font-size: 16px;
+}
+.org__choice-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-accent);
+}
+
+.org__back {
+  justify-self: start;
+  border: 0;
+  background: none;
+  color: var(--dd-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.org__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--dd-muted);
+  font-size: 13px;
+}
+.org__steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.org__steps li span {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--dd-line);
+  font-weight: 600;
+  font-size: 12px;
+}
+.org__steps li.is-on {
+  color: var(--dd-ink);
+  font-weight: 600;
+}
+.org__steps li.is-on span,
+.org__steps li.is-done span {
+  border-color: var(--dd-accent);
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+}
+.org__body {
+  display: grid;
+  gap: 14px;
+}
+.org__lead {
+  margin: 0;
+}
+.org__form {
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+}
+.org__form p {
+  margin: 0;
+}
+.org__form label {
+  display: grid;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.org__form input,
+.org__inline input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-field);
+  color: var(--dd-ink);
+  font: inherit;
+  font-weight: 400;
+}
+.org__form > .settings__button {
+  justify-self: start;
+}
+.org__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.org__option {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-field);
+  color: var(--dd-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.org__option strong {
+  color: var(--dd-ink);
+  font-size: 14px;
+}
+.org__option.is-on {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 1px var(--dd-accent);
+}
+.org__tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--dd-field);
+  border: 1px solid var(--dd-line);
+  justify-self: start;
+}
+.org__tabs button {
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 14px;
+  background: none;
+  color: var(--dd-muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.org__tabs button.is-on {
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+}
+.org__pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.org__pick p {
+  flex-basis: 100%;
+}
+.org__finish {
+  justify-self: start;
+}
+
+.org__setup {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.org__setup > :first-child,
+.org__setup > .settings__message {
+  grid-column: 1 / -1;
+}
+.org__setup > .card {
+  margin: 0;
+}
+.org__setup > .org__wide {
+  grid-column: 1 / -1;
+}
+.org__code {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.org__code code {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--dd-accent);
+}
+.org__inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.org__inline input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.org__list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+}
+.org__list > li {
+  padding: 10px 0;
+  border-top: 1px solid var(--dd-line);
+}
+.org__row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.org__row-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+.org__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.org__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-field);
+  font-size: 13px;
+  font-weight: 600;
+}
+.org__chip button {
+  border: 0;
+  background: none;
+  color: var(--dd-muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 6px;
+}
+.org__access {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0 0 12px;
+  border-left: 2px solid var(--dd-accent-soft);
+  margin-top: 8px;
+}
+.org__danger {
+  justify-self: start;
+  margin-top: 6px;
+  color: var(--dd-brand-red);
+}
+
+@media (max-width: 640px) {
+  .org {
+    padding: 20px;
+  }
+  .org h1 {
+    font-size: 24px;
+  }
+}
+
+.org__import {
+  margin: 4px 0 8px;
+}
+.org__picklist {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-field);
+}
+.org__picklist input[type="text"],
+.org__picklist > input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+}
+.org__picklist ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+}
+.org__picklist label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api } from "../../api/client";
 import type {
   AiStatus, BranchInfo, Comparison, Digest, Flow, PlacedWidget, PreferenceChange, Preferences, ProjectCard, ProjectMap,
@@ -43,6 +43,8 @@ type Props = {
   onSync: () => void;
   // The signed-in DevDash username, for the greeting; none before a password is set.
   username?: string;
+  // Shown above the widgets, such as the team strip once DevDash is in an organisation.
+  banner?: ReactNode;
 };
 
 export default function Home(props: Props) {
@@ -164,6 +166,7 @@ export default function Home(props: Props) {
   return (
     <div className={`home${panel ? " home--panel" : ""}`}>
       <div className="home__main">
+        {props.banner}
         <div className={`home__bar${editing ? " home__bar--editing" : ""}`} role="toolbar" aria-label="Arrange Home">
           {editing ? (
             <>

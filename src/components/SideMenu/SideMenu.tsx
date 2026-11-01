@@ -11,11 +11,13 @@ import "./SideMenu.css";
 // Settings opens like a folder: its parts (and AI's, one per AI) show under it while it's
 // on screen, and pick what Settings shows.
 
-export type View = "home" | "digest" | "summary" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
+export type View = "home" | "team" | "chat" | "digest" | "summary" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
   { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
+  { id: "team", label: "Team", hint: "Your organisation: teammates, who has which project, and the changes they shared", icon: <TeamIcon /> },
+  { id: "chat", label: "Chat", hint: "Talk with your organisation, your teams and teammates", icon: <ChatIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
   { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
@@ -25,7 +27,7 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit, team server and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit, organisation and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
@@ -61,7 +63,7 @@ export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: Reac
   { id: "recording", label: "Recording", icon: <RecordIcon /> },
   { id: "github", label: "GitHub", icon: <GitHubIcon /> },
   { id: "codecommit", label: "CodeCommit", icon: <CodeCommitIcon /> },
-  { id: "team", label: "Team server", icon: <TeamIcon /> },
+  { id: "team", label: "Organisation", icon: <TeamIcon /> },
   { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
 ];
 
@@ -94,6 +96,8 @@ type Props = {
   aiInUse?: string;
   // Screens that can't work yet, with why: shown dimmed, the reason as their tooltip.
   off?: Partial<Record<View, string>>;
+  // Screens left out of the menu, like Team before DevDash is in an organisation.
+  hidden?: View[];
 };
 
 const COLLAPSED_KEY = "devdash:menu-collapsed";
@@ -125,7 +129,8 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {} }: Props) {
+export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {}, hidden = [] }: Props) {
+  const menu = MENU.filter((entry) => !hidden.includes(entry.id));
   const [collapsed, setCollapsed] = useState(savedCollapsed);
   const narrow = useNarrow();
   const folded = collapsed || narrow;
@@ -219,11 +224,11 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
       </div>
       {project && <div className="menu__project">{project}</div>}
       <nav className="menu__nav" aria-label="Views">
-        {MENU.slice(0, -BOTTOM).map(item)}
+        {menu.slice(0, -BOTTOM).map(item)}
         <span className="menu__spacer" />
-        {MENU.slice(-BOTTOM, -1).map(item)}
+        {menu.slice(-BOTTOM, -1).map(item)}
         {settingsParts}
-        {MENU.slice(-1).map(item)}
+        {menu.slice(-1).map(item)}
       </nav>
     </aside>
   );
@@ -459,6 +464,15 @@ function FoldIcon({ collapsed }: { collapsed: boolean }) {
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9 4v16" />
       <path d={collapsed ? "M13 10l2 2-2 2" : "M16 10l-2 2 2 2"} />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
+      <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" />
     </svg>
   );
 }

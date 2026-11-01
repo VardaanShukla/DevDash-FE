@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerE
 import { ApiError, api } from "../../api/client";
 import type { AiProvider, AiStatus, CodeCommitRepo, CodeCommitStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
-import TeamServer from "../Team/TeamServer";
+import { OrgSettings } from "../Org/Org";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
@@ -65,7 +65,7 @@ export default function Settings({ section, onSection, standalone, prefs, onPref
       case "codecommit":
         return <CodeCommit onCloned={onCloned} />;
       case "team":
-        return <TeamServer />;
+        return <OrgSettings />;
       case "shortcuts":
         return <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />;
       case "ai":

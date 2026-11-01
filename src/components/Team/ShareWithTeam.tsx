@@ -10,7 +10,7 @@ import "./Team.css";
 // Read once per page load and shared by every button, so a long list asks once.
 let linkStatus: Promise<LinkStatus> | null = null;
 function linked(): Promise<LinkStatus> {
-  linkStatus ??= team.status().then((found) => found.link, () => ({ connected: false, pending: null }));
+  linkStatus ??= team.status().then((found) => found.link, (): LinkStatus => ({ connected: false, pending: null, mode: null }));
   return linkStatus;
 }
 

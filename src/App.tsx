@@ -21,6 +21,10 @@ import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
 import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
 import Ask from "./components/Ask/Ask";
+import { OrgChooser } from "./components/Org/Org";
+import TeamView, { TeamStrip, TeamUnlock } from "./components/Team/TeamView";
+import Chat, { useChatUnread } from "./components/Team/Chat";
+import { team, type LinkStatus } from "./api/team";
 import Splash from "./components/Splash/Splash";
 import { keyName, typing } from "./shortcuts";
 import { clear, job, result, start, useJobs } from "./lib/aiJobs";
@@ -135,6 +139,16 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   useJobs();
   // Whether Claude Code is installed and signed in, to explain functions and the project.
   const [ai, setAi] = useState<AiStatus | null>(null);
+  // How DevDash is used (on its own, or in an organisation); undefined while it's read, null
+  // until the person picks, which they're asked once, before anything else.
+  const [teamMode, setTeamMode] = useState<LinkStatus["mode"] | undefined>(undefined);
+  const [teamLink, setTeamLink] = useState<LinkStatus | null>(null);
+  // Read again on each screen change, so linking or leaving in Settings shows everywhere.
+  useEffect(() => {
+    team.status().then((found) => (setTeamMode(found.link.mode), setTeamLink(found.link)), () => setTeamMode("individual"));
+  }, [view]);
+  const inTeam = teamLink?.mode === "org" && teamLink.connected;
+  const chatUnread = useChatUnread(!!inTeam && view !== "chat");
   const refreshAi = useCallback(() => {
     api.ai().then(setAi).catch(() => setAi(null));
   }, []);
@@ -509,6 +523,15 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         <Notice title="Loading">Reading your settings…</Notice>
       );
     }
+    if (teamMode === null) return <OrgChooser onDone={(link) => (setTeamMode(link.mode), setTeamLink(link))} />;
+    if (view === "chat" && inTeam && teamLink) return <Chat link={teamLink} />;
+    if (view === "team" && inTeam && teamLink) {
+      // Manage organisation opens Settings on the organisation's own page.
+      return (
+        <TeamView link={teamLink} onView={(next) => (next === "settings" && setSection("team"), setView(next))}
+                  onLink={(next) => (setTeamLink(next), api.repos().then(setRepos, () => {}))} />
+      );
+    }
     if (error && !repos) return <Notice title="Something needs attention">{error}</Notice>;
     if (repos && repos.length === 0) {
       return <Welcome ai={ai} onAiRefresh={refreshAi} onAdd={() => setAdding(true)} prefs={prefs} onPrefs={changePrefs} />;
@@ -517,6 +540,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     if (view === "home" && repos) {
       return (
         <Home
+          banner={inTeam && teamLink ? <TeamStrip link={teamLink} onView={setView} /> : null}
           repos={repos}
           prefs={prefs}
           onPrefs={changePrefs}
@@ -727,11 +751,13 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           onSettings={setSection}
           aiInUse={prefs?.ai.provider}
           off={repos && !repos.some((item) => item.claude) ? { digest: NOT_RECORDING } : undefined}
+          hidden={inTeam ? [] : ["team", "chat"]}
           keys={viewKeys}
           badges={{
             changes: comparison?.files.length,
             commits: comparison?.commits.length,
             help: setup.todo,
+            chat: chatUnread,
           }}
           project={<ProjectPicker repos={repos} selectedId={repoId} onSelect={selectRepo} onAdd={() => setAdding(true)} />}
         />
@@ -746,7 +772,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
               <h1>{current.label}</h1>
               <p>
                 {current.hint}
-                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
+                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && view !== "team" && view !== "chat" && (
                   <>
                     {" "}
                     · <code>{comparison.head}</code> in {repo.name}
@@ -806,6 +832,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         />
       )}
       {removing && <RemoveProject repo={removing} onClose={() => setRemoving(null)} onRemoved={removed} />}
+      {inTeam && teamLink && repos && repos.length > 0 && <TeamUnlock link={teamLink} onOpen={() => setView("team")} />}
     </div>
   );
 }
