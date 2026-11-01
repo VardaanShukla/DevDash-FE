@@ -1457,3 +1457,18 @@
 .codecommit__switch[open] summary {
   margin-bottom: 10px;
 }
+
+/* How long AI changes keep each change's lines: the words, then the choice beside them. */
+.settings__keep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.settings__keep > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

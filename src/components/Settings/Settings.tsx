@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerE
 import { ApiError, api } from "../../api/client";
 import type { AiProvider, AiStatus, CodeCommitRepo, CodeCommitStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
+import TeamServer from "../Team/TeamServer";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
@@ -63,6 +64,8 @@ export default function Settings({ section, onSection, standalone, prefs, onPref
         return <GitHub onCloned={onCloned} />;
       case "codecommit":
         return <CodeCommit onCloned={onCloned} />;
+      case "team":
+        return <TeamServer />;
       case "shortcuts":
         return <Shortcuts prefs={prefs} onPrefs={onPrefs} onReset={onResetShortcuts} />;
       case "ai":
@@ -147,6 +150,27 @@ function Appearance({ prefs, onPrefs }: { prefs: Preferences; onPrefs: Props["on
               can still turn it on or off for a while with Uncommitted work at the top.
             </span>
           </span>
+        </label>
+        <label className="settings__keep">
+          <span>
+            <strong>Keep AI changes' lines for</strong>
+            <span className="settings__note">
+              Older prompts stay in AI changes with their files and line counts, but their lines are cleared to save
+              space and they can't be undone from DevDash.
+            </span>
+          </span>
+          <select
+            className="select"
+            value={prefs.keep_diffs_days}
+            onChange={(event) => onPrefs({ keep_diffs_days: Number(event.target.value) })}
+          >
+            {[3, 7, 10, 14, 30, 90].map((days) => (
+              <option key={days} value={days}>
+                {days} days
+              </option>
+            ))}
+            <option value={0}>Forever</option>
+          </select>
         </label>
       </section>
     </div>

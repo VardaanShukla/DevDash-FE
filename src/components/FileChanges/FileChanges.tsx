@@ -52,9 +52,11 @@ type Props = {
   onSelect?: (name: string | null) => void;
   // The keys for the next and previous file, from Settings; j and k unless changed.
   keys?: { next?: string; previous?: string };
+  // The project, for Share with team under each explanation.
+  repoId?: number;
 };
 
-export default function FileChanges({ files, focus, version, scope, fileNote, loadFunctions, explainFunction, ai, onSignedIn, onSelect, keys }: Props) {
+export default function FileChanges({ files, focus, version, scope, fileNote, loadFunctions, explainFunction, ai, onSignedIn, onSelect, keys, repoId }: Props) {
   const nextKey = keys?.next ?? "j";
   const previousKey = keys?.previous ?? "k";
   // Real code first, by folder; generated files such as lockfiles go last.
@@ -181,6 +183,7 @@ export default function FileChanges({ files, focus, version, scope, fileNote, lo
             explain: (name) => explainFunction(file, name),
             ai,
             onSignedIn,
+            repoId,
           }}
           position={`${index + 1} of ${ordered.length}`}
           onPrevious={index > 0 ? () => setSelected(ordered[index - 1].path) : undefined}
@@ -230,6 +233,7 @@ type ViewProps = {
     explain: (name: string) => Promise<FunctionExplanation>;
     ai: AiStatus | null;
     onSignedIn: () => void;
+    repoId?: number;
   };
   position: string;
   onPrevious?: () => void;

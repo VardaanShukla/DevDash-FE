@@ -505,6 +505,8 @@ export type Preferences = {
   theme: "dark" | "light";
   // Show uncommitted work from the start; null until picked, so the dashboard asks once.
   uncommitted: boolean | null;
+  // Days AI changes keep each change's lines; older ones keep their prompt and counts. 0: for good.
+  keep_diffs_days: number;
   // Action -> key. Actions: view:<screen>, theme, uncommitted, sync, next-file, previous-file.
   // An empty key means the shortcut is off.
   shortcuts: Record<string, string>;

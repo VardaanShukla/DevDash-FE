@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { api, ApiError, SIGNED_OUT } from "./api/client";
 import type { AiStatus, AuthStatus, Branches, Comparison, FileExplanation, Flow, KnowledgeTransfer, PreferenceChange, Preferences, ProjectMap as MapData, Repo, Summary as SummaryData, Sync } from "./api/types";
 import AddProject from "./components/AddProject/AddProject";
-import Digest from "./components/Digest/Digest";
+import Digest, { NOT_RECORDING } from "./components/Digest/Digest";
 import CommitList from "./components/CommitList/CommitList";
 import FileChanges from "./components/FileChanges/FileChanges";
 import FlowGraph from "./components/FlowGraph/FlowGraph";
@@ -549,6 +549,8 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       return (
         <Digest
           connected={repos.filter((item) => item.claude).length}
+          project={repo && { id: repo.id, name: repo.name, recording: repo.claude }}
+          explainer={prefs?.ai.provider}
           version={`${repos.length}:${revision}`}
           onConnect={() => setView("project")}
           open={openChange}
@@ -683,6 +685,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             onSignedIn={refreshAi}
             onSelect={pickChanges}
             keys={{ next: shortcuts["next-file"], previous: shortcuts["previous-file"] }}
+            repoId={repoId}
           />
         );
       case "commits":
@@ -723,6 +726,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           settings={section}
           onSettings={setSection}
           aiInUse={prefs?.ai.provider}
+          off={repos && !repos.some((item) => item.claude) ? { digest: NOT_RECORDING } : undefined}
           keys={viewKeys}
           badges={{
             changes: comparison?.files.length,

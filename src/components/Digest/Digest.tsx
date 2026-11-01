@@ -4,14 +4,19 @@ import type { AiStatus, Digest as DigestData, DigestChange, DigestFile, DigestFl
 import PromptChanges from "./PromptChanges";
 import "./Digest.css";
 
-// The daily digest: what Claude changed on one day across every connected project, prompt
-// by prompt. Changes that touch sign-in, payments, the database, tests or look like a secret
-// come first, under "Needs a look". The flags come from plain rules, not AI. Each change
+// The daily digest: what Claude changed on one day in the project picked in the menu, or
+// across every connected project, prompt by prompt. Changes that touch sign-in, payments,
+// the database, tests or look like a secret come first, under "Needs a look". The flags come from plain rules, not AI. Each change
 // can be undone in your files, and put back, without committing anything.
 
 type Props = {
   // How many projects are connected to Claude: only those are recorded.
   connected: number;
+  // The project picked in the menu: the page shows its prompts unless "All projects" is on.
+  // recording: a coding tool (Claude Code, Codex, Antigravity) is connected to it.
+  project: { id: number; name: string; recording: boolean } | null;
+  // The AI picked in Settings to write explanations.
+  explainer?: string;
   // Changes when git changes underneath, so the day is read again.
   version: string;
   onConnect: () => void;
@@ -25,7 +30,13 @@ type Props = {
 
 const RISKY = new Set(["auth", "payments", "database", "tests", "secret"]);
 
+// Why AI changes can't show anything yet: also the menu item's tooltip.
+export const NOT_RECORDING =
+  "Works only with Claude Code, Codex or Antigravity. Connect one of them to a project to record its prompts.";
+
 export default function Digest(props: Props) {
+  // Nothing records prompts: say so, rather than a page of empty days that looks broken.
+  if (props.connected === 0) return <NotRecording explainer={props.explainer} onConnect={props.onConnect} />;
   if (props.open) {
     return (
       <PromptChanges
@@ -42,8 +53,31 @@ export default function Digest(props: Props) {
   return <Day {...props} />;
 }
 
-function Day({ connected, version, onConnect, onOpen }: Props) {
+function NotRecording({ explainer, onConnect, project }: { explainer?: string; onConnect: () => void; project?: string }) {
+  const explainsOnly = explainer === "ollama" || explainer === "hosted";
+  return (
+    <section className="card digest__empty digest__off" role="status">
+      <h3>{project ? `${project} isn't recording AI changes` : "AI changes is off: no coding tool is connected"}</h3>
+      <p>
+        AI changes works only with <b>Claude Code</b>, <b>Codex</b> or <b>Antigravity</b>. DevDash records each prompt you
+        give one of them in a connected project, with exactly what it changed.
+      </p>
+      <p>
+        {explainsOnly
+          ? `${explainer === "ollama" ? "Ollama" : "The hosted model"}, picked in Settings, only writes explanations: work done with it isn't recorded here.`
+          : "Ollama and hosted models only write explanations, so work done with them isn't recorded here."}
+      </p>
+      <button className="digest__button" onClick={onConnect}>Connect a coding tool</button>
+    </section>
+  );
+}
+
+function Day({ connected, project, version, onConnect, onOpen, explainer }: Props) {
   const [day, setDay] = useState(today);
+  const [everyProject, setEveryProject] = useState(false);
+  const scope = project && !everyProject ? project.id : undefined;
+  // Which projects the day on screen was read for, so switching shows placeholders, not the old list.
+  const [dataScope, setDataScope] = useState<number | undefined>(undefined);
   const [data, setData] = useState<DigestData | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Prompts finish, and cloud sessions push, in any project, not only the one on screen, so
@@ -62,19 +96,19 @@ function Day({ connected, version, onConnect, onOpen }: Props) {
     let stale = false;
     setBusy(true);
     api
-      .digest(day)
+      .digest(day, scope)
       .then(
-        (result) => !stale && (setData(result), setError(null)),
+        (result) => !stale && (setData(result), setDataScope(scope), setError(null)),
         (e: Error) => !stale && setError(e.message),
       )
       .finally(() => !stale && setBusy(false));
     return () => {
       stale = true;
     };
-  }, [day, version, tick]);
+  }, [day, scope, version, tick]);
   // Nothing to show for this day yet (the first load, or another day picked): placeholders
   // stand in for the counts and cards. A refresh of the day on screen keeps it showing.
-  const loading = !error && (data === null || data.date !== day);
+  const loading = !error && (data === null || data.date !== day || dataScope !== scope);
 
   const mark = (id: string, undone_at: string | null) =>
     setData((current) => current && { ...current, changes: current.changes.map((c) => (c.id === id ? { ...c, undone_at } : c)) });
@@ -99,6 +133,14 @@ function Day({ connected, version, onConnect, onOpen }: Props) {
             <button onClick={() => setDay(shift(day, 1))} disabled={isToday} aria-label="Day after">›</button>
           </div>
         </div>
+        {project && (
+          <div className="digest__days digest__scope" role="group" aria-label="Projects">
+            <button onClick={() => setEveryProject(false)} aria-pressed={!everyProject} title={`Only prompts that changed ${project.name}`}>
+              {project.name}
+            </button>
+            <button onClick={() => setEveryProject(true)} aria-pressed={everyProject}>All projects</button>
+          </div>
+        )}
         {error && <p className="digest__error">{error}</p>}
         {loading && (
           <>
@@ -146,6 +188,10 @@ function Day({ connected, version, onConnect, onOpen }: Props) {
       </section>
 
       <div className="digest__list">
+        {scope !== undefined && project && !project.recording ? (
+          <NotRecording explainer={explainer} onConnect={onConnect} project={project.name} />
+        ) : (
+          <>
         {loading && <Placeholders />}
         {data && !loading && data.changes.length === 0 && (
           <section className="card digest__empty">
@@ -159,8 +205,8 @@ function Day({ connected, version, onConnect, onOpen }: Props) {
               <>
                 <h3>{isToday ? "Your AI hasn't changed anything today" : "Your AI didn't change anything this day"}</h3>
                 <p>
-                  Changes show here as soon as a prompt to your AI coding tool finishes in one of your {connected} connected{" "}
-                  {connected === 1 ? "project" : "projects"}, or a commit with an AI co-author, from a cloud session
+                  Changes show here as soon as a prompt to your AI coding tool finishes in{" "}
+                  {scope !== undefined && project ? project.name : `one of your ${connected} connected ${connected === 1 ? "project" : "projects"}`}, or a commit with an AI co-author, from a cloud session
                   for example, reaches one of your branches.
                 </p>
               </>
@@ -184,6 +230,8 @@ function Day({ connected, version, onConnect, onOpen }: Props) {
           <p className="digest__note">
             Flags come from simple rules on file names and changed lines, so treat them as a reason to look, not a verdict.
           </p>
+        )}
+          </>
         )}
       </div>
     </div>

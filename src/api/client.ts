@@ -184,7 +184,13 @@ export const api = {
   ask: (repoId: number, question: string, history: AskTurn[], head: string) =>
     request<AskAnswer>(`/api/repos/${repoId}/ask`, "POST", { question, history, head }),
   home: () => get<ProjectCard[]>("/api/home"),
-  digest: (day?: string) => get<Digest>(`/api/digest${day ? `?day=${day}` : ""}`),
+  digest: (day?: string, repo?: number) => {
+    const query = new URLSearchParams();
+    if (day) query.set("day", day);
+    if (repo !== undefined) query.set("repo", String(repo));
+    const text = query.toString();
+    return get<Digest>(`/api/digest${text ? `?${text}` : ""}`);
+  },
   digestChange: (id: string) => get<DigestChangeDetail>(`/api/digest/change?${new URLSearchParams({ id })}`),
   // What one function (or file) of a prompt's change does, and what the prompt changed in it.
   explainChangePart: (change: string, path: string, name: string) =>

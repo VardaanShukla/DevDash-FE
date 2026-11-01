@@ -25,7 +25,7 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit, team server and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
@@ -40,6 +40,7 @@ export type SettingsSection =
   | "recording"
   | "github"
   | "codecommit"
+  | "team"
   | "shortcuts";
 
 export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: ReactNode; children?: { id: SettingsSection; label: string }[] }[] = [
@@ -60,6 +61,7 @@ export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: Reac
   { id: "recording", label: "Recording", icon: <RecordIcon /> },
   { id: "github", label: "GitHub", icon: <GitHubIcon /> },
   { id: "codecommit", label: "CodeCommit", icon: <CodeCommitIcon /> },
+  { id: "team", label: "Team server", icon: <TeamIcon /> },
   { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
 ];
 
@@ -90,6 +92,8 @@ type Props = {
   onSettings: (section: SettingsSection) => void;
   // The AI that writes explanations, marked under AI.
   aiInUse?: string;
+  // Screens that can't work yet, with why: shown dimmed, the reason as their tooltip.
+  off?: Partial<Record<View, string>>;
 };
 
 const COLLAPSED_KEY = "devdash:menu-collapsed";
@@ -121,7 +125,7 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse }: Props) {
+export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {} }: Props) {
   const [collapsed, setCollapsed] = useState(savedCollapsed);
   const narrow = useNarrow();
   const folded = collapsed || narrow;
@@ -138,10 +142,10 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
   const item = (entry: (typeof VIEWS)[number]) => (
     <button
       key={entry.id}
-      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}`}
+      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}${off[entry.id] ? " menu__item--off" : ""}`}
       onClick={() => onView(entry.id)}
       aria-current={view === entry.id ? "page" : undefined}
-      title={`${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
+      title={off[entry.id] ? `${entry.label}: ${off[entry.id]}` : `${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
     >
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
@@ -455,6 +459,17 @@ function FoldIcon({ collapsed }: { collapsed: boolean }) {
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9 4v16" />
       <path d={collapsed ? "M13 10l2 2-2 2" : "M16 10l-2 2 2 2"} />
+    </svg>
+  );
+}
+
+function TeamIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="9" cy="8" r="3.2" />
+      <path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M16.5 14.2c2.3.2 4 1.7 4.5 4.3" />
     </svg>
   );
 }

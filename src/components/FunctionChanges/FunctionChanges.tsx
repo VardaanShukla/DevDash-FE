@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { batch, clear, job, result, start, startBatch, useJobs } from "../../lib/aiJobs";
+import ShareWithTeam from "../Team/ShareWithTeam";
 import type { AiStatus, FunctionDetail, FunctionExplanation, UnitSide } from "../../api/types";
 import "./FunctionChanges.css";
 
@@ -21,6 +22,8 @@ type Props = {
   onSignedIn: () => void;
   sideBySide: boolean;
   onShowLines: () => void;
+  // The project, for Share with team under each explanation.
+  repoId?: number;
 };
 
 const BADGE = {
@@ -47,7 +50,7 @@ const NO_FACTS = new Set<FunctionDetail["kind"]>(["type", "class", "style", "sec
 // Short code shows at once; longer code waits for a click.
 const OPEN_LINES = 40;
 
-export default function FunctionChanges({ version, scope, load, explain, ai, onSignedIn, sideBySide, onShowLines }: Props) {
+export default function FunctionChanges({ version, scope, load, explain, ai, onSignedIn, sideBySide, onShowLines, repoId }: Props) {
   const [functions, setFunctions] = useState<FunctionDetail[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useJobs();
@@ -125,6 +128,7 @@ export default function FunctionChanges({ version, scope, load, explain, ai, onS
             explain={() => explainOne(item.name)}
             busy={run?.state === "working"}
             problem={run?.state === "failed" ? run.error : null}
+            share={repoId === undefined ? undefined : { repoId, ref: keyOf(item.name) }}
           />
         );
       })}
@@ -138,6 +142,7 @@ function FunctionCard(props: {
   onSignedIn: () => void;
   sideBySide: boolean;
   explain: () => Promise<void>;
+  share?: { repoId: number; ref: string };
   busy: boolean;
   problem: string | null;
 }) {
@@ -169,7 +174,8 @@ function FunctionCard(props: {
 
       <Facts item={item} />
 
-      <Explanation explanation={item.explanation} ai={props.ai} onSignedIn={props.onSignedIn} explain={props.explain} busy={props.busy} problem={props.problem} />
+      <Explanation explanation={item.explanation} ai={props.ai} onSignedIn={props.onSignedIn} explain={props.explain} busy={props.busy} problem={props.problem}
+                   share={props.share && { ...props.share, subject: item.name }} />
 
       <div className="fn__code-head">
         <button className="fns__link" onClick={() => setShowCode((open) => !open)}>
@@ -317,6 +323,8 @@ export function Explanation(props: {
   explain: () => Promise<void>;
   busy: boolean;
   problem: string | null;
+  // Where Share with team sends it: shown only once the project is linked to a team server.
+  share?: { repoId: number; ref: string; subject: string };
 }) {
   const explanation = props.explanation;
   if (explanation) {
@@ -351,6 +359,9 @@ export function Explanation(props: {
           <p className="fn__ai-check">
             <strong>To test:</strong> {explanation.check}
           </p>
+        )}
+        {props.share && (
+          <ShareWithTeam repoId={props.share.repoId} subject={props.share.subject} shareRef={props.share.ref} explanation={explanation} />
         )}
       </section>
     );

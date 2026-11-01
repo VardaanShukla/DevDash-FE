@@ -249,6 +249,18 @@
   cursor: default;
 }
 
+/* This project or every project: the one on show is filled in. */
+.digest__scope {
+  flex-wrap: wrap;
+}
+
+.digest__scope button[aria-pressed="true"] {
+  background: var(--dd-ink);
+  border-color: var(--dd-ink);
+  color: var(--dd-card);
+  cursor: default;
+}
+
 .digest__stats {
   display: flex;
   flex-wrap: wrap;
@@ -765,4 +777,13 @@ button.digest__fn:hover {
 
 .pc__part {
   scroll-margin-top: 12px;
+}
+
+/* AI changes with no coding tool recording: the reason, in the warning's colour. */
+.digest__off {
+  border-color: var(--dd-warn, #d29922);
+}
+
+.digest__off p + p {
+  margin-top: 8px;
 }
