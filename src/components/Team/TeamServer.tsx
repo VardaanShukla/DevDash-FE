@@ -88,7 +88,14 @@ function Hosting({ host, onHost }: { host: HostStatus; onHost: (host: HostStatus
               Its certificate comes from Caddy's own authority, so each device's browser warns until it trusts this root
               certificate once (phones: Settings → Security → Install a certificate).{" "}
               <a href="/api/team/host/root-certificate" download>Download the root certificate</a>. It's at{" "}
-              <code>{host.root_certificate}</code>.
+              <code>{host.root_certificate}</code>. Phones and browsers can also get it at{" "}
+              <code>{host.url}/root.crt</code>.
+            </p>
+          )}
+          {host.root_fingerprint && (
+            <p className="settings__note">
+              Its fingerprint, for teammates' DevDash to compare when they press Trust this server:{" "}
+              <code className="team__fingerprint">{host.root_fingerprint}</code>
             </p>
           )}
           {host.setup_code && (
@@ -163,6 +170,10 @@ function Linking({ link, onLink, suggested }: { link: LinkStatus; onLink: (link:
   const [error, setError] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repo[] | null>(null);
   const [projectError, setProjectError] = useState<{ id: number; message: string } | null>(null);
+  // A company network server's root certificate fetched for the person to check before trusting.
+  const [offered, setOffered] = useState<{ pem: string; fingerprint: string } | null>(null);
+  const untrusted = !!error && error.includes("doesn't trust the team server's certificate");
+  const address = url || suggested || "";
 
   useEffect(() => {
     if (link.connected) api.repos().then(setRepos, () => setRepos([]));
@@ -188,7 +199,19 @@ function Linking({ link, onLink, suggested }: { link: LinkStatus; onLink: (link:
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    run(() => team.link(url || suggested || ""));
+    setOffered(null);
+    run(() => team.link(address));
+  };
+  const fetchRoot = () => {
+    setBusy(true);
+    team.fetchRootCertificate(address).then((found) => (setOffered(found), setError(null)), (e: Error) => setError(e.message))
+      .finally(() => setBusy(false));
+  };
+  // Trusts it, then links straight away.
+  const trust = () => {
+    if (!offered) return;
+    setOffered(null);
+    run(() => team.addRootCertificate(offered.pem).then(() => team.link(address)));
   };
   const toggle = (repo: Repo, linked: boolean) => {
     setProjectError(null);
@@ -281,6 +304,26 @@ function Linking({ link, onLink, suggested }: { link: LinkStatus; onLink: (link:
         </form>
       )}
       {error && <p className="settings__message settings__message--error">{error}</p>}
+      {untrusted && !offered && (
+        <div>
+          <button className="settings__button" onClick={fetchRoot} disabled={busy}>
+            {busy ? "Getting it…" : "Trust this server"}
+          </button>
+        </div>
+      )}
+      {offered && (
+        <div className="team__code">
+          <p>
+            Check this fingerprint matches the one on the host's Settings → Team server (ask whoever runs the server). If it
+            does, trust it.
+          </p>
+          <code className="team__fingerprint" aria-label="Fingerprint">{offered.fingerprint}</code>
+          <div className="team__actions">
+            <button className="settings__button" onClick={trust} disabled={busy}>It matches: trust and link</button>
+            <button className="settings__button settings__button--quiet" onClick={() => setOffered(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

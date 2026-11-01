@@ -15,6 +15,8 @@ export type HostStatus = {
   setup_code: string | null;
   // On the company network with Caddy's own certificate: the root certificate devices trust once.
   root_certificate: string | null;
+  // Its fingerprint, for people linking to compare with what their DevDash shows.
+  root_fingerprint: string | null;
   // addresses: this machine's own network addresses, to suggest.
   tools: { caddy: boolean; cloudflare: boolean; addresses: string[] };
 };
@@ -62,6 +64,8 @@ export const team = {
   link: (url: string) => call<LinkStatus>("/api/team/link", "POST", { url }),
   poll: () => call<LinkStatus>("/api/team/link/poll", "POST"),
   unlink: () => call<LinkStatus>("/api/team/link", "DELETE"),
+  fetchRootCertificate: (url: string) =>
+    call<{ pem: string; fingerprint: string }>("/api/team/root-certificate/fetch", "POST", { url }),
   addRootCertificate: (pem: string) => call<LinkStatus>("/api/team/root-certificate", "POST", { pem }),
   linkProject: (repoId: number) => call<LinkStatus>(`/api/repos/${repoId}/team`, "POST"),
   unlinkProject: (repoId: number) => call<LinkStatus>(`/api/repos/${repoId}/team`, "DELETE"),

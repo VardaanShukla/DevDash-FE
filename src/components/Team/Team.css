@@ -120,6 +120,16 @@
   font-size: 13px;
   padding: 6px 8px;
 }
+.team__fingerprint {
+  font-size: 16px !important;
+  letter-spacing: 0.08em !important;
+  overflow-wrap: anywhere;
+}
+.team__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .team__subhead {
   margin: 16px 0 4px;
   font-size: 15px;
