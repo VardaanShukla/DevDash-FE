@@ -22,6 +22,8 @@ export type Batch = {
 };
 
 const jobs = new Map<string, Job>();
+// When each run under way began, for progress shown by time.
+const began = new Map<string, number>();
 const running = new Map<string, Promise<unknown>>();
 const batches = new Map<string, Batch>();
 const listeners = new Set<() => void>();
@@ -60,6 +62,7 @@ export function start<T>(key: string, run: () => Promise<T>, again = false): Pro
   const kept = jobs.get(key);
   if (kept?.state === "done" && !again) return Promise.resolve(kept.result as T);
   jobs.set(key, { state: "working" });
+  began.set(key, Date.now());
   changed();
   const promise = run().then(
     (value) => {
@@ -82,6 +85,11 @@ export function start<T>(key: string, run: () => Promise<T>, again = false): Pro
 }
 
 // Forgets a failure, so the button offers the run again.
+// When the run for `key` began, while it's under way.
+export function since(key: string): number | undefined {
+  return running.has(key) ? began.get(key) : undefined;
+}
+
 export function clear(key: string) {
   if (jobs.get(key)?.state === "failed") {
     jobs.delete(key);

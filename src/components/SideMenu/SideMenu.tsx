@@ -11,15 +11,14 @@ import "./SideMenu.css";
 // Settings opens like a folder: its parts (and AI's, one per AI) show under it while it's
 // on screen, and pick what Settings shows.
 
-export type View = "home" | "team" | "chat" | "digest" | "summary" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
+export type View = "home" | "digest" | "summary" | "kt" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
   { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
-  { id: "team", label: "Team", hint: "Your organisation: teammates, who has which project, and the changes they shared", icon: <TeamIcon /> },
-  { id: "chat", label: "Chat", hint: "Talk with your organisation, your teams and teammates", icon: <ChatIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
+  { id: "kt", label: "KT", hint: "A guide for a new developer, with setup, run commands and major functions", icon: <KtIcon /> },
   { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
   { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
@@ -27,7 +26,7 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
   { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
-  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit, organisation and shortcut keys", icon: <SettingsIcon /> },
+  { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
@@ -42,7 +41,6 @@ export type SettingsSection =
   | "recording"
   | "github"
   | "codecommit"
-  | "team"
   | "shortcuts";
 
 export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: ReactNode; children?: { id: SettingsSection; label: string }[] }[] = [
@@ -63,7 +61,6 @@ export const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: Reac
   { id: "recording", label: "Recording", icon: <RecordIcon /> },
   { id: "github", label: "GitHub", icon: <GitHubIcon /> },
   { id: "codecommit", label: "CodeCommit", icon: <CodeCommitIcon /> },
-  { id: "team", label: "Organisation", icon: <TeamIcon /> },
   { id: "shortcuts", label: "Shortcuts", icon: <KeyboardIcon /> },
 ];
 
@@ -96,8 +93,6 @@ type Props = {
   aiInUse?: string;
   // Screens that can't work yet, with why: shown dimmed, the reason as their tooltip.
   off?: Partial<Record<View, string>>;
-  // Screens left out of the menu, like Team before DevDash is in an organisation.
-  hidden?: View[];
 };
 
 const COLLAPSED_KEY = "devdash:menu-collapsed";
@@ -129,8 +124,7 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {}, hidden = [] }: Props) {
-  const menu = MENU.filter((entry) => !hidden.includes(entry.id));
+export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {} }: Props) {
   const [collapsed, setCollapsed] = useState(savedCollapsed);
   const narrow = useNarrow();
   const folded = collapsed || narrow;
@@ -149,6 +143,7 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
       key={entry.id}
       className={`menu__item${lit === entry.id ? " menu__item--active" : ""}${off[entry.id] ? " menu__item--off" : ""}`}
       onClick={() => onView(entry.id)}
+      data-tour={entry.id}
       aria-current={view === entry.id ? "page" : undefined}
       title={off[entry.id] ? `${entry.label}: ${off[entry.id]}` : `${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
     >
@@ -224,11 +219,11 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
       </div>
       {project && <div className="menu__project">{project}</div>}
       <nav className="menu__nav" aria-label="Views">
-        {menu.slice(0, -BOTTOM).map(item)}
+        {MENU.slice(0, -BOTTOM).map(item)}
         <span className="menu__spacer" />
-        {menu.slice(-BOTTOM, -1).map(item)}
+        {MENU.slice(-BOTTOM, -1).map(item)}
         {settingsParts}
-        {menu.slice(-1).map(item)}
+        {MENU.slice(-1).map(item)}
       </nav>
     </aside>
   );
@@ -441,6 +436,15 @@ function AskIcon() {
   );
 }
 
+function KtIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 6c-2-1.5-4.5-2-8-2v15c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2V4c-3.5 0-6 .5-8 2Z" />
+      <path d="M12 6v15" />
+    </svg>
+  );
+}
+
 function SummaryIcon() {
   return (
     <svg {...iconProps}>
@@ -464,26 +468,6 @@ function FoldIcon({ collapsed }: { collapsed: boolean }) {
       <rect x="3" y="4" width="18" height="16" rx="2.5" />
       <path d="M9 4v16" />
       <path d={collapsed ? "M13 10l2 2-2 2" : "M16 10l-2 2 2 2"} />
-    </svg>
-  );
-}
-
-function ChatIcon() {
-  return (
-    <svg {...iconProps}>
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" />
-      <path d="M8.5 11h.01M12 11h.01M15.5 11h.01" />
-    </svg>
-  );
-}
-
-function TeamIcon() {
-  return (
-    <svg {...iconProps}>
-      <circle cx="9" cy="8" r="3.2" />
-      <path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5" />
-      <circle cx="17" cy="9" r="2.4" />
-      <path d="M16.5 14.2c2.3.2 4 1.7 4.5 4.3" />
     </svg>
   );
 }

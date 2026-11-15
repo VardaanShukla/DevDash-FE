@@ -279,6 +279,19 @@ export type OllamaState = {
   install: { shell: string; command: string }[];
 };
 
+// This computer, and the local model that suits it best.
+export type OllamaAdvice = {
+  cpu: string | null;
+  threads: number;
+  memory_gb: number | null;
+  gpu: string | null;
+  gpu_memory_gb: number | null;
+  recommended: string;
+  reason: string;
+  // Where each would run: wholly on the GPU, split with the CPU, on the CPU, or not at all.
+  models: { name: string; size_gb: number; note: string; fit: "gpu" | "mixed" | "cpu" | "too_big" }[];
+};
+
 // What a local model costs the computer, for the chart on the Ollama page.
 export type OllamaUsage = {
   // Empty when there's no GPU DevDash can read: the CPU is shown instead.
@@ -410,6 +423,8 @@ export type AskAnswer = {
   // The files the answer is about, and those whose code the AI read for it.
   files: string[];
   read: string[];
+  // Questions to ask next.
+  follow_ups: string[];
   // How many of the project's files have a KT note, which the AI reads too.
   explained: number;
   total: number;
@@ -507,6 +522,8 @@ export type Preferences = {
   uncommitted: boolean | null;
   // Days AI changes keep each change's lines; older ones keep their prompt and counts. 0: for good.
   keep_diffs_days: number;
+  // The first-time walkthrough was finished or skipped.
+  tour_done: boolean;
   // Action -> key. Actions: view:<screen>, theme, uncommitted, sync, next-file, previous-file.
   // An empty key means the shortcut is off.
   shortcuts: Record<string, string>;
@@ -607,3 +624,16 @@ export type Digest = {
   changes: DigestChange[];
 };
 
+
+// The short KT: one page on what the project is and how to get it running.
+export type KtGuide = {
+  overview: string;
+  needs: { name: string; why: string; check: string | null }[];
+  setup: { step: string; detail: string; command: string | null }[];
+  run: { what: string; command: string }[];
+  how_to_use: string[];
+  settings: { name: string; what: string }[];
+  start_here: { path: string; why: string }[];
+  functions: { name: string; path: string; what: string; use: string; signature: string | null }[];
+  images: { path: string; caption: string }[];
+};

@@ -164,8 +164,6 @@ export default function PromptChanges({ id, focus, ai, onSignedIn, explain, onBa
             onSignedIn={onSignedIn}
             explanationOf={(unit) => explanationOf(file.path, unit)}
             runOf={(unit) => job(keyOf(file.path, unit.name))}
-            repoId={data.repo.id}
-            refOf={(unit) => keyOf(file.path, unit.name)}
             explain={(unit) => {
               clear(keyOf(file.path, unit.name));
               return start(keyOf(file.path, unit.name), () => explain(id, file.path, unit.name)).then(() => {});
@@ -177,11 +175,8 @@ export default function PromptChanges({ id, focus, ai, onSignedIn, explain, onBa
   );
 }
 
-function FileCard({ file, ai, onSignedIn, explanationOf, runOf, explain, repoId, refOf }: {
+function FileCard({ file, ai, onSignedIn, explanationOf, runOf, explain }: {
   file: DigestChangeFile;
-  // The project and each part's own id, for Share with team.
-  repoId: number;
-  refOf: (unit: DigestUnit) => string;
   ai: AiStatus | null;
   onSignedIn: () => void;
   explanationOf: (unit: DigestUnit) => FunctionExplanation | null;
@@ -221,7 +216,6 @@ function FileCard({ file, ai, onSignedIn, explanationOf, runOf, explain, repoId,
             busy={run?.state === "working"}
             problem={run?.state === "failed" ? run.error : null}
             explain={() => explain(unit)}
-            share={{ repoId, ref: refOf(unit), subject: unit.name }}
           />
         );
       })}
@@ -238,7 +232,6 @@ function Part(props: {
   busy: boolean;
   problem: string | null;
   explain: () => Promise<void>;
-  share: { repoId: number; ref: string; subject: string };
 }) {
   const { unit } = props;
   const lines = unit.diff ? unit.diff.split("\n").length : 0;
@@ -258,7 +251,6 @@ function Part(props: {
         explain={props.explain}
         busy={props.busy}
         problem={props.problem}
-        share={props.share}
       />
       {lines > 0 && (
         <>

@@ -117,56 +117,7 @@
   cursor: progress;
 }
 
-.qa__coverage {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px 14px;
-  margin: 0;
-  padding: 9px 22px;
-  border-bottom: 1px solid var(--dd-glass-line);
-  background: var(--dd-ai-bg);
-  color: var(--dd-ink-soft);
-  font-size: 12.5px;
-}
-
-.qa__coverage--failed {
-  background: var(--dd-del-bg);
-}
-
 /* How much of the KT is written, while it is being written. */
-.qa__meter {
-  flex-basis: 100%;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--dd-line);
-  overflow: hidden;
-}
-
-.qa__meter i {
-  display: block;
-  height: 100%;
-  background: var(--dd-ai);
-  transition: width 300ms ease;
-}
-
-.qa__link:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.qa__link {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--dd-accent);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 
 /* The conversation, over the watermark. The mark stays put while the turns scroll. */
 .qa__stage {
@@ -205,12 +156,53 @@
 
 /* Before the first question: one quiet line, so the conversation keeps the room. */
 .qa__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
   margin: auto 0 0;
   align-self: center;
-  max-width: 56ch;
+  max-width: 64ch;
   font-size: 12.5px;
   color: var(--dd-muted);
   text-align: center;
+}
+.qa__empty p {
+  margin: 0;
+}
+.qa__starters,
+.qa__next {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.qa__next {
+  justify-content: flex-start;
+  align-items: center;
+  margin-left: 38px;
+  font-size: 12px;
+  color: var(--dd-muted);
+}
+.qa__starters button,
+.qa__next button {
+  padding: 7px 12px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.qa__starters button:hover:not(:disabled),
+.qa__next button:hover:not(:disabled) {
+  border-color: var(--dd-accent);
+  color: var(--dd-accent);
+}
+.qa__read {
+  font-size: 11.5px;
+  color: var(--dd-muted);
 }
 
 /* A turn: the avatar, then who spoke, what they said and what can be done with it. */
@@ -284,19 +276,23 @@
 }
 
 .qa__bubble p,
-.qa__bubble ul {
+.qa__bubble ul,
+.qa__bubble ol {
   margin: 0;
 }
 
-.qa__bubble p + p,
-.qa__bubble p + ul,
-.qa__bubble ul + p,
-.qa__bubble ul + ul {
+.qa__bubble > * + * {
   margin-top: 10px;
 }
 
-.qa__bubble ul {
-  padding-left: 18px;
+.qa__bubble p + ul,
+.qa__bubble p + ol {
+  margin-top: 6px;
+}
+
+.qa__bubble ul,
+.qa__bubble ol {
+  padding-left: 20px;
 }
 
 .qa__bubble li + li {

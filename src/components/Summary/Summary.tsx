@@ -1,31 +1,37 @@
-import { useEffect, useMemo, useState } from "react";
-import type { AiStatus, FileExplanation, KnowledgeTransfer, KtFile, ProjectExplanation, Summary as SummaryData } from "../../api/types";
+import { useEffect, useState } from "react";
+import type { AiStatus, FileExplanation, KtGuide, ProjectExplanation, Summary as SummaryData } from "../../api/types";
 import { languageColor } from "../ProjectMap/ProjectMap";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
-import { batch, clear, job, result, start, startBatch, stopBatch, useJobs } from "../../lib/aiJobs";
+import { clear, job, result, since, start, useJobs } from "../../lib/aiJobs";
+import { downloadGuide } from "./ktPdf";
 import "./Summary.css";
 
 // The whole project on one screen: what it is, how it works, what it's built with, its
 // parts, how to run it and who has worked on it. The facts come from the project's own
 // files and git history; the plain-English description is the picked AI's (Settings), on request.
-// The Full KT tab is the knowledge transfer: every file explained, function by function.
+// The KT tab, also in the side menu, is the knowledge transfer: what the project is, how to get
+// it running and its major functions, written with one request to the AI.
 
 type Props = {
+  tab: "overview" | "kt";
+  onTab: (tab: "overview" | "kt") => void;
   summary: SummaryData;
   // The project and branch, naming the explanations that run in the background: they keep
   // going when the page is left, and show when it's opened again.
   scope: string;
   ai: AiStatus | null;
-  // fresh: write it again, from the file notes written since.
+  // fresh: write it again.
   explain: (fresh?: boolean) => Promise<ProjectExplanation>;
-  loadKt: () => Promise<KnowledgeTransfer>;
-  explainFile: (path: string) => Promise<FileExplanation>;
+  // The short KT: saved if written, written on request, and the address of its pictures.
+  loadGuide: () => Promise<{ guide: KtGuide | null }>;
+  writeGuide: (fresh?: boolean) => Promise<KtGuide>;
+  imageUrl: (path: string) => string;
   onSignedIn: () => void;
   onOpenMap: () => void;
 };
 
 export default function Summary(props: Props) {
-  const [tab, setTab] = useState<"overview" | "kt">("overview");
+  const { tab, onTab } = props;
   useJobs();
   // Shared by both tabs, so a description written on one shows on the other: the newest
   // rewrite, else one asked for here, else the one saved with the summary.
@@ -34,17 +40,17 @@ export default function Summary(props: Props) {
   return (
     <div className="summary-page">
       <div className="segmented summary-page__tabs" role="tablist" aria-label="Project">
-        <button role="tab" aria-selected={tab === "overview"} className={tab === "overview" ? "is-on" : ""} onClick={() => setTab("overview")}>
+        <button role="tab" aria-selected={tab === "overview"} className={tab === "overview" ? "is-on" : ""} onClick={() => onTab("overview")}>
           Overview
         </button>
-        <button role="tab" aria-selected={tab === "kt"} className={tab === "kt" ? "is-on" : ""} onClick={() => setTab("kt")}>
-          Full KT
+        <button role="tab" aria-selected={tab === "kt"} className={tab === "kt" ? "is-on" : ""} onClick={() => onTab("kt")}>
+          KT
         </button>
       </div>
       {tab === "overview" ? (
-        <Overview {...props} explanation={explanation} onOpenKt={() => setTab("kt")} />
+        <Overview {...props} explanation={explanation} onOpenKt={() => onTab("kt")} />
       ) : (
-        <FullKt {...props} explanation={explanation} />
+        <Kt {...props} />
       )}
     </div>
   );
@@ -104,7 +110,7 @@ function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanat
               <p className="summary__overview">{explanation.overview}</p>
               {explanation.state && <p className="summary__state">{explanation.state}</p>}
               <button className="summary__link" onClick={onOpenKt}>
-                Every file and function, explained ›
+                The KT: setup, run commands and how to use it ›
               </button>
             </>
           ) : summary.readme?.intro ? (
@@ -288,255 +294,264 @@ function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanat
   );
 }
 
-// The knowledge transfer: the project's overview, how its main jobs flow through the files,
-// what to read first, and every file with its purpose and each of its functions. Files are
-// explained one at a time, so even a small local model only ever reads one file; the notes
-// are saved, and only a changed file is asked about again.
-function FullKt({ summary, scope, ai, explain, loadKt, explainFile, onSignedIn, explanation }: Shared) {
-  const [loaded, setKt] = useState<KnowledgeTransfer | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const { file: fileKey, fresh: freshKey, batch: batchKey } = ktKeys(scope);
-  const files = batch(batchKey);
-  const rewriting = job(freshKey)?.state === "working";
-  // A file being read on its own, outside Explain all.
-  const single = loaded?.files.find((f) => job(fileKey(f.path))?.state === "working")?.path ?? null;
-  const running: "files" | "overview" | null = rewriting ? "overview" : files?.running || single ? "files" : null;
-  const current = files?.running && files.current !== freshKey ? files.label : single;
-  const failed = loaded?.files.map((f) => job(fileKey(f.path))).find((j) => j?.state === "failed");
-  const problem = error ?? files?.error ?? (failed?.state === "failed" ? failed.error : null);
+// The knowledge transfer: one short page on what the project is, what it needs, how to set
+// it up and run it, and how to use it. One request to the AI, so it's done in about a minute,
+// and saved until the project's readme, setup files or commands change.
+function Kt({ summary, scope, ai, loadGuide, writeGuide, imageUrl, onSignedIn }: Props) {
+  const [saved, setSaved] = useState<KtGuide | null>(null);
+  const [loading, setLoading] = useState(true);
+  const key = `kt-guide:${scope}`;
+  const run = job<KtGuide>(key);
+  const guide = result<KtGuide>(key) ?? saved;
+  const working = run?.state === "working";
+  const ready = ai?.available && ai.signed_in !== false;
 
   useEffect(() => {
     let stale = false;
-    loadKt().then(
-      (result) => !stale && setKt(result),
-      (e: Error) => !stale && setError(e.message),
-    );
+    setLoading(true);
+    setSaved(null);
+    loadGuide().then(
+      (found) => !stale && setSaved(found.guide),
+      () => {},
+    ).finally(() => !stale && setLoading(false));
     return () => {
       stale = true;
     };
+    // Read again for each project and branch; loadGuide changes on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [scope]);
 
-  // Notes written while the page was off screen, or from Changes, show here too.
-  const kt: KnowledgeTransfer | null = loaded ? withNewNotes(scope, loaded) : null;
-
-  const groups = useMemo(() => {
-    const words = filter.trim().toLowerCase();
-    const shown = (kt?.files ?? []).filter(
-      (f) => !words || f.path.toLowerCase().includes(words) || f.explanation?.purpose.toLowerCase().includes(words),
-    );
-    const byPart = new Map<string, KtFile[]>();
-    for (const file of shown) byPart.set(file.part, [...(byPart.get(file.part) ?? []), file]);
-    return [...byPart.entries()];
-  }, [kt, filter]);
-
-  if (error && !kt) return <p className="summary__muted">{error}</p>;
-  if (!kt) return <p className="summary__muted">Listing the project's files…</p>;
-
-  const ready = ai?.available && ai.signed_in !== false;
-  const left = kt.files.filter((f) => !f.explanation);
-
-  const explainOne = (path: string) => {
-    setError(null);
-    clear(fileKey(path));
-    start(fileKey(path), () => explainFile(path)).then(
-      () => setOpen((was) => new Set(was).add(path)),
-      () => {},
-    );
+  const write = (fresh = false) => {
+    clear(key);
+    const began = Date.now();
+    start(key, () => writeGuide(fresh), true)
+      .then((written) => {
+        remember((Date.now() - began) / 1000);
+        setSaved(written);
+      })
+      .catch(() => {});
   };
+  const problem = run?.state === "failed" ? run.error : null;
 
-  // One file at a time: each is its own AI run, and notes show as they come. The overview
-  // is rewritten from the notes once the files are done.
-  const explainAll = () => {
-    setError(null);
-    writeKt(scope, kt, explain, explainFile);
-  };
-
-  const rewriteOverview = () => {
-    setError(null);
-    start(freshKey, () => explain(true), true).catch((e: Error) => setError(e.message));
-  };
-
-  const toggle = (path: string) =>
-    setOpen((was) => {
-      const next = new Set(was);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-
-  return (
-    <div className="kt">
-      <section className="card kt__head">
-        <div>
-          <span className="summary__eyebrow">Knowledge transfer</span>
-          <h2 className="summary__name">{summary.name}</h2>
-          <p className="summary__muted">
-            {kt.explained} of {kt.files.length} file{kt.files.length === 1 ? "" : "s"} explained
-            {running === "files" && current ? `. Reading ${current}…` : ""}
-            {running === "overview" ? ". Writing the overview from the file notes…" : ""}
-          </p>
-          <div className="kt__progress" role="progressbar" aria-valuemin={0} aria-valuemax={kt.files.length} aria-valuenow={kt.explained}>
-            <span style={{ width: `${kt.files.length ? (kt.explained / kt.files.length) * 100 : 0}%` }} />
+  if (loading && !guide) return <section className="card kt"><p className="summary__muted">Reading the KT…</p></section>;
+  if (!guide) {
+    return (
+      <section className="card kt kt--empty">
+        <h3>Knowledge transfer for {summary.name}</h3>
+        <p>A short guide for someone new: what it is, how to set it up, run and use it, and its major functions. It takes under a minute to write.</p>
+        {ai && !ready && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
+        {ready && !working && (
+          <div>
+            <button className="kt__button" onClick={() => write()} data-tour="kt-action">
+              Write the KT with {ai!.name}
+            </button>
           </div>
+        )}
+        {working && <Writing jobKey={key} ai={ai!.name} />}
+        {problem && <p className="kt__error" role="alert">{problem}</p>}
+        {summary.run.length > 0 && (
+          <div>
+            <h4>Commands found in the project</h4>
+            <Commands items={summary.run.map((r) => ({ what: `${r.name} (${r.where})`, command: r.command }))} />
+          </div>
+        )}
+      </section>
+    );
+  }
+  const has = (items: unknown[]) => items.length > 0;
+  return (
+    <div className="kt kt--guide">
+      <header className="card kt__head">
+        <div>
+          <h3>{summary.name}</h3>
+          <p><Inline text={guide.overview} /></p>
         </div>
         <div className="kt__actions">
-          {ai && !ready && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
-          {ready && running === "files" && files?.running && (
-            <button className="kt__button kt__button--quiet" onClick={() => stopBatch(batchKey)} disabled={files?.stopping}>
-              {files?.stopping ? "Stopping after this file…" : "Stop after this file"}
+          <button className="kt__button" onClick={() => downloadGuide(summary, guide, imageUrl)} data-tour="kt-action">Download PDF</button>
+          {ready && (
+            <button className="kt__button kt__button--quiet" onClick={() => write(true)} disabled={working}>
+              {working ? "Writing…" : "Write again"}
             </button>
           )}
-          {ready && running !== "files" && left.length > 0 && (
-            <button className="kt__button" onClick={explainAll} disabled={running !== null}>
-              {left.length === 1
-                ? `Explain the last file with ${ai!.name}`
-                : `Explain ${left.length === kt.files.length ? "all" : "the remaining"} ${left.length} files with ${ai!.name}`}
-            </button>
-          )}
-          {ready && kt.explained > 0 && (
-            <button className="kt__button kt__button--quiet" onClick={rewriteOverview} disabled={running !== null}>
-              {explanation ? "Rewrite the overview" : "Write the overview"}
-            </button>
-          )}
-          <button className="kt__button kt__button--quiet" onClick={() => downloadKt(summary, explanation, kt)}>
-            Download as PDF
-          </button>
         </div>
-        {problem && <p className="kt__error">{problem}</p>}
-      </section>
-
-      {explanation && (
-        <section className="card kt__overview">
-          <h3>What it is</h3>
-          <p className="summary__overview">{explanation.overview}</p>
-          {explanation.state && <p className="summary__state">{explanation.state}</p>}
-          {explanation.start_here?.length ? (
-            <>
-              <h4>Read these first</h4>
-              <ol className="summary__steps">
-                {explanation.start_here.map((f) => (
-                  <li key={f.path}>
-                    <code>{f.path}</code> {f.why}
+      </header>
+      {working && <Writing jobKey={key} ai={ai!.name} />}
+      {problem && <p className="kt__error" role="alert">{problem}</p>}
+      <div className="kt__columns">
+        <div className="kt__column">
+          {has(guide.needs) && (
+            <section className="card kt__card">
+              <h4>What you need</h4>
+              <ul className="kt__needs">
+                {guide.needs.map((need) => (
+                  <li key={need.name}>
+                    <strong><Inline text={need.name} /></strong>
+                    {need.why && <span><Inline text={need.why} /></span>}
+                    {need.check && <Command command={need.check} />}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {has(guide.setup) && (
+            <section className="card kt__card">
+              <h4>Set it up</h4>
+              <ol className="kt__setup">
+                {guide.setup.map((item) => (
+                  <li key={item.step}>
+                    <strong><Inline text={item.step} /></strong>
+                    {item.detail && <span className="kt__detail"><Inline text={item.detail} /></span>}
+                    {item.command && <Command command={item.command} />}
                   </li>
                 ))}
               </ol>
-            </>
-          ) : null}
-          {explanation.how_it_works.length > 0 && (
-            <>
-              <h4>How it works</h4>
-              <ol className="summary__steps">
-                {explanation.how_it_works.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-            </>
+            </section>
           )}
-          {explanation.flows?.map((flow) => (
-            <div key={flow.name}>
-              <h4>{flow.name}</h4>
-              <ol className="summary__steps">
-                {flow.steps.map((step) => (
-                  <li key={step}>{step}</li>
+          {has(guide.run) && (
+            <section className="card kt__card">
+              <h4>Run it</h4>
+              <Commands items={guide.run} />
+            </section>
+          )}
+        </div>
+        <div className="kt__column">
+          {has(guide.how_to_use) && (
+            <section className="card kt__card">
+              <h4>How to use it</h4>
+              <ol className="kt__setup">{guide.how_to_use.map((step) => <li key={step}><Inline text={step} /></li>)}</ol>
+            </section>
+          )}
+          {has(guide.settings) && (
+            <section className="card kt__card">
+              <h4>Settings to fill in</h4>
+              <dl className="kt__pairs">
+                {guide.settings.map((item) => (
+                  <div key={item.name}><dt><code>{item.name}</code></dt><dd><Inline text={item.what} /></dd></div>
                 ))}
-              </ol>
-            </div>
+              </dl>
+            </section>
+          )}
+          {has(guide.start_here) && (
+            <section className="card kt__card">
+              <h4>Read these first</h4>
+              <dl className="kt__pairs">
+                {guide.start_here.map((item) => (
+                  <div key={item.path}><dt><code>{item.path}</code></dt><dd><Inline text={item.why} /></dd></div>
+                ))}
+              </dl>
+            </section>
+          )}
+          {guide.images.map((image) => (
+            <figure key={image.path} className="card kt__image">
+              <img src={imageUrl(image.path)} alt={image.caption} loading="lazy" />
+              <figcaption>{image.caption}</figcaption>
+            </figure>
           ))}
+        </div>
+      </div>
+      {has(guide.functions) && (
+        <section className="card kt__card">
+          <h4>Major functions</h4>
+          <dl className="kt__functions-list">
+            {guide.functions.map((item) => (
+              <div key={`${item.path}:${item.name}`}>
+                <dt><code>{item.name}</code><span>{item.path}</span></dt>
+                <dd>
+                  {item.signature && <code className="kt__signature">{item.signature}</code>}
+                  <Inline text={item.what} />
+                  {item.use && <em><Inline text={item.use} /></em>}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </section>
       )}
-
-      <section className="card kt__files">
-        <header className="kt__files-head">
-          <h3>Every file</h3>
-          <input
-            className="kt__filter"
-            type="search"
-            placeholder="Find a file or what it does"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            aria-label="Find a file"
-          />
-        </header>
-        {kt.files.length === 0 && <p className="summary__muted">No text files to explain.</p>}
-        {groups.map(([part, files]) => (
-          <div key={part} className="kt__part">
-            <h4>
-              {part} <em>{files.length}</em>
-            </h4>
-            <ul>
-              {files.map((file) => (
-                <KtRow
-                  key={file.path}
-                  file={file}
-                  open={open.has(file.path)}
-                  onToggle={() => toggle(file.path)}
-                  busy={current === file.path}
-                  onExplain={ready && running === null && current === null ? () => explainOne(file.path) : undefined}
-                />
-              ))}
-            </ul>
-          </div>
-        ))}
-      </section>
     </div>
   );
 }
 
-function KtRow({ file, open, onToggle, busy, onExplain }: {
-  file: KtFile;
-  open: boolean;
-  onToggle: () => void;
-  busy: boolean;
-  onExplain?: () => void;
-}) {
-  const note = file.explanation;
+// How long the last KT took to write here, to pace the progress bar.
+const KT_SECONDS = "devdash:kt-seconds";
+const DEFAULT_KT_SECONDS = 40;
+
+function expected(): number {
+  try {
+    const saved = Number(localStorage.getItem(KT_SECONDS));
+    return saved > 5 && saved < 600 ? saved : DEFAULT_KT_SECONDS;
+  } catch {
+    return DEFAULT_KT_SECONDS;
+  }
+}
+
+function remember(seconds: number) {
+  try {
+    localStorage.setItem(KT_SECONDS, String(Math.round(seconds)));
+  } catch {
+    /* storage unavailable: the default pace is used */
+  }
+}
+
+// The KT is one request to the AI, which says nothing until it's done, so the bar is paced
+// by how long the last one took: it reaches 90% then, and creeps on until the answer comes.
+function Writing({ jobKey, ai }: { jobKey: string; ai: string }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(timer);
+  }, []);
+  const seconds = Math.max(0, (now - (since(jobKey) ?? now)) / 1000);
+  const pace = expected();
+  const share = seconds < pace ? (seconds / pace) * 90 : 90 + 8 * (1 - Math.exp(-(seconds - pace) / pace));
+  const stage = share < 6 ? "Reading the project's files" : share < 90 ? `${ai} is writing the KT` : "Almost done";
   return (
-    <li className={`kt__file${note ? " kt__file--done" : ""}`}>
-      <button className="kt__file-head" onClick={onToggle} aria-expanded={open} disabled={!note}>
-        <code>{file.path}</code>
-        <span className="kt__file-purpose">{note ? note.purpose : busy ? "Reading…" : "Not explained yet"}</span>
-        <span className="kt__file-meta">
-          {file.language}
-          {note && note.functions.length > 0 ? ` · ${note.functions.length} function${note.functions.length === 1 ? "" : "s"}` : ""}
-        </span>
-      </button>
-      {!note && onExplain && !busy && (
-        <button className="kt__explain" onClick={onExplain}>
-          Explain
-        </button>
+    <div className="card kt__progress" role="status">
+      <div className="kt__progress-top">
+        <span>{stage}…</span>
+        <span>{Math.round(share)}% · {Math.round(seconds)} s</span>
+      </div>
+      <div className="kt__bar" aria-hidden="true">
+        <i style={{ width: `${share}%` }} />
+      </div>
+      <p>Usually about {Math.round(pace)} seconds. You can leave this page; it keeps going.</p>
+    </div>
+  );
+}
+
+// The AI marks names and commands with `backticks`; shown as code, not as backticks.
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(`[^`]+`)/).map((part, i) =>
+        part.length > 2 && part.startsWith("`") && part.endsWith("`") ? <code key={i}>{part.slice(1, -1)}</code> : part,
       )}
-      {note && open && (
-        <div className="kt__note">
-          {note.functions.length > 0 && (
-            <dl className="kt__functions">
-              {note.functions.map((fn) => (
-                <div key={fn.name}>
-                  <dt>
-                    <code>{fn.name}</code>
-                  </dt>
-                  <dd>{fn.what}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {note.connects && (
-            <p>
-              <strong>Connects to:</strong> {note.connects}
-            </p>
-          )}
-          {note.notes.length > 0 && (
-            <ul className="kt__watch">
-              {note.notes.map((text) => (
-                <li key={text}>{text}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </li>
+    </>
+  );
+}
+
+function Commands({ items }: { items: { what: string; command: string }[] }) {
+  return (
+    <ul className="kt__commands">
+      {items.map((item) => (
+        <li key={item.command}>
+          <span><Inline text={item.what} /></span>
+          <Command command={item.command} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Command({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => navigator.clipboard.writeText(command).then(() => {
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  }, () => {});
+  return (
+    <span className="kt__command">
+      <code>{command}</code>
+      <button onClick={copy} aria-label={`Copy ${command}`}>{copied ? "Copied" : "Copy"}</button>
+    </span>
   );
 }
 
@@ -566,7 +581,7 @@ export function FileNote({ path, note, ai, onSignedIn, explain, busy, problem }:
             <button onClick={explain} disabled={busy}>
               {busy ? `${ai.name} is reading the file…` : `What is this file for? Ask ${ai.name}`}
             </button>
-            <span>{problem ?? "Its purpose, what each function does, and what it connects to. Saved in the project's Full KT."}</span>
+            <span>{problem ?? "Its purpose, what each function does, and what it connects to. Saved for next time."}</span>
           </div>
         ) : (
           <ClaudeSetup ai={ai} onRefresh={onSignedIn} />
@@ -614,318 +629,6 @@ export function FileNote({ path, note, ai, onSignedIn, explain, busy, problem }:
       )}
     </section>
   );
-}
-
-// The KT's runs, named the same wherever they start (here, or from Ask), so each screen
-// shows the other's progress and a file is never explained twice at once.
-export function ktKeys(scope: string) {
-  return { file: (path: string) => `file:${scope}:${path}`, fresh: `project-fresh:${scope}`, batch: `kt:${scope}` };
-}
-
-// The notes kept with the files, plus any written since they were read.
-export function withNewNotes(scope: string, kt: KnowledgeTransfer): KnowledgeTransfer {
-  const keys = ktKeys(scope);
-  const files = kt.files.map((f) => ({ ...f, explanation: f.explanation ?? result<FileExplanation>(keys.file(f.path)) ?? null }));
-  return { files, explained: files.filter((f) => f.explanation).length };
-}
-
-// Explains the files without notes, one at a time, then rewrites the overview from the notes.
-export function writeKt(scope: string, kt: KnowledgeTransfer, explain: (fresh?: boolean) => Promise<ProjectExplanation>, explainFile: (path: string) => Promise<FileExplanation>) {
-  const keys = ktKeys(scope);
-  return startBatch(keys.batch, [
-    ...kt.files.filter((f) => !f.explanation).map((file) => ({ key: keys.file(file.path), label: file.path, run: () => explainFile(file.path) })),
-    { key: keys.fresh, label: "The overview", run: () => explain(true), again: true },
-  ]);
-}
-
-// The whole KT as a PDF, to keep or hand to someone: a cover block, the overview, how it
-// works, what it's built with, then every file grouped by part. Written by hand with the
-// PDF's own fonts (Helvetica and Courier), so it needs no library and no print dialog.
-export function downloadKt(summary: SummaryData, explanation: ProjectExplanation | null, kt: KnowledgeTransfer) {
-  const pdf = new KtPdf(`${summary.name} · Knowledge transfer`);
-  pdf.title(summary.name, "Knowledge transfer");
-  const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  pdf.para(`Written by DevDash on ${date}. ${kt.explained} of ${kt.files.length} files explained.`, { size: 9.5, color: MUTED });
-  if (summary.description) pdf.para(summary.description, { gap: 4 });
-  if (explanation) {
-    pdf.heading("What it is");
-    pdf.para(explanation.overview);
-    if (explanation.state) pdf.para(explanation.state, { font: "I", color: MUTED });
-    if (explanation.start_here?.length) {
-      pdf.heading("Read these first");
-      explanation.start_here.forEach((f, i) => pdf.para(`\`${f.path}\` ${f.why}`, { bullet: `${i + 1}.` }));
-    }
-    if (explanation.how_it_works.length) {
-      pdf.heading("How it works");
-      explanation.how_it_works.forEach((step, i) => pdf.para(step, { bullet: `${i + 1}.` }));
-    }
-    for (const flow of explanation.flows ?? []) {
-      pdf.subheading(flow.name);
-      flow.steps.forEach((step, i) => pdf.para(step, { bullet: `${i + 1}.` }));
-    }
-    if (explanation.parts.length) {
-      pdf.heading("Parts");
-      for (const part of explanation.parts) pdf.para(`**${part.name}** ${part.what}`, { bullet: "•" });
-    }
-  }
-  if (summary.tech.length) {
-    pdf.heading("Built with");
-    for (const t of summary.tech) pdf.para(`\`${t.name}\` ${t.what}`, { bullet: "•" });
-  }
-  if (summary.run.length) {
-    pdf.heading("Commands");
-    for (const r of summary.run) pdf.para(`**${r.name}** (${r.where}): \`${r.command}\``, { bullet: "•" });
-  }
-  pdf.heading("Files");
-  let part = "";
-  for (const file of kt.files) {
-    if (file.part !== part) {
-      part = file.part;
-      pdf.subheading(part);
-    }
-    const note = file.explanation;
-    pdf.file(file.path);
-    if (!note) {
-      pdf.para("Not explained yet.", { font: "I", color: MUTED });
-      continue;
-    }
-    pdf.para(note.purpose);
-    for (const fn of note.functions) pdf.para(`\`${fn.name}\` ${fn.what}`, { bullet: "•" });
-    if (note.connects) pdf.para(`**Connects to:** ${note.connects}`);
-    if (note.notes.length) {
-      pdf.para("**Watch out for**", { gap: 2 });
-      for (const n of note.notes) pdf.para(n, { bullet: "•" });
-    }
-  }
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(pdf.blob());
-  link.download = `${summary.name.replace(/[^\w.-]+/g, "-")}-KT.pdf`;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-}
-
-type Font = "R" | "B" | "I" | "M" | "MB";
-type Rgb = [number, number, number];
-const INK: Rgb = [0.13, 0.12, 0.11];
-const MUTED: Rgb = [0.42, 0.39, 0.36];
-const ACCENT: Rgb = [0.04, 0.37, 0.35];
-const CODE: Rgb = [0.01, 0.37, 0.56];
-const PAGE = { w: 595.28, h: 841.89, x: 56, top: 64, bottom: 64 };
-const FONTS: Record<Font, string> = { R: "Helvetica", B: "Helvetica-Bold", I: "Helvetica-Oblique", M: "Courier", MB: "Courier-Bold" };
-
-// The PDF fonts' own encoding (WinAnsi): the typographic marks have their own codes; other
-// characters outside Latin-1 fall back to a near spelling.
-const WIN_ANSI: Record<string, number> = { "‘": 0x91, "’": 0x92, "“": 0x93, "”": 0x94, "•": 0x95, "–": 0x96, "—": 0x97, "…": 0x85, "€": 0x80 };
-const NEAR: Record<string, string> = { "→": "->", "←": "<-", "≤": "<=", "≥": ">=", " ": " " };
-
-function encode(text: string) {
-  let hex = "";
-  for (const ch of text) {
-    const code = WIN_ANSI[ch] ?? ch.codePointAt(0)!;
-    if (code < 256 && !(code >= 0x7f && code < 0xa0 && !Object.values(WIN_ANSI).includes(code))) hex += code.toString(16).padStart(2, "0");
-    else for (const c of NEAR[ch] ?? "?") hex += c.charCodeAt(0).toString(16).padStart(2, "0");
-  }
-  return `<${hex}>`;
-}
-
-// Text widths, measured once per font: Arial (or Liberation Sans, where it stands in) has
-// Helvetica's metrics, and Courier is 0.6 of the size for every character.
-let ruler: CanvasRenderingContext2D | null = null;
-function width(text: string, font: Font, size: number) {
-  if (font === "M" || font === "MB") return [...text].length * 0.6 * size;
-  ruler ??= document.createElement("canvas").getContext("2d");
-  if (!ruler) return text.length * 0.5 * size;
-  ruler.font = `${font === "B" ? "bold " : font === "I" ? "italic " : ""}100px Helvetica, Arial, "Liberation Sans", sans-serif`;
-  return (ruler.measureText(text).width / 100) * size;
-}
-
-// "**bold**" and "`code`" inside a line become runs in their own fonts.
-function runs(text: string, base: Font): { text: string; font: Font }[] {
-  return text
-    .split(/(\*\*[^*]+\*\*|`[^`]+`)/)
-    .filter(Boolean)
-    .map((part) =>
-      part.startsWith("**") && part.endsWith("**") && part.length > 4
-        ? { text: part.slice(2, -2), font: "B" as Font }
-        : part.startsWith("`") && part.endsWith("`") && part.length > 2
-          ? { text: part.slice(1, -1), font: "M" as Font }
-          : { text: part, font: base },
-    );
-}
-
-type Para = { size?: number; font?: Font; color?: Rgb; bullet?: string; gap?: number };
-
-class KtPdf {
-  private pages: string[][] = [];
-  private y = 0;
-  constructor(private footer: string) {
-    this.page();
-  }
-
-  private page() {
-    this.pages.push([]);
-    this.y = PAGE.h - PAGE.top;
-  }
-
-  private get ops() {
-    return this.pages[this.pages.length - 1];
-  }
-
-  // Starts a new page unless `height` still fits on this one.
-  private room(height: number) {
-    if (this.y - height < PAGE.bottom) this.page();
-  }
-
-  private put(text: string, x: number, y: number, font: Font, size: number, color: Rgb) {
-    this.ops.push(`BT /${font} ${size} Tf ${color.map((c) => c.toFixed(3)).join(" ")} rg ${x.toFixed(2)} ${y.toFixed(2)} Td ${encode(text)} Tj ET`);
-  }
-
-  private rect(x: number, y: number, w: number, h: number, color: Rgb) {
-    this.ops.push(`${color.map((c) => c.toFixed(3)).join(" ")} rg ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
-  }
-
-  title(name: string, kind: string) {
-    this.rect(PAGE.x, this.y - 2, 40, 4, ACCENT);
-    this.y -= 30;
-    this.put(kind.toUpperCase(), PAGE.x, this.y, "B", 10, ACCENT);
-    this.y -= 34;
-    for (const line of this.wrap(runs(name, "B"), 26, PAGE.w - 2 * PAGE.x)) {
-      this.line(line, PAGE.x, 26, INK);
-      this.y -= 32;
-    }
-    this.y += 10;
-  }
-
-  heading(text: string) {
-    this.room(70);
-    this.y -= 18;
-    this.put(text, PAGE.x, this.y, "B", 15, ACCENT);
-    this.y -= 8;
-    this.rect(PAGE.x, this.y, PAGE.w - 2 * PAGE.x, 0.8, [0.85, 0.82, 0.78]);
-    this.y -= 16;
-  }
-
-  subheading(text: string) {
-    this.room(56);
-    this.y -= 8;
-    this.put(text, PAGE.x, this.y, "B", 12, INK);
-    this.y -= 16;
-  }
-
-  // A file's path on a light band, so each file starts where the eye can find it.
-  file(path: string) {
-    this.room(52);
-    this.y -= 6;
-    const lines = this.wrap([{ text: path, font: "MB" }], 9.5, PAGE.w - 2 * PAGE.x - 16);
-    const h = lines.length * 13 + 8;
-    this.rect(PAGE.x, this.y - h + 11, PAGE.w - 2 * PAGE.x, h, [0.94, 0.92, 0.89]);
-    for (const line of lines) {
-      this.line(line, PAGE.x + 8, 9.5, CODE);
-      this.y -= 13;
-    }
-    this.y -= 9;
-  }
-
-  para(text: string, { size = 10.5, font = "R", color = INK, bullet, gap = 6 }: Para = {}) {
-    const indent = bullet ? 18 : 0;
-    const leading = size * 1.45;
-    const lines = this.wrap(runs(text, font), size, PAGE.w - 2 * PAGE.x - indent);
-    lines.forEach((line, i) => {
-      this.room(leading);
-      if (bullet && i === 0) this.put(bullet, PAGE.x + 4, this.y, bullet === "•" ? "R" : "B", size, bullet === "•" ? ACCENT : MUTED);
-      this.line(line, PAGE.x + indent, size, color);
-      this.y -= leading;
-    });
-    this.y -= gap - (leading - size * 1.2);
-  }
-
-  private line(words: { text: string; font: Font; x: number }[], left: number, size: number, color: Rgb) {
-    for (const w of words) {
-      const mono = w.font === "M" || w.font === "MB";
-      this.put(w.text, left + w.x, this.y, w.font, mono ? size * 0.92 : size, mono && w.font === "M" ? CODE : color);
-    }
-  }
-
-  // Breaks runs into lines that fit `max`; a word too long for a line (a long path) is cut.
-  private wrap(parts: { text: string; font: Font }[], size: number, max: number) {
-    const lines: { text: string; font: Font; x: number }[][] = [[]];
-    let x = 0;
-    const space = width(" ", "R", size);
-    for (const part of parts) {
-      const mono = part.font === "M" || part.font === "MB";
-      const fit = mono ? size * 0.92 : size;
-      for (const token of part.text.split(/(\s+)/)) {
-        if (!token) continue;
-        if (/^\s+$/.test(token)) {
-          if (x > 0) x += space;
-          continue;
-        }
-        let rest = token;
-        while (rest) {
-          let piece = rest;
-          let w = width(piece, part.font, fit);
-          if (x + w > max && x > 0) {
-            lines.push([]);
-            x = 0;
-          }
-          while (w > max && piece.length > 1) {
-            piece = piece.slice(0, Math.max(1, Math.floor((piece.length * max) / w)));
-            w = width(piece, part.font, fit);
-          }
-          lines[lines.length - 1].push({ text: piece, font: part.font, x });
-          x += w;
-          rest = rest.slice(piece.length);
-          if (rest) {
-            lines.push([]);
-            x = 0;
-          }
-        }
-      }
-    }
-    return lines.filter((l) => l.length);
-  }
-
-  blob() {
-    const total = this.pages.length;
-    const objects: string[] = [];
-    const fontIds: Record<string, number> = {};
-    // 1: catalog, 2: pages, then the fonts, then a content stream and a page per page.
-    Object.entries(FONTS).forEach(([key, name], i) => {
-      fontIds[key] = 3 + i;
-      objects[3 + i] = `<< /Type /Font /Subtype /Type1 /BaseFont /${name} /Encoding /WinAnsiEncoding >>`;
-    });
-    const fonts = Object.entries(fontIds)
-      .map(([key, id]) => `/${key} ${id} 0 R`)
-      .join(" ");
-    const first = 3 + Object.keys(FONTS).length;
-    const kids: string[] = [];
-    this.pages.forEach((ops, i) => {
-      const footer = [
-        `${MUTED.join(" ")} rg`,
-        `BT /R 8.5 Tf ${PAGE.x} 34 Td ${encode(this.footer)} Tj ET`,
-        `BT /R 8.5 Tf ${(PAGE.w - PAGE.x - width(`${i + 1} / ${total}`, "R", 8.5)).toFixed(2)} 34 Td ${encode(`${i + 1} / ${total}`)} Tj ET`,
-      ];
-      const stream = [...ops, ...footer].join("\n");
-      const content = first + i * 2;
-      objects[content] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
-      objects[content + 1] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.w} ${PAGE.h}] /Resources << /Font << ${fonts} >> >> /Contents ${content} 0 R >>`;
-      kids.push(`${content + 1} 0 R`);
-    });
-    objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
-    objects[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${total} >>`;
-    // Everything above is plain ASCII (text is hex), so string length is the byte count.
-    let out = "%PDF-1.4\n";
-    const offsets: number[] = [];
-    for (let id = 1; id < objects.length; id++) {
-      offsets[id] = out.length;
-      out += `${id} 0 obj\n${objects[id]}\nendobj\n`;
-    }
-    const xref = out.length;
-    out += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
-    for (let id = 1; id < objects.length; id++) out += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
-    out += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-    return new Blob([out], { type: "application/pdf" });
-  }
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

@@ -8,6 +8,7 @@ import CommitList from "./components/CommitList/CommitList";
 import FileChanges from "./components/FileChanges/FileChanges";
 import FlowGraph from "./components/FlowGraph/FlowGraph";
 import Help, { useSetup } from "./components/Help/Help";
+import Tour from "./components/Tour/Tour";
 import Home from "./components/Home/Home";
 import Login from "./components/Login/Login";
 import Logo from "./components/Logo/Logo";
@@ -21,10 +22,6 @@ import ClaudeSetup from "./components/ClaudeSignIn/ClaudeSetup";
 import Settings, { AiPicker } from "./components/Settings/Settings";
 import Summary from "./components/Summary/Summary";
 import Ask from "./components/Ask/Ask";
-import { OrgChooser } from "./components/Org/Org";
-import TeamView, { TeamStrip, TeamUnlock } from "./components/Team/TeamView";
-import Chat, { useChatUnread } from "./components/Team/Chat";
-import { team, type LinkStatus } from "./api/team";
 import Splash from "./components/Splash/Splash";
 import { keyName, typing } from "./shortcuts";
 import { clear, job, result, start, useJobs } from "./lib/aiJobs";
@@ -90,6 +87,7 @@ export default function App() {
       {auth?.signed_in && (
         <Dashboard
           auth={auth}
+          shown={splashDone}
           onSignOut={auth.password_set ? signOut : undefined}
           onAuthChange={() => api.auth().then(setAuth).catch(() => {})}
         />
@@ -114,7 +112,8 @@ export default function App() {
   );
 }
 
-function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSignOut?: () => void; onAuthChange: () => void }) {
+// shown: the splash has gone, so a walkthrough can start.
+function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus; shown: boolean; onSignOut?: () => void; onAuthChange: () => void }) {
   const [view, setView] = useState<View>(viewFromHash);
   const [section, setSection] = useState<SettingsSection>(sectionFromHash);
   const [theme, setTheme] = useState<Theme>(savedTheme);
@@ -139,16 +138,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   useJobs();
   // Whether Claude Code is installed and signed in, to explain functions and the project.
   const [ai, setAi] = useState<AiStatus | null>(null);
-  // How DevDash is used (on its own, or in an organisation); undefined while it's read, null
-  // until the person picks, which they're asked once, before anything else.
-  const [teamMode, setTeamMode] = useState<LinkStatus["mode"] | undefined>(undefined);
-  const [teamLink, setTeamLink] = useState<LinkStatus | null>(null);
-  // Read again on each screen change, so linking or leaving in Settings shows everywhere.
-  useEffect(() => {
-    team.status().then((found) => (setTeamMode(found.link.mode), setTeamLink(found.link)), () => setTeamMode("individual"));
-  }, [view]);
-  const inTeam = teamLink?.mode === "org" && teamLink.connected;
-  const chatUnread = useChatUnread(!!inTeam && view !== "chat");
   const refreshAi = useCallback(() => {
     api.ai().then(setAi).catch(() => setAi(null));
   }, []);
@@ -337,9 +326,9 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     };
   }, [repoId, head, revision]);
 
-  // The file notes, read when Changes or Ask is on screen: cheap, since they are only read from disk.
+  // The file notes, read when Changes is on screen: cheap, since they are only read from disk.
   useEffect(() => {
-    if ((view !== "changes" && view !== "ask") || repoId === null || head === null) return;
+    if (view !== "changes" || repoId === null || head === null) return;
     let stale = false;
     api
       .kt(repoId, head)
@@ -413,6 +402,15 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
   ) as Partial<Record<View, string>>;
   // Asked once, before anything else: show uncommitted work from the start?
   const asking = prefs !== null && prefs.uncommitted === null && repos !== null && repos.length > 0;
+  // The walkthrough: once, until it's finished or skipped, and again from Help.
+  const [touringAgain, setTouringAgain] = useState(false);
+  // It waits for a first project, since it walks through a project's screens.
+  const touring = touringAgain || (prefs !== null && !prefs.tour_done && repos !== null && repos.length > 0);
+  const endTour = () => {
+    setTouringAgain(false);
+    setPrefs((p) => p && { ...p, tour_done: true });
+    changePrefs({ tour_done: true }).catch(() => {});
+  };
   const answer = (on: boolean) => {
     setUncommitted(on);
     changePrefs({ uncommitted: on }).catch(() => setPrefs((p) => p && { ...p, uncommitted: on }));
@@ -523,24 +521,14 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         <Notice title="Loading">Reading your settings…</Notice>
       );
     }
-    if (teamMode === null) return <OrgChooser onDone={(link) => (setTeamMode(link.mode), setTeamLink(link))} />;
-    if (view === "chat" && inTeam && teamLink) return <Chat link={teamLink} />;
-    if (view === "team" && inTeam && teamLink) {
-      // Manage organisation opens Settings on the organisation's own page.
-      return (
-        <TeamView link={teamLink} onView={(next) => (next === "settings" && setSection("team"), setView(next))}
-                  onLink={(next) => (setTeamLink(next), api.repos().then(setRepos, () => {}))} />
-      );
-    }
     if (error && !repos) return <Notice title="Something needs attention">{error}</Notice>;
     if (repos && repos.length === 0) {
       return <Welcome ai={ai} onAiRefresh={refreshAi} onAdd={() => setAdding(true)} prefs={prefs} onPrefs={changePrefs} />;
     }
-    if (view === "help" && repo) return <Help repo={repo} steps={setup.steps} error={setup.error} />;
+    if (view === "help" && repo) return <Help repo={repo} steps={setup.steps} error={setup.error} onTour={() => setTouringAgain(true)} />;
     if (view === "home" && repos) {
       return (
         <Home
-          banner={inTeam && teamLink ? <TeamStrip link={teamLink} onView={setView} /> : null}
           repos={repos}
           prefs={prefs}
           onPrefs={changePrefs}
@@ -603,16 +591,19 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
     if (repoId === null) {
       return <Notice title="Pick a project">None of your projects' folders can be found. Add one, or remove the missing ones.</Notice>;
     }
-    if (view === "summary") {
+    if (view === "summary" || view === "kt") {
       return summary && repoId !== null && head !== null ? (
         <Summary
           key={`${repoId}:${head}`}
           scope={`${repoId}:${head}`}
+          tab={view === "kt" ? "kt" : "overview"}
+          onTab={(tab) => setView(tab === "kt" ? "kt" : "summary")}
           summary={summary}
           ai={ai}
           explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
-          loadKt={() => api.kt(repoId, head)}
-          explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
+          loadGuide={() => api.ktGuide(repoId, head)}
+          writeGuide={(fresh) => watchSignIn(api.writeKtGuide(repoId, head, fresh))}
+          imageUrl={(path) => api.ktImageUrl(repoId, head, path)}
           onSignedIn={refreshAi}
           onOpenMap={() => setView("map")}
         />
@@ -626,12 +617,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           scope={`${repoId}:${head}`}
           project={repo.name}
           ai={ai}
-          kt={kt}
-          summary={summary}
           ask={(question, history) => watchSignIn(api.ask(repoId, question, history, head))}
-          explain={(fresh) => watchSignIn(api.explainProject(repoId, head, fresh))}
-          explainFile={(path) => watchSignIn(api.explainFile(repoId, path, head))}
-          loadKt={() => api.kt(repoId, head)}
           onSignedIn={refreshAi}
         />
       ) : (
@@ -687,8 +673,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             fileNote={(path) => {
               const file = kt?.files.find((item) => item.path === path);
               if (!file) return null;
-              // The same run as the Full KT's Explain for this file, so either shows it.
-              const key = `file:${repoId}:${head}:${path}`;
+                            const key = `file:${repoId}:${head}:${path}`;
               const run = job(key);
               return {
                 path,
@@ -709,7 +694,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             onSignedIn={refreshAi}
             onSelect={pickChanges}
             keys={{ next: shortcuts["next-file"], previous: shortcuts["previous-file"] }}
-            repoId={repoId}
           />
         );
       case "commits":
@@ -751,13 +735,11 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
           onSettings={setSection}
           aiInUse={prefs?.ai.provider}
           off={repos && !repos.some((item) => item.claude) ? { digest: NOT_RECORDING } : undefined}
-          hidden={inTeam ? [] : ["team", "chat"]}
           keys={viewKeys}
           badges={{
             changes: comparison?.files.length,
             commits: comparison?.commits.length,
             help: setup.todo,
-            chat: chatUnread,
           }}
           project={<ProjectPicker repos={repos} selectedId={repoId} onSelect={selectRepo} onAdd={() => setAdding(true)} />}
         />
@@ -772,7 +754,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
               <h1>{current.label}</h1>
               <p>
                 {current.hint}
-                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && view !== "team" && view !== "chat" && (
+                {repo && comparison && view !== "digest" && view !== "project" && view !== "help" && view !== "settings" && (
                   <>
                     {" "}
                     · <code>{comparison.head}</code> in {repo.name}
@@ -787,6 +769,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
             <Clock />
             {sync && <SyncStatus sync={sync} onSync={() => syncNow.current()} />}
             <label
+              data-tour="uncommitted"
               className={`toggle${canIncludeUncommitted ? "" : " toggle--disabled"}`}
               title={
                 canIncludeUncommitted
@@ -815,6 +798,7 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
       </div>
 
       {asking && <AskUncommitted onAnswer={answer} />}
+      {shown && !asking && touring && <Tour onView={setView} onDone={endTour} />}
       {adding && (
         <AddProject
           onClose={() => setAdding(false)}
@@ -832,7 +816,6 @@ function Dashboard({ auth, onSignOut, onAuthChange }: { auth: AuthStatus; onSign
         />
       )}
       {removing && <RemoveProject repo={removing} onClose={() => setRemoving(null)} onRemoved={removed} />}
-      {inTeam && teamLink && repos && repos.length > 0 && <TeamUnlock link={teamLink} onOpen={() => setView("team")} />}
     </div>
   );
 }
@@ -864,7 +847,7 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 }
 
 // Screens about one project; the breadcrumb names the project before them.
-const PROJECT_VIEWS = new Set<View>(["summary", "ask", "overview", "flow", "map", "changes", "commits", "help"]);
+const PROJECT_VIEWS = new Set<View>(["summary", "kt", "ask", "overview", "flow", "map", "changes", "commits", "help"]);
 
 // Where you are: Home › project › screen › what's picked. Every step but the last goes back to
 // it. The arrow in front goes back to the previous screen, or, on a screen opened straight
