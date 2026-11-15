@@ -1,0 +1,189 @@
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.tour__shade {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.7);
+}
+
+/* The lit thing: a clear box in the shade, with a ring that pulses out from it. */
+.tour__light {
+  position: absolute;
+  border-radius: 12px;
+  border: 2px solid var(--dd-accent);
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.7), 0 0 24px 2px color-mix(in srgb, var(--dd-accent) 55%, transparent);
+  transition: left 0.3s ease, top 0.3s ease, width 0.3s ease, height 0.3s ease;
+  pointer-events: none;
+}
+
+.tour__light::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid var(--dd-accent);
+  animation: tour-pulse 1.6s ease-out infinite;
+}
+
+.tour__arrow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.tour__arrow > path {
+  fill: none;
+  stroke: var(--dd-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: tour-draw 0.5s 0.15s ease forwards;
+}
+
+.tour__arrow marker path {
+  fill: none;
+  stroke: var(--dd-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tour__card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(340px, calc(100vw - 28px));
+  padding: 18px 18px 14px;
+  border: 1px solid color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
+  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.7);
+  transition: left 0.3s ease, top 0.3s ease;
+}
+
+.tour__card--middle {
+  left: 50%;
+  top: 50%;
+  width: min(420px, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
+}
+
+.tour__card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.tour__card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--dd-ink-soft);
+}
+
+.tour__count {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dd-muted);
+}
+
+.tour__bar {
+  height: 4px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--dd-line);
+  overflow: hidden;
+}
+
+.tour__bar i {
+  display: block;
+  height: 100%;
+  background: var(--dd-accent);
+  transition: width 0.3s ease;
+}
+
+.tour__buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.tour__buttons button {
+  padding: 8px 15px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tour__skip {
+  margin-right: auto;
+  padding-left: 0 !important;
+  border: 0;
+  background: none;
+  color: var(--dd-muted);
+}
+
+.tour__skip:hover {
+  color: var(--dd-ink);
+}
+
+.tour__back {
+  border: 1px solid var(--dd-line);
+  background: transparent;
+  color: var(--dd-ink);
+}
+
+.tour__next {
+  margin-left: auto;
+  border: 1px solid var(--dd-accent);
+  background: var(--dd-accent);
+  color: var(--dd-on-accent);
+}
+
+.tour__back + .tour__next {
+  margin-left: 0;
+}
+
+@keyframes tour-pulse {
+  from {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes tour-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__light,
+  .tour__card,
+  .tour__bar i {
+    transition: none;
+  }
+  .tour__light::after {
+    animation: none;
+    opacity: 0;
+  }
+  .tour__arrow > path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

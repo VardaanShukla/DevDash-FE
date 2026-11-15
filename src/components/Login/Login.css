@@ -3,7 +3,12 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  width: min(380px, 100%);
+  width: min(400px, 100%);
+  padding: 28px 28px 22px;
+  border: 1px solid var(--dd-line);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--dd-card) 82%, transparent);
+  box-shadow: 0 30px 80px -40px rgb(0 0 0 / 0.6), var(--dd-bevel, 0 0 0 transparent);
   transition: opacity 300ms ease, transform 300ms ease;
 }
 
@@ -12,15 +17,32 @@
   transform: scale(0.96);
 }
 
+.login__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login__step {
+  padding: 4px 10px;
+  border: 1px solid var(--dd-line);
+  border-radius: 999px;
+  color: var(--dd-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .login h1 {
   margin: 0;
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 500;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.04em;
 }
 
 .login__lead {
-  margin: -6px 0 4px;
+  margin: 6px 0 0;
   color: var(--dd-ink-soft);
   font-size: 14px;
   line-height: 1.5;
@@ -45,7 +67,8 @@
   align-items: center;
   border: 1px solid var(--dd-line);
   border-radius: 12px;
-  background: var(--dd-card);
+  background: var(--dd-field);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .login__input:focus-within {
@@ -53,10 +76,41 @@
   box-shadow: 0 0 0 3px var(--dd-accent-soft);
 }
 
+.login__input--bad {
+  border-color: var(--dd-del);
+}
+
+.login__input--good {
+  border-color: var(--dd-add);
+}
+
+.login__input--good .login__icon {
+  stroke: var(--dd-add);
+}
+
+.login__icon,
+.login__show svg,
+.login__error svg,
+.login__submit svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login__icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-left: 13px;
+  stroke: var(--dd-muted);
+}
+
 .login__input input {
   flex: 1;
   min-width: 0;
-  padding: 13px 14px;
+  padding: 13px 12px;
   border: none;
   background: none;
   color: inherit;
@@ -65,29 +119,102 @@
   outline: none;
 }
 
+.login__input input::placeholder {
+  color: var(--dd-muted);
+  opacity: 0.7;
+}
+
 .login__show {
+  display: grid;
+  place-items: center;
   margin-right: 6px;
-  padding: 6px 10px;
+  padding: 7px;
   border: none;
   border-radius: 8px;
   background: none;
   color: var(--dd-muted);
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
 }
 
-.login__show:hover {
+.login__show svg {
+  width: 18px;
+  height: 18px;
+}
+
+.login__show:hover,
+.login__show[aria-pressed="true"] {
   color: var(--dd-ink);
 }
 
+.login__caps {
+  font-size: 12px;
+  font-style: normal;
+  color: var(--dd-del);
+}
+
+/* How strong the new password is: four bars and a word. */
+.login__strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--dd-muted);
+}
+
+.login__strength div {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+}
+
+.login__strength i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--dd-line);
+  transition: background 200ms ease;
+}
+
+.login__strength--1 i.is-on {
+  background: var(--dd-del);
+}
+
+.login__strength--2 i.is-on {
+  background: #d99a2b;
+}
+
+.login__strength--3 i.is-on,
+.login__strength--4 i.is-on {
+  background: var(--dd-add);
+}
+
 .login__error {
-  margin: -4px 0 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--dd-del) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dd-del) 10%, transparent);
   color: var(--dd-del);
   font-size: 13px;
+  line-height: 1.4;
+  animation: login-shake 360ms ease;
+}
+
+.login__error svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
 }
 
 .login__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
   padding: 13px 16px;
   border: none;
   border-radius: 12px;
@@ -100,18 +227,23 @@
   transition: transform 150ms ease;
 }
 
+.login__submit svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.9;
+  transition: transform 150ms ease;
+}
+
 .login__submit:not(:disabled):hover {
   transform: scale(1.02);
 }
 
-.login__submit:not(:disabled):active {
-  transform: scale(0.98);
+.login__submit:not(:disabled):hover svg {
+  transform: translateX(3px);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .login__submit {
-    transition: none;
-  }
+.login__submit:not(:disabled):active {
+  transform: scale(0.98);
 }
 
 .login__submit:disabled {
@@ -120,14 +252,87 @@
   box-shadow: none;
 }
 
+.login__spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: login-spin 700ms linear infinite;
+}
+
+.login__trust {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--dd-muted);
+  font-size: 12px;
+}
+
+.login__trust li::before {
+  content: "✓ ";
+  color: var(--dd-add);
+}
+
 .login__hint {
   margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--dd-line);
   color: var(--dd-muted);
   font-size: 12.5px;
   line-height: 1.5;
+  text-align: center;
 }
 
 .login__hint code {
   font-family: var(--dd-mono);
   color: var(--dd-ink-soft);
+}
+
+@keyframes login-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+}
+
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login__submit,
+  .login__submit svg,
+  .login__input,
+  .login__strength i {
+    transition: none;
+  }
+  .login__error {
+    animation: none;
+  }
+  .login__spinner {
+    animation-duration: 2s;
+  }
+}
+
+@media (max-width: 759px) {
+  .login {
+    padding: 22px 18px 18px;
+    border-radius: 18px;
+  }
 }

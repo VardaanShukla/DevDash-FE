@@ -33,7 +33,7 @@ const GUIDE: Partial<Record<View, string>> = {
   home: "Your dashboard for the project picked in the menu, made of widgets. It starts with the greeting and the project you're looking at, AI today (the AI picked in Settings and what AI tools changed in this project today, with Know more), Total changes beside Today's activity, and the latest commit beside every branch to pick from. Press Edit Home to drag widgets by their bar, resize them by their corner (or use the arrow keys, with Shift to resize), add any of 24 widgets, and give each its own title, style, accent and options. Reset puts the starting layout back. Your layout is saved in your settings.",
   digest: "Every prompt you gave your AI coding tool on one day, in every connected project: the files and functions it changed and whether that's committed yet. Changes touching sign-in, payments, the database or tests, or adding something that looks like a key, come first under Needs a look. The flags come from simple rules, not AI. A prompt counts every file that changed while it ran, however the AI changed it; one changed without the tool's own edit tools (a shell command, or your own edit at the same time) is marked changed during this prompt. Work from a cloud session shows once it is committed and on a branch here, pushed and synced or pulled: any commit with an AI co-author counts, listed under its commit message and marked From a cloud session. Files written straight into the folder outside any AI prompt on this computer, with no commit, can't be told apart from your own edits, so they aren't counted here; you still see them under Changes and as uncommitted work.",
   summary: "The whole project in one place: what it is, how its parts work together, what it's built with, and who works on it. Your AI (picked in Settings) can write a plain-English description.",
-  ask: "Ask questions about the project and get plain-English answers: what a file or function is for, how the parts fit together, where something happens or where to start reading. It explains only and never writes code. Answers come from the project's description, the Full KT's notes on each file, and the code of the files your question names, so writing the Full KT first gives better answers. The conversation is kept per project and branch in this browser; New conversation clears it.",
+  ask: "Ask questions about the project and get plain-English answers: what a file or function is for, how the parts fit together, where something happens or where to start reading. It explains only and never writes code. Answers come from the project's description, any notes saved on a file, and the code of the files your question names. The conversation is kept per project and branch in this browser; New conversation clears it.",
   overview: "How big the change is on the speedometer, how much of it was made with AI, and the latest commits.",
   flow: "Each line is a branch. A line leaves the base branch when work starts and joins it again when it is merged. Point at a dot to see that commit.",
   map: "Each box is a part of the project. An arrow from one box to another means the first uses code from the second. Glowing boxes changed on this branch.",
@@ -52,7 +52,7 @@ const COLOURS = [
 ];
 
 // The Help screen: the setup steps for this project beside a guide to every screen.
-export default function Help({ repo, steps, error }: { repo: Repo; steps: SetupStep[] | null; error: string | null }) {
+export default function Help({ repo, steps, error, onTour }: { repo: Repo; steps: SetupStep[] | null; error: string | null; onTour: () => void }) {
   const required = steps?.filter((step) => step.done !== null && step.id !== "ai") ?? [];
   const done = required.filter((step) => step.done).length;
   return (
@@ -63,6 +63,9 @@ export default function Help({ repo, steps, error }: { repo: Repo; steps: SetupS
             <h2>Set up DevDash</h2>
             <p className="help__note">For {repo.name}</p>
           </div>
+          <button className="help__tour" onClick={onTour}>
+            Take the tour
+          </button>
           {steps && required.length > 0 && (
             <span className={`help__progress${done === required.length ? " help__progress--done" : ""}`}>
               {done === required.length ? "All set" : `${done} of ${required.length} done`}
@@ -107,6 +110,13 @@ export default function Help({ repo, steps, error }: { repo: Repo; steps: SetupS
           ))}
         </ul>
       </section>
+      <footer className="help__credit">
+        DevDash was created by{" "}
+        <a href="https://github.com/VardaanShukla" target="_blank" rel="noreferrer">
+          Vardaan Shukla
+        </a>
+        . Open source under the Apache License 2.0.
+      </footer>
     </div>
   );
 }

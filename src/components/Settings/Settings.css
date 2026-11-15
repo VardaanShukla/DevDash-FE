@@ -1457,3 +1457,43 @@
 .codecommit__switch[open] summary {
   margin-bottom: 10px;
 }
+
+/* How long AI changes keep each change's lines: the words, then the choice beside them. */
+.settings__keep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-top: 16px;
+}
+
+.settings__keep > span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ollama__best {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+}
+.ollama__best .ollama__heading {
+  margin: 0;
+}
+.ollama__best p {
+  margin: 4px 0 0;
+}
+.ollama__best .settings__button,
+.ollama__best .ollama__loaded {
+  flex: none;
+}
+.ollama__best-model code {
+  font-family: var(--dd-mono);
+  font-size: 14px;
+  font-weight: 600;
+}

@@ -11,13 +11,14 @@ import "./SideMenu.css";
 // Settings opens like a folder: its parts (and AI's, one per AI) show under it while it's
 // on screen, and pick what Settings shows.
 
-export type View = "home" | "digest" | "summary" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
+export type View = "home" | "digest" | "summary" | "kt" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
   { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
+  { id: "kt", label: "KT", hint: "A guide for a new developer, with setup, run commands and major functions", icon: <KtIcon /> },
   { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
   { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
   { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
@@ -90,6 +91,8 @@ type Props = {
   onSettings: (section: SettingsSection) => void;
   // The AI that writes explanations, marked under AI.
   aiInUse?: string;
+  // Screens that can't work yet, with why: shown dimmed, the reason as their tooltip.
+  off?: Partial<Record<View, string>>;
 };
 
 const COLLAPSED_KEY = "devdash:menu-collapsed";
@@ -121,7 +124,7 @@ function useNarrow(): boolean {
   return narrow;
 }
 
-export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse }: Props) {
+export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {} }: Props) {
   const [collapsed, setCollapsed] = useState(savedCollapsed);
   const narrow = useNarrow();
   const folded = collapsed || narrow;
@@ -138,10 +141,11 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
   const item = (entry: (typeof VIEWS)[number]) => (
     <button
       key={entry.id}
-      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}`}
+      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}${off[entry.id] ? " menu__item--off" : ""}`}
       onClick={() => onView(entry.id)}
+      data-tour={entry.id}
       aria-current={view === entry.id ? "page" : undefined}
-      title={`${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
+      title={off[entry.id] ? `${entry.label}: ${off[entry.id]}` : `${entry.label}: ${entry.hint}${keys[entry.id] ? ` (key ${keys[entry.id]})` : ""}`}
     >
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
@@ -428,6 +432,15 @@ function AskIcon() {
     <svg {...iconProps}>
       <path d="M5 5h14a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-8l-4 3.5V16H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
       <path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.3M12 14h.01" />
+    </svg>
+  );
+}
+
+function KtIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M12 6c-2-1.5-4.5-2-8-2v15c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2V4c-3.5 0-6 .5-8 2Z" />
+      <path d="M12 6v15" />
     </svg>
   );
 }

@@ -52,9 +52,16 @@ that on http://localhost:4173.
   endpoint returns.
 - `src/components/<Name>/` holds one screen or part of a screen each, with its own CSS:
   Home (and Widgets, the grid of widgets it's made of, with every kind of widget in
-  `catalog.tsx`), Summary, Overview (this branch), FlowGraph (branch flow), ProjectMap,
-  Constellation, FileChanges, CommitList, Digest (Claude's changes), Agenda and Todos
-  (my day), and the menus, sign-in and help around them.
+  `catalog.tsx`), Summary (with the KT tab; `ktPdf.ts` writes its PDF), Ask, Overview
+  (this branch), FlowGraph (branch flow), ProjectMap, FileChanges, CommitList, Digest
+  (the AI's changes), Settings (with Ollama's model suggestions), Tour (the first-time
+  walkthrough), and the menus, sign-in and help around them.
+- `src/lib/aiJobs.ts` keeps AI runs going when you leave a screen, and paces the KT's
+  progress bar.
 - `src/styles/` has the colours and type shared by every screen, in dark and light themes.
 
 The backend's README lists every endpoint the page uses.
+
+## License
+
+DevDash is created by [Vardaan Shukla](https://github.com/VardaanShukla) and released under the [Apache License 2.0](LICENSE). Copies and forks must keep the [NOTICE](NOTICE) file with that credit.

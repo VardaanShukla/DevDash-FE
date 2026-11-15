@@ -518,3 +518,9 @@
     transition: none;
   }
 }
+
+/* A screen that can't work yet (AI changes with no coding tool connected): still opens, to say why. */
+.menu__item--off .menu__icon,
+.menu__item--off .menu__label {
+  opacity: 0.45;
+}

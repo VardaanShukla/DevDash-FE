@@ -3,6 +3,7 @@ import type {
   AiStatus,
   AiProvider,
   HostedConnect,
+  OllamaAdvice,
   OllamaState,
   OllamaUsage,
   AuthStatus,
@@ -16,6 +17,7 @@ import type {
   AskTurn,
   Branches,
   Comparison,
+  KtGuide,
   Digest,
   DigestChangeDetail,
   Flow,
@@ -143,6 +145,7 @@ export const api = {
   ollamaStart: (confirm = false) => request<OllamaState>("/api/ollama/start", "POST", { confirm }),
   ollamaStop: (confirm = false) => request<OllamaState>("/api/ollama/stop", "POST", { confirm }),
   ollamaUsage: () => get<OllamaUsage>("/api/ollama/usage"),
+  ollamaAdvice: () => get<OllamaAdvice>("/api/ollama/advice"),
   ollamaPull: (name: string) => request<OllamaState>("/api/ollama/pull", "POST", { name }),
   ollamaLoad: (name: string) => request<OllamaState>("/api/ollama/load", "POST", { name }),
   ollamaUnload: (name: string) => request<OllamaState>("/api/ollama/unload", "POST", { name }),
@@ -157,7 +160,11 @@ export const api = {
   // fresh: write it again, as when the file-by-file notes have filled in since.
   explainProject: (repoId: number, head: string, fresh = false) =>
     request<ProjectExplanation>(`/api/repos/${repoId}/explain/project`, "POST", { head, fresh }),
-  // Every file of the project's knowledge transfer, with the notes written so far.
+  // The short KT, when it's written for the project as it stands.
+  ktGuide: (repoId: number, head: string) => get<{ guide: KtGuide | null }>(`/api/repos/${repoId}/kt/guide?${new URLSearchParams({ head })}`),
+  writeKtGuide: (repoId: number, head: string, fresh = false) => request<KtGuide>(`/api/repos/${repoId}/kt/guide`, "POST", { head, fresh }),
+  ktImageUrl: (repoId: number, head: string, path: string) => `/api/repos/${repoId}/kt/image?${new URLSearchParams({ head, path })}`,
+  // Every file with the notes written so far: what Ask and Changes read.
   kt: (repoId: number, head: string) => get<KnowledgeTransfer>(`/api/repos/${repoId}/kt?${new URLSearchParams({ head })}`),
   explainFile: (repoId: number, path: string, head: string) =>
     request<FileExplanation>(`/api/repos/${repoId}/explain/file`, "POST", { path, head }),
@@ -184,7 +191,13 @@ export const api = {
   ask: (repoId: number, question: string, history: AskTurn[], head: string) =>
     request<AskAnswer>(`/api/repos/${repoId}/ask`, "POST", { question, history, head }),
   home: () => get<ProjectCard[]>("/api/home"),
-  digest: (day?: string) => get<Digest>(`/api/digest${day ? `?day=${day}` : ""}`),
+  digest: (day?: string, repo?: number) => {
+    const query = new URLSearchParams();
+    if (day) query.set("day", day);
+    if (repo !== undefined) query.set("repo", String(repo));
+    const text = query.toString();
+    return get<Digest>(`/api/digest${text ? `?${text}` : ""}`);
+  },
   digestChange: (id: string) => get<DigestChangeDetail>(`/api/digest/change?${new URLSearchParams({ id })}`),
   // What one function (or file) of a prompt's change does, and what the prompt changed in it.
   explainChangePart: (change: string, path: string, name: string) =>

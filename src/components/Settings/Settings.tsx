@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent } from "react";
 import { ApiError, api } from "../../api/client";
-import type { AiProvider, AiStatus, CodeCommitRepo, CodeCommitStatus, GitHubRepo, GitHubStatus, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
+import type { AiProvider, AiStatus, CodeCommitRepo, CodeCommitStatus, GitHubRepo, GitHubStatus, OllamaAdvice, OllamaState, OllamaUsage, PreferenceChange, Preferences, RecordingHealth, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
@@ -148,6 +148,27 @@ function Appearance({ prefs, onPrefs }: { prefs: Preferences; onPrefs: Props["on
             </span>
           </span>
         </label>
+        <label className="settings__keep">
+          <span>
+            <strong>Keep AI changes' lines for</strong>
+            <span className="settings__note">
+              Older prompts stay in AI changes with their files and line counts, but their lines are cleared to save
+              space and they can't be undone from DevDash.
+            </span>
+          </span>
+          <select
+            className="select"
+            value={prefs.keep_diffs_days}
+            onChange={(event) => onPrefs({ keep_diffs_days: Number(event.target.value) })}
+          >
+            {[3, 7, 10, 14, 30, 90].map((days) => (
+              <option key={days} value={days}>
+                {days} days
+              </option>
+            ))}
+            <option value={0}>Forever</option>
+          </select>
+        </label>
       </section>
     </div>
   );
@@ -238,7 +259,12 @@ function AiPage({ provider, status, prefs, onPrefs, onRefresh }: {
         />
       )}
       {provider === "ollama" ? (
-        <OllamaManager onChange={onRefresh} />
+        <OllamaManager
+          onChange={onRefresh}
+          chosen={prefs.ai.models.ollama ?? ""}
+          // No choice means the best model here, which the page's suggestion is once it's downloaded.
+          onUseBest={() => onPrefs({ ai: { models: { ollama: "" } } }).then(onRefresh, (e: Error) => setError(e.message))}
+        />
       ) : provider === "hosted" ? (
         <HostedSetup ai={status} onConnected={onRefresh} />
       ) : (
@@ -248,12 +274,13 @@ function AiPage({ provider, status, prefs, onPrefs, onRefresh }: {
   );
 }
 
-// Models worth starting with, smallest first. Sizes are Ollama's download sizes.
-const SUGGESTED = [
-  { name: "qwen2.5:3b", size: "1.9 GB", note: "Small and quick. Enough for explanations." },
-  { name: "llama3.2:3b", size: "2.0 GB", note: "Meta's small model." },
-  { name: "qwen2.5-coder:7b", size: "4.7 GB", note: "Reads code better. Wants about 8 GB of memory." },
-];
+// Where a suggested model would run on this computer.
+const FIT: Record<OllamaAdvice["models"][number]["fit"], string> = {
+  gpu: "Runs on your GPU.",
+  mixed: "Too big for your GPU, so part runs on the CPU, slowly.",
+  cpu: "Runs on the CPU, slowly.",
+  too_big: "Too big for this computer's memory.",
+};
 
 function bytes(count: number): string {
   if (count >= 1e9) return `${(count / 1e9).toFixed(1)} GB`;
@@ -261,10 +288,44 @@ function bytes(count: number): string {
   return `${Math.round(count / 1e3)} KB`;
 }
 
+// What this computer has and the model picked for it, with one button to get it and use it.
+function BestModel({ advice, state, inUse, busy, onGet }: { advice: OllamaAdvice; state: OllamaState; inUse: boolean; busy: boolean; onGet: () => void }) {
+  const name = advice.recommended;
+  const here = state.models.some((m) => m.name === name);
+  const pulling = state.pulls.some((p) => p.name === name && !p.done);
+  const size = advice.models.find((m) => m.name === name)?.size_gb;
+  const parts = [
+    advice.gpu ? `${advice.gpu}${advice.gpu_memory_gb ? ` (${advice.gpu_memory_gb} GB)` : ""}` : "No GPU found",
+    [advice.cpu, `${advice.threads} threads`].filter(Boolean).join(", "),
+    advice.memory_gb ? `${advice.memory_gb} GB memory` : null,
+  ];
+  return (
+    <div className="ollama__best">
+      <div>
+        <h3 className="ollama__heading">Best for this computer</h3>
+        <p className="settings__note">{parts.filter(Boolean).join(" · ")}</p>
+        <p className="ollama__best-model">
+          <code>{name}</code> {size !== undefined && <span className="ollama__size">{size.toFixed(1)} GB</span>}
+        </p>
+        <p className="settings__note">{advice.reason}</p>
+        {!state.running && !here && <p className="settings__note">{state.installed ? "Start Ollama to download it." : "Install Ollama to download it."}</p>}
+      </div>
+      {here && inUse ? (
+        <span className="ollama__loaded">In use</span>
+      ) : (
+        <button className="settings__button" disabled={busy || pulling || (!here && !state.running)} onClick={onGet}>
+          {pulling ? "Downloading…" : here ? "Use this model" : "Download and use"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Ollama run from the page: start or stop it, download models, and load one into memory
 // (Run) or free it (Stop), as `ollama run` and `ollama stop` do.
-function OllamaManager({ onChange }: { onChange: () => void }) {
+function OllamaManager({ onChange, chosen, onUseBest }: { onChange: () => void; chosen: string; onUseBest: () => void }) {
   const [state, setState] = useState<OllamaState | null>(null);
+  const [advice, setAdvice] = useState<OllamaAdvice | null>(null);
   const [error, setError] = useState<string | null>(null);
   // The action under way, such as "start" or "load:qwen2.5:3b".
   const [busy, setBusy] = useState<string | null>(null);
@@ -282,6 +343,10 @@ function OllamaManager({ onChange }: { onChange: () => void }) {
 
   // While a download runs, read its progress every second and a half; when it ends, the
   // model list (and the model picker) are read again.
+  useEffect(() => {
+    api.ollamaAdvice().then(setAdvice, () => {});
+  }, []);
+
   const pulling = Boolean(state?.pulls.some((p) => !p.done));
   const wasPulling = useRef(false);
   useEffect(() => {
@@ -321,10 +386,23 @@ function OllamaManager({ onChange }: { onChange: () => void }) {
   }
   const installed = new Set(state.models.map((m) => m.name));
   const failed = error && <p className="settings__message settings__message--error">{error}</p>;
+  const best = advice && state.local && (
+    <BestModel
+      advice={advice}
+      state={state}
+      inUse={!chosen || chosen === advice.recommended}
+      busy={busy !== null}
+      onGet={() => {
+        if (chosen) onUseBest();
+        if (!installed.has(advice.recommended)) download(advice.recommended);
+      }}
+    />
+  );
 
   if (!state.installed) {
     return (
       <div className="ollama">
+        {best}
         <p className="ollama__status">
           <span className="ollama__dot" aria-hidden="true" />
           Ollama isn't installed on this computer.
@@ -381,11 +459,12 @@ function OllamaManager({ onChange }: { onChange: () => void }) {
     </>
   );
 
-  if (!state.running) return <div className="ollama">{main}</div>;
+  if (!state.running) return <div className="ollama">{best}{main}</div>;
 
   return (
     <div className="ollama ollama--split">
       <div className="ollama__column">
+        {best}
         {main}
         <h3 className="ollama__heading">Models on this computer</h3>
         {state.models.length === 0 ? (
@@ -497,11 +576,12 @@ function OllamaManager({ onChange }: { onChange: () => void }) {
           </button>
         </form>
         <ul className="ollama__suggested">
-          {SUGGESTED.map((s) => (
+          {advice?.models.map((s) => (
             <li key={s.name}>
               <span>
-                <code>{s.name}</code> <span className="ollama__size">{s.size}</span>
-                <span className="settings__note">{s.note}</span>
+                <code>{s.name}</code> <span className="ollama__size">{s.size_gb.toFixed(1)} GB</span>
+                {s.name === advice.recommended && <span className="ollama__loaded">Best here</span>}
+                <span className="settings__note">{s.note} {FIT[s.fit]}</span>
               </span>
               <button
                 className="settings__button settings__button--quiet"
@@ -894,7 +974,7 @@ function ModelPicker({ ai, chosen, onPick }: { ai: AiStatus; chosen: string; onP
           {ai.models.map((m) => (
             <option key={m.id} value={m.id}>
               {m.label}
-              {m.id === ai.default_model ? (ai.provider === "hosted" ? " · default" : " · default, fewest tokens") : ""}
+              {m.id === ai.default_model ? (ai.provider === "hosted" ? " · default" : ai.provider === "ollama" ? " · default, best for this computer" : " · default, fewest tokens") : ""}
             </option>
           ))}
           <option value="__other">Another model (type its name)…</option>

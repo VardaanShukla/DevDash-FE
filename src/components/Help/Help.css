@@ -221,3 +221,31 @@
 .step__body p {
   overflow-wrap: anywhere;
 }
+
+.help__tour {
+  margin-left: auto;
+  padding: 7px 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.help__tour:hover {
+  border-color: var(--dd-accent);
+  color: var(--dd-accent);
+}
+
+.help__credit {
+  padding: 4px 0 8px;
+  color: var(--dd-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+.help__credit a {
+  color: var(--dd-ink);
+  font-weight: 600;
+}
