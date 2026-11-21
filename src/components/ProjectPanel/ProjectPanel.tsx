@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { api, ApiError } from "../../api/client";
 import type { AiTool, AiToolId, PullRequests, Repo } from "../../api/types";
 import "./ProjectPanel.css";
+import BrandLogo, { isBrand } from "../BrandLogo/BrandLogo";
 
 type Props = {
   repo: Repo;
@@ -108,7 +109,10 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
                 checked={repo.ai === tool.id}
                 onChange={() => choose(tool.id as AiToolId)}
               />
-              <span className="panel__tool-name">{tool.name}</span>
+              <span className="panel__tool-name">
+                {isBrand(tool.id) && <BrandLogo brand={tool.id} size={15} />}
+                {tool.name}
+              </span>
               <span className="panel__tool-state">{repo.ai === tool.id ? "Recording" : "Use this"}</span>
             </label>
           ))}
@@ -125,12 +129,12 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
           </Button>
         )
       )}
-      {repo.ai === "codex" && <p className="panel__note">In Codex, type /hooks once and trust DevDash's hooks.</p>}
+      {repo.ai === "codex" && <p className="panel__note">In Codex, type /hooks once and trust Looma's hooks.</p>}
       {repo.ai && <p className="panel__note">Stopping keeps everything already recorded.</p>}
       {error && <p className="panel__error">{error}</p>}
       {repo.git && <Pulls repoId={repo.id} />}
       <button className="panel__remove" onClick={onRemove}>
-        Remove project from DevDash
+        Remove project from Looma
       </button>
     </section>
   );

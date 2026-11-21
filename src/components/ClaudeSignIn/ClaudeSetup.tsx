@@ -3,7 +3,7 @@ import type { AiStatus } from "../../api/types";
 import ClaudeSignIn from "./ClaudeSignIn";
 import "./ClaudeSignIn.css";
 
-// Getting an AI ready to write explanations, wherever DevDash asks for it (first run,
+// Getting an AI ready to write explanations, wherever Looma asks for it (first run,
 // adding a project, Settings, an explanation that can't run): installing it with its
 // official installer for this computer, starting it or downloading a model (Ollama), and
 // signing in, with one click where the tool allows it. Started with Claude, hence the name.
@@ -82,7 +82,7 @@ export default function ClaudeSetup({ ai, onRefresh }: Props) {
         provider={ai.provider}
         onSignedIn={onRefresh}
         title={`Sign in to ${ai.name}`}
-        intro={`${ai.name} is installed. One click opens its sign-in page in your browser; sign in there and DevDash notices by itself.`}
+        intro={`${ai.name} is installed. One click opens its sign-in page in your browser; sign in there and Looma notices by itself.`}
       />
     );
   }
@@ -111,12 +111,12 @@ export default function ClaudeSetup({ ai, onRefresh }: Props) {
         </strong>
         <span className="claude-setup__line">
           {ai.signed_in === null
-            ? `DevDash couldn't check its sign-in; the first explanation will tell. If it asks, run ${ai.login_command ?? "it"} in a terminal once.`
+            ? `Looma couldn't check its sign-in; the first explanation will tell. If it asks, run ${ai.login_command ?? "it"} in a terminal once.`
             : ai.provider === "ollama"
               ? "Runs on this computer: free and private, though slower than the online ones."
               : ai.provider === "hosted"
                 ? "Runs on your own server: your code goes there, and nowhere else."
-              : "DevDash can explain changes in plain English."}
+              : "Looma can explain changes in plain English."}
         </span>
       </span>
     </div>

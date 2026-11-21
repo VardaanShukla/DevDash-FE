@@ -1,5 +1,8 @@
 import type { KtGuide, Summary } from "../../api/types";
 
+// Colours: Looma's black, orange and white. NAVY and INDIGO keep their old names for the
+// cover and the accents, now near black and a deep orange that reads on white.
+
 // The KT as a PDF, to keep or hand to another developer. Written by hand with the PDF's own
 // fonts (Helvetica and Courier), so it needs no library and no print dialog. The project's
 // pictures go in as JPEGs, whatever they were, written as hex so the file stays plain text.
@@ -9,15 +12,22 @@ export type Rgb = [number, number, number];
 export type Picture = { hex: string; w: number; h: number };
 export type Word = { text: string; font: Font; x: number };
 
-export const INK: Rgb = [0.1, 0.11, 0.17];
-export const MUTED: Rgb = [0.42, 0.44, 0.52];
-export const NAVY: Rgb = [0.05, 0.06, 0.13];
-export const INDIGO: Rgb = [0.31, 0.33, 0.86];
-export const SOFT: Rgb = [0.95, 0.955, 0.985];
-export const LINE: Rgb = [0.87, 0.88, 0.93];
+export const INK: Rgb = [0.07, 0.04, 0.02];
+export const MUTED: Rgb = [0.42, 0.37, 0.33];
+export const NAVY: Rgb = [0.03, 0.02, 0.01];
+export const INDIGO: Rgb = [0.76, 0.25, 0.05];
+export const SOFT: Rgb = [1, 0.955, 0.925];
+export const LINE: Rgb = [0.91, 0.88, 0.85];
 export const WHITE: Rgb = [1, 1, 1];
-const PALE: Rgb = [0.72, 0.75, 0.9];
-const COMMAND: Rgb = [0.93, 0.95, 1];
+const PALE: Rgb = [1, 0.72, 0.52];
+// The mark's tile and the colours of its light, from the brightest outward.
+const TILE: Rgb = [0.05, 0.027, 0.035];
+const TILE_RIM: Rgb = [0.3, 0.22, 0.2];
+const HAZE: Rgb = [0.55, 0.16, 0.2];
+const SALMON: Rgb = [1, 0.56, 0.47];
+const HOT: Rgb = [1, 0.98, 0.95];
+const CODE: Rgb = [1, 0.79, 0.66];
+const COMMAND: Rgb = [1, 0.95, 0.91];
 export const PAGE = { w: 595.28, h: 841.89, x: 50, top: 58, bottom: 62 };
 export const FULL = PAGE.w - 2 * PAGE.x;
 const COVER = 172;
@@ -102,7 +112,7 @@ export async function downloadGuide(summary: Summary, guide: KtGuide, imageUrl: 
   const shown = pictures.filter((p) => p.found);
   const pdf = new KtPdf(`${summary.name}  ·  Knowledge transfer`);
   const date = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-  pdf.cover(summary.name, `Written by DevDash on ${date}`, summary.tech.map((t) => t.name).slice(0, 8));
+  pdf.cover(summary.name, `Written by Looma on ${date}`, summary.tech.map((t) => t.name).slice(0, 8));
   pdf.section("What it is");
   pdf.para(guide.overview, { size: 11 });
   if (guide.needs.length) {
@@ -209,6 +219,7 @@ export class KtPdf {
     this.rect(0, bottom, PAGE.w, COVER, NAVY);
     this.rect(0, bottom - 3, PAGE.w, 3, INDIGO);
     this.put("KNOWLEDGE TRANSFER", PAGE.x, PAGE.h - 54, "B", 10, PALE);
+    this.mark(PAGE.w - PAGE.x - 34, PAGE.h - 66, 34);
     const lines = this.wrap(runs(name, "B"), 30, FULL).slice(0, 2);
     let y = PAGE.h - 92;
     for (const line of lines) {
@@ -230,6 +241,25 @@ export class KtPdf {
       x += w + 6;
     }
     this.y -= 22;
+  }
+
+  // The Looma mark, its bottom left corner at x, y: public/looma.svg flattened for the
+  // PDF, the dark tile with the "L" of light (a crimson haze, a salmon glow and a white-hot
+  // core, as lines) and the code tag, drawn in a 64-unit, downward-y space.
+  protected mark(x: number, y: number, size: number) {
+    const s = (size / 64).toFixed(4);
+    const tile =
+      "18.63 0 m 45.37 0 l 55.66 0 64 8.34 64 18.63 c 64 45.37 l 64 55.66 55.66 64 45.37 64 c " +
+      "18.63 64 l 8.34 64 0 55.66 0 45.37 c 0 18.63 l 0 8.34 8.34 0 18.63 0 c h";
+    const l = "21.98 12.98 m 13.11 48.45 l 49.61 43.18 l S";
+    const light = ([color, width]: [Rgb, number]) => `${rgb(color)} RG ${width} w ${l}`;
+    this.ops.push(
+      `q ${s} 0 0 -${s} ${x.toFixed(2)} ${(y + size).toFixed(2)} cm 1 J 1 j ` +
+        `${rgb(TILE)} rg ${rgb(TILE_RIM)} RG 0.4 w ${tile} B ` +
+        ([[HAZE, 4.6], [SALMON, 2.4], [HOT, 1.1]] as [Rgb, number][]).map(light).join(" ") +
+        ` ${rgb(CODE)} RG 1.4 w 41.12 21.59 m 38.04 24.42 l 40.8 26.99 l S ` +
+        "46.46 20.24 m 42.99 28.66 l S 48.32 21.72 m 51.02 24.29 l 48.19 26.86 l S Q",
+    );
   }
 
   // A numbered heading, kept on a page with the `keep` points that follow it.

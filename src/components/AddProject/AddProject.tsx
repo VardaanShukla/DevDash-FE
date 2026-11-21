@@ -4,6 +4,7 @@ import { api, ApiError } from "../../api/client";
 import type { AiStatus, AiTool, AiToolId, Candidate, Repo } from "../../api/types";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import "./AddProject.css";
+import BrandLogo, { isBrand } from "../BrandLogo/BrandLogo";
 
 type Props = {
   onClose: () => void;
@@ -24,8 +25,8 @@ const NO_AI: AiTool = {
 
 // What's left to do in the tool itself once the project is added.
 const AFTER: Record<string, string> = {
-  codex: "Once it's added, open Codex and type /hooks to trust DevDash's hooks (Codex asks once). Restart Codex if it's open.",
-  antigravity: "Once it's added, restart Antigravity (agy, the app or the IDE) if it's open, so it loads DevDash's hooks.",
+  codex: "Once it's added, open Codex and type /hooks to trust Looma's hooks (Codex asks once). Restart Codex if it's open.",
+  antigravity: "Once it's added, restart Antigravity (agy, the app or the IDE) if it's open, so it loads Looma's hooks.",
 };
 
 export function noGitNote(repo: Repo, askedForAi = false): string {
@@ -83,7 +84,7 @@ export default function AddProject({ onClose, onAdded, onGitHub, onCodeCommit }:
       <form className="modal__panel card" role="dialog" aria-labelledby="add-project-title" onSubmit={submit}>
         <h2 id="add-project-title">Add a project</h2>
         <p className="modal__lead">
-          Any project folder. DevDash only reads it. Without git, the summary, KT, Ask and project map still work;
+          Any project folder. Looma only reads it. Without git, the summary, KT, Ask and project map still work;
           branches, changes, commits and AI recording need git.
         </p>
         {onGitHub && (
@@ -148,6 +149,7 @@ export default function AddProject({ onClose, onAdded, onGitHub, onCodeCommit }:
                 onChange={() => setAi(tool.id)}
               />
               <span className="tool__name">
+                {isBrand(tool.id) && <BrandLogo brand={tool.id} size={16} />}
                 {tool.name}
                 {!tool.available && <span className="tool__badge">Soon</span>}
               </span>

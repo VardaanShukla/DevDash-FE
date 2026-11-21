@@ -1,100 +1,93 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import Logo from "../Logo/Logo";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { LightTile, SEAM } from "./LoomaTile";
 import "./Splash.css";
 
-// A funnel of fine, glowing threads turns slowly in the dark, each thread a ring of tiny
-// points that drifts and wavers, and the logo's keycap turns in space above the name as it
-// rises into view in the middle of it. The scene leans toward the pointer: the title tips
-// and the funnel slides the other way, so the two read as near and far. The camera
-// starts above the funnel and settles in front of it. Click or press any key to skip ahead.
+// A warp-speed reveal, timed and coloured from a reference video. Black, then a warm glow
+// swells at one point and the screen floods with cream and peach light, soft rays pouring
+// into a pinch at the middle in a bow-tie that leans up and to the right, like light falling
+// into a black hole, with points of light streaming in along them. The light
+// reddens from the corners through rose to crimson as the speed climbs, the rays pull in
+// along the lean of the bow-tie, and everything drains to black around one white-hot slash.
+// The slash settles, a faint reflection appears on the floor under it, and a glass tile
+// pops into place around it with a beam of light above and sparks adrift. The slash lands
+// on the tile's seam and splits into the two strokes of an "L" drawn in the same light,
+// swinging apart from the corner; the code tag draws itself last, then the name lights up
+// under the tile.
 //
-// When this browser has to sign in, the sign-in panel slides in from the right and the name
-// moves into the left half, the funnel following it. After signing in the panel slides back
-// out, the name returns to the middle and lifts away, the threads draw tight into the centre,
-// and the screen opens from that point onto the dashboard.
+// Leaving, the splash fades to the dashboard underneath.
+//
+// When this browser has to sign in, the sign-in panel slides in from the right and the tile
+// moves into the left half. Click or press any key to skip ahead.
 
-// Milliseconds from the start.
-const FADE_IN_MS = 1800; // the funnel comes into view and the camera settles
-const READY_AT = 1900; // the name is in: wait here for signing in, if needed
-const LINGER_MS = 900; // how long the name stays when there's no signing in
+// Milliseconds from the start. The CSS holds the same times for the tile and the name.
+const COLLAPSE = [2450, 3130]; // the rays pull in and the light drains to black
+const SLASH_IN = [2250, 3030]; // the slash swells
+const SLASH_SETTLE = [3030, 3600]; // it eases to the size of the tile
+const FLOOR = [3450, 3700]; // the reflection on the floor
+const BEAM = [3550, 4300]; // the tile pops in (CSS) and the beam above it shines
+const SEAM_AT = [3550, 4100]; // the slash travels to the logo's seam
+const MELT = [3780, 4400]; // the slash splits into the two strokes of the L
+const MOTES = [3800, 4700]; // the sparks drift in
+const READY_AT = 4900; // the name is in: wait here for signing in, if needed
+const LINGER_MS = 650; // how long it stays when there's no signing in
 const SPLIT_MS = 750; // the sign-in panel slides in or out
-// Milliseconds from the start of the exit, once the panel is out.
-const WIND_AT = 150; // the threads start drawing into the centre
-const WIND_MS = 900;
-const OPEN_AT = 850; // the screen opens from the centre
-const OPEN_MS = 750;
-const THREADS = 46;
-const TILT = 1.12; // the camera looks down into the funnel
-const START_TILT = 0.45; // and starts from further above
-// Below this width the sign-in panel covers the lower part and the name sits above it.
-const NARROW = 760;
-const NAME = "DevDash";
+// Milliseconds from the start of the exit, once the panel is out: the splash fades to the
+// dashboard underneath.
+const EXIT_MS = 700;
+const NAME = "LOOMA";
+// The slash's lean, up to the right: the same as the seam of the logo (radians).
+const AXIS = -0.653;
+
+// The colour of the flood over time, measured from the reference: at the middle, a little
+// out from it, and out at the edges. Black, a brown glow, cream and peach, rose, crimson,
+// then black again.
+type Rgb = [number, number, number];
+const FLOOD: [number, Rgb, Rgb, Rgb][] = [
+  [0, [6, 4, 7], [6, 4, 7], [6, 4, 7]],
+  [100, [30, 15, 13], [24, 13, 11], [26, 12, 13]],
+  [200, [107, 60, 41], [72, 36, 28], [72, 36, 28]],
+  [330, [214, 167, 105], [183, 121, 78], [172, 104, 74]],
+  [400, [236, 191, 131], [213, 164, 104], [198, 131, 90]],
+  [500, [239, 201, 139], [229, 183, 123], [205, 141, 94]],
+  [1000, [238, 201, 141], [225, 184, 125], [195, 126, 85]],
+  [1400, [240, 208, 157], [231, 193, 136], [186, 112, 82]],
+  [1800, [241, 215, 170], [229, 191, 134], [165, 85, 72]],
+  [2000, [244, 219, 178], [231, 190, 136], [154, 66, 67]],
+  [2230, [244, 224, 190], [216, 162, 113], [121, 43, 50]],
+  [2430, [247, 225, 192], [191, 108, 82], [94, 30, 41]],
+  [2630, [248, 230, 198], [157, 64, 55], [75, 22, 35]],
+  [2830, [254, 243, 230], [149, 53, 60], [68, 19, 33]],
+  [2930, [254, 247, 239], [128, 45, 53], [53, 17, 28]],
+  [3030, [254, 249, 243], [97, 35, 43], [21, 9, 14]],
+  [3130, [254, 243, 234], [6, 4, 7], [6, 4, 7]],
+];
 
 type Phase = "intro" | "ready" | "holding" | "exit";
 
-// The colours of the points, from the theme: [r, g, b] triples and how they blend.
-type Palette = { dots: number[][]; blend: GlobalCompositeOperation; strength: number };
+// A ray of light: a soft wedge out of the pinch at the middle, with an angle, a width, and
+// where along its run it sits.
+type Ray = { a: number; axis: number; da: number; r0: number; v: number; len: number; half: number; b: number; hue: number; phase: number };
+type Mote = { a: number; r: number; size: number; phase: number; drift: number };
+// A point of light falling toward the middle along a ray.
+type Fall = { axis: number; da: number; r0: number; v: number; size: number };
 
-const PALETTES: Record<"light" | "dark", Palette> = {
-  // Indigo and blue light on near black, the points adding up where threads cross.
-  dark: { dots: [[88, 92, 236], [118, 128, 255], [150, 160, 255], [196, 204, 255]], blend: "lighter", strength: 1 },
-  // Coffee ink on the latte page, a few teal.
-  light: { dots: [[92, 60, 32], [120, 82, 48], [64, 42, 24], [11, 95, 89]], blend: "source-over", strength: 0.8 },
-};
-
-// One thread of the funnel: a wavering ring of points.
-type Thread = {
-  ring: number; // 0 at the narrow end of the funnel, 1 at the rim
-  wobble: number; // how far it wavers, so threads cross and part
-  phase: number;
-  lean: number; // its plane tips a little, so the threads weave
-  speed: number; // drift along the thread per millisecond
-  color: number;
-};
-
-type Dot = {
-  thread: Thread;
-  a: number; // angle around the thread
-  jitter: number; // a hair off the thread
-  color: number;
-  size: number;
-  bokeh: boolean; // a few soft, out-of-focus points
-};
-
-const random = (min: number, max: number) => min + Math.random() * (max - min);
-const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
-const easeInCubic = (k: number) => k * k * k;
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
+const span = (t: number, [from, to]: number[]) => clamp01((t - from) / (to - from));
+const easeOutCubic = (k: number) => 1 - (1 - k) ** 3;
+const easeInOutCubic = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2);
+const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+const gauss = () => (Math.random() + Math.random() + Math.random() - 1.5) * 1.6;
+const wrap = (angle: number) => ((((angle + Math.PI) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) - Math.PI;
+const rgb = (c: number[], a = 1) => `rgba(${Math.round(c[0])}, ${Math.round(c[1])}, ${Math.round(c[2])}, ${a})`;
 
-// Most threads crowd into a band part way up the funnel, the way the reference's light does.
-function makeThreads(): Thread[] {
-  return Array.from({ length: THREADS }, () => {
-    const band = Math.random() < 0.75;
-    return {
-      ring: band ? 0.5 + (Math.random() + Math.random() - 1) * 0.22 : random(0.15, 1),
-      wobble: random(0.02, 0.09),
-      phase: random(0, Math.PI * 2),
-      lean: random(-0.14, 0.14),
-      speed: random(0.00005, 0.00012) * (Math.random() < 0.7 ? 1 : -0.5),
-      color: Math.random() < 0.3 ? 2 : Math.random() < 0.5 ? 1 : 0,
-    };
-  });
-}
-
-function makeDots(width: number, height: number, threads: Thread[]): Dot[] {
-  const count = Math.round(Math.min(9000, Math.max(4000, (width * height) / 140)));
-  return Array.from({ length: count }, () => {
-    const thread = threads[Math.floor(Math.random() * threads.length)];
-    const bright = Math.random();
-    return {
-      thread,
-      a: random(0, Math.PI * 2),
-      jitter: (Math.random() - 0.5) * 0.014,
-      color: bright > 0.95 ? 3 : Math.max(thread.color, bright > 0.7 ? 2 : 1),
-      size: bright > 0.95 ? random(1.4, 2) : random(0.9, 1.4),
-      bokeh: Math.random() < 0.012,
-    };
-  });
+// The flood's three colours at story time `t`.
+function floodAt(t: number): [Rgb, Rgb, Rgb] {
+  let i = 0;
+  while (i < FLOOD.length - 2 && t > FLOOD[i + 1][0]) i++;
+  const [t0, ...from] = FLOOD[i];
+  const [t1, ...to] = FLOOD[i + 1];
+  const k = clamp01((t - t0) / (t1 - t0));
+  return [0, 1, 2].map((n) => [0, 1, 2].map((c) => mix(from[n][c], to[n][c], k))) as [Rgb, Rgb, Rgb];
 }
 
 type Props = {
@@ -110,6 +103,7 @@ export default function Splash({ hold, panel, onDone }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const slotRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>("intro");
   const [skipped, setSkipped] = useState(false);
   const onDoneRef = useRef(onDone);
@@ -132,9 +126,9 @@ export default function Splash({ hold, panel, onDone }: Props) {
     // The story pauses at READY_AT while waiting to sign in.
     let split = 0;
     let story = 0;
-    // When the exit started (the panel then has to leave first) and when the name lifted.
+    // When the exit started (the panel then has to leave first) and when the tile went.
     let exitAt = -1;
-    let liftAt = -1;
+    let leaveAt = -1;
     let phaseNow: Phase = "intro";
     const moveTo = (next: Phase) => {
       if (phaseNow === next) return;
@@ -174,113 +168,412 @@ export default function Splash({ hold, panel, onDone }: Props) {
 
     let width = 0;
     let height = 0;
+    let rays: Ray[] = [];
+    let darkRays: Ray[] = [];
+    let motes: Mote[] = [];
+    let falling: Fall[] = [];
+    // The rays are drawn at a third of the size and scaled up, which is what makes them soft;
+    // the beam is drawn smaller still.
+    const lightRays = document.createElement("canvas");
+    const lightCtx = lightRays.getContext("2d")!;
+    const shadeRays = document.createElement("canvas");
+    const shadeCtx = shadeRays.getContext("2d")!;
+    const column = document.createElement("canvas");
+    const columnCtx = column.getContext("2d")!;
+    // Film grain: a tile of noise, laid over the picture at a new offset every frame.
+    const grain = document.createElement("canvas");
+    grain.width = grain.height = 160;
+    {
+      const g = grain.getContext("2d")!;
+      const data = g.createImageData(160, 160);
+      for (let i = 0; i < data.data.length; i += 4) {
+        const v = Math.random() * 255;
+        data.data[i] = v;
+        data.data[i + 1] = v * 0.9;
+        data.data[i + 2] = v * 0.85;
+        data.data[i + 3] = 255;
+      }
+      g.putImageData(data, 0, 0);
+    }
+    const grainPattern = ctx.createPattern(grain, "repeat");
+    const makeRay = (): Ray => {
+      // Most rays run along the bow-tie's axis, in both directions, so the flood has the
+      // slash's lean in it before it collapses to the slash.
+      const along = Math.random() < 0.64;
+      const a = along ? AXIS + (Math.random() < 0.5 ? 0 : Math.PI) + gauss() * 0.4 : Math.random() * Math.PI * 2;
+      const d1 = wrap(a - AXIS);
+      const d2 = wrap(a - AXIS - Math.PI);
+      const near = Math.abs(d1) < Math.abs(d2);
+      return {
+        a,
+        axis: near ? AXIS : AXIS + Math.PI,
+        da: near ? d1 : d2,
+        r0: Math.random() * 0.4,
+        v: 0.3 + Math.random(),
+        len: 0.3 + Math.random() * 0.65,
+        half: 0.004 + Math.random() ** 2 * 0.05,
+        b: 0.35 + Math.random() * 0.65,
+        hue: Math.random(),
+        phase: Math.random() * Math.PI * 2,
+      };
+    };
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      lightRays.width = shadeRays.width = Math.max(1, Math.round(width / 3));
+      lightRays.height = shadeRays.height = Math.max(1, Math.round(height / 3));
+      column.width = Math.max(1, Math.round(width / 4));
+      column.height = Math.max(1, Math.round(height / 4));
+      falling = Array.from({ length: 240 }, () => {
+        const r = makeRay();
+        return { axis: r.axis, da: r.da, r0: Math.random(), v: 0.4 + Math.random() * 1.1, size: 0.8 + Math.random() * 1.4 };
+      });
+      rays = Array.from({ length: 560 }, makeRay);
+      darkRays = Array.from({ length: 300 }, makeRay);
+      motes = Array.from({ length: 70 }, () => ({
+        a: Math.random() * Math.PI * 2,
+        r: 0.5 + Math.random() * 1.1,
+        size: 0.5 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2,
+        drift: (Math.random() - 0.5) * 0.0001,
+      }));
     };
     resize();
     window.addEventListener("resize", resize);
 
-    const threads = makeThreads();
-    const dots = makeDots(width, height, threads);
-
-    // Where the funnel sits and how big it is: centred, or beside (or above) the panel.
-    const place = () => {
-      const along = easeInOutCubic(split);
-      const narrow = width < NARROW;
-      const cx = (narrow ? width / 2 : width / 2 - (width / 4) * along) - lean.x * width * 0.025;
-      const cy = (narrow ? height / 2 - height * 0.3 * along : height / 2 + height * 0.02) - lean.y * height * 0.025;
-      const radius = Math.max(width * 0.5, height * 0.8) * (1 - 0.25 * along);
-      return { cx, cy, radius };
+    // The tile's slot on screen (it doesn't move while the tile inside it pops in), the
+    // point the rays come from, and where the logo's seam falls.
+    const geometry = () => {
+      const box = slotRef.current?.getBoundingClientRect();
+      const size = box?.width || 200;
+      const left = box ? box.left : width / 2 - size / 2;
+      const top = box ? box.top : height / 2 - size / 2;
+      return {
+        size,
+        left,
+        top,
+        cx: left + size / 2,
+        cy: top + size / 2,
+        bottom: top + size,
+        seamX: left + SEAM.x * size,
+        seamY: top + SEAM.y * size,
+      };
     };
 
-    // The whole picture at a moment. `intro` (0 to 1) brings the camera down from above,
-    // `wind` (0 to 1) draws every thread into the centre.
-    let turn = 0;
-    const draw = (intro: number, wind: number) => {
-      const theme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
-      const palette = PALETTES[theme];
-      const fills = palette.dots.map(([r, g, b]) => `rgb(${r}, ${g}, ${b})`);
-      const { cx, cy: restY } = place();
-      const settle = easeInOutCubic(intro);
-      const tilt = START_TILT + (TILT - START_TILT) * settle;
-      // Seen from above at first, the funnel sits low on the screen.
-      const cy = restY + height * 0.22 * (1 - settle);
-      const pull = easeInCubic(wind);
-      const R = place().radius * (0.8 + 0.2 * settle) * (1 - 0.96 * pull);
-      const fade = clamp01(intro * 1.6);
-      const camera = 2.6;
-      const cosT = Math.cos(tilt);
-      const sinT = Math.sin(tilt);
-      // Where a point on a thread lands on the screen, and how sharp it is there.
-      const project = (thread: Thread, angle: number, jitter: number) => {
-        // The thread wavers in and out and up and down as the waves travel round it.
-        const wave = Math.sin(angle * 3 + thread.phase + turn * 0.0005);
-        const r = (0.16 + 0.84 * thread.ring) * (1 + thread.wobble * wave) + jitter;
-        const x = Math.cos(angle) * r;
-        const z = Math.sin(angle) * r;
-        // A funnel: the narrow end sinks away below the rim.
-        const y =
-          -0.55 * (1 - thread.ring) ** 1.6 + thread.lean * Math.sin(angle) * r +
-          thread.wobble * 0.4 * Math.cos(angle * 2 + thread.phase + turn * 0.0003);
-        const ty = y * cosT - z * sinT;
-        const tz = y * sinT + z * cosT;
-        const depth = camera / (camera + tz);
-        // In focus around the middle distance; nearer and farther points fade off.
-        const focus = 1 / (1 + Math.abs(tz) * 1.8);
-        return { x: cx + x * R * depth, y: cy - ty * R * depth, depth, focus };
-      };
-      const spinOf = (thread: Thread) => thread.speed * turn * (1 + 6 * pull);
-      ctx.clearRect(0, 0, width, height);
-      ctx.globalCompositeOperation = palette.blend;
+    // A round bloom of warm white light.
+    const bloom = (x: number, y: number, radius: number, strength: number) => {
+      if (strength <= 0 || radius <= 0) return;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      glow.addColorStop(0, `rgba(255, 247, 238, ${0.95 * strength})`);
+      glow.addColorStop(0.14, `rgba(255, 176, 140, ${0.55 * strength})`);
+      glow.addColorStop(0.45, `rgba(214, 72, 72, ${0.2 * strength})`);
+      glow.addColorStop(1, "rgba(214, 72, 72, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    };
 
-      // Each thread as a hairline, so the points read as strung along it.
-      ctx.lineWidth = 0.6;
-      for (const thread of threads) {
-        const spin = spinOf(thread);
-        ctx.strokeStyle = fills[thread.color];
-        ctx.globalAlpha = Math.min(1, palette.strength * fade * 0.16 * (1 + wind));
+    // One ray as a soft wedge on a small canvas: wide at the far end, fading in and out
+    // along its run.
+    const wedge = (target: CanvasRenderingContext2D, q: number, cx: number, cy: number, angle: number, r1: number, r2: number, half: number, color: Rgb, alpha: number) => {
+      if (alpha < 0.004 || r2 <= r1) return;
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      const w1 = r1 * Math.tan(half) + 0.4;
+      const w2 = r2 * Math.tan(half) + 0.4;
+      const x1 = cx * q + dx * r1 * q;
+      const y1 = cy * q + dy * r1 * q;
+      const x2 = cx * q + dx * r2 * q;
+      const y2 = cy * q + dy * r2 * q;
+      const grad = target.createLinearGradient(x1, y1, x2, y2);
+      // Bright at the end nearest the middle, where the light is heading.
+      grad.addColorStop(0, rgb(color, alpha * 0.7));
+      grad.addColorStop(0.14, rgb(color, alpha));
+      grad.addColorStop(0.6, rgb(color, alpha * 0.45));
+      grad.addColorStop(1, rgb(color, 0));
+      target.fillStyle = grad;
+      target.beginPath();
+      target.moveTo(x1 - dy * w1 * q, y1 + dx * w1 * q);
+      target.lineTo(x2 - dy * w2 * q, y2 + dx * w2 * q);
+      target.lineTo(x2 + dy * w2 * q, y2 - dx * w2 * q);
+      target.lineTo(x1 + dy * w1 * q, y1 - dx * w1 * q);
+      target.closePath();
+      target.fill();
+    };
+
+    // Points of light falling in toward the middle along the rays, quickening and brightening
+    // as they go, until the pinch swallows them.
+    const fall = (t: number, cx: number, cy: number, rmax: number, speed: number, strength: number) => {
+      if (strength <= 0) return;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineCap = "round";
+      for (const f of falling) {
+        const frac = (((f.r0 - f.v * warpPos * 0.5) % 1) + 1) % 1;
+        const r = frac ** 1.5 * rmax;
+        const angle = f.axis + f.da * (1 - 0.94 * easeInOutCubic(span(t, COLLAPSE)));
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const tail = 6 + 60 * f.v * speed * (1 - frac);
+        const alpha = strength * (0.18 + 0.82 * (1 - frac) ** 1.4);
+        ctx.strokeStyle = `rgba(255, 240, 220, ${alpha})`;
+        ctx.lineWidth = f.size * (0.6 + 0.8 * (1 - frac));
         ctx.beginPath();
-        for (let i = 0; i <= 120; i++) {
-          const point = project(thread, spin + (i / 120) * Math.PI * 2, 0);
-          if (i === 0) ctx.moveTo(point.x, point.y);
-          else ctx.lineTo(point.x, point.y);
-        }
+        ctx.moveTo(cx + dx * r, cy + dy * r);
+        ctx.lineTo(cx + dx * (r + tail), cy + dy * (r + tail));
         ctx.stroke();
       }
+    };
 
-      for (const dot of dots) {
-        const point = project(dot.thread, dot.a + spinOf(dot.thread), dot.jitter);
-        if (point.x < -30 || point.x > width + 30 || point.y < -30 || point.y > height + 30) continue;
-        const alpha = palette.strength * fade * (0.25 + 0.75 * point.focus) * (1 + wind);
-        ctx.fillStyle = fills[dot.color];
-        if (dot.bokeh) {
-          ctx.globalAlpha = Math.min(1, alpha * 0.12);
-          ctx.beginPath();
-          ctx.arc(point.x, point.y, (2 + 7 * (1 - point.focus)) * point.depth, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          ctx.globalAlpha = Math.min(1, alpha);
-          const size = dot.size * point.depth;
-          ctx.fillRect(point.x - size / 2, point.y - size / 2, size, size);
+    // The flood and the rays across it, at story time `t`.
+    let time = 0;
+    let warpPos = 0;
+    const warp = (t: number, dt: number, cx: number, cy: number) => {
+      if (t >= COLLAPSE[1]) return;
+      const diag = Math.hypot(width, height);
+      const [inner, mid, edge] = floodAt(t);
+      // The wash: opaque, in the three measured colours.
+      const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, diag * 0.62);
+      wash.addColorStop(0, rgb(inner));
+      wash.addColorStop(0.14, rgb(mid));
+      wash.addColorStop(0.36, rgb(edge));
+      wash.addColorStop(1, rgb(edge));
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, width, height);
+      if (t < 280) return;
+
+      const pull = easeInOutCubic(span(t, COLLAPSE));
+      const gain = (0.35 + 0.65 * span(t, [1200, 2900])) * span(t, [280, 520]) * (1 - span(t, [2900, 3130]));
+      const deepen = span(t, [1500, 2700]);
+      warpPos += (dt / 1000) * (0.3 + 0.7 * span(t, [300, 1200])) * (1 - pull * 0.9);
+      const q = lightRays.width / width;
+      const rmax = diag * 0.62;
+      lightCtx.globalCompositeOperation = "source-over";
+      lightCtx.clearRect(0, 0, lightRays.width, lightRays.height);
+      shadeCtx.clearRect(0, 0, shadeRays.width, shadeRays.height);
+      lightCtx.globalCompositeOperation = "lighter";
+
+      const place = (ray: Ray) => {
+        // As the light drains, each ray swings in toward the axis and stretches along it.
+        const angle = ray.axis + ray.da * (1 - 0.94 * pull);
+        // The rays slide in toward the pinch and come round again at the far end.
+        const start = ((((ray.r0 - ray.v * warpPos * 0.12) % 0.42) + 0.42) % 0.42) * rmax;
+        const run = ray.len * rmax * (1 + 1.5 * pull);
+        const flicker = 0.8 + 0.2 * Math.sin(time * 0.0018 * ray.v + ray.phase);
+        const onAxis = Math.exp(-((ray.da / 0.45) ** 2));
+        const offAxis = 1 - pull * Math.min(1, Math.abs(ray.da) * 2.4);
+        return { angle, start, run, half: ray.half * (1 - 0.65 * pull), strength: flicker * (1 + 1.4 * onAxis) * offAxis };
+      };
+      for (const ray of darkRays) {
+        const p = place(ray);
+        wedge(shadeCtx, q, cx, cy, p.angle, p.start, p.start + p.run, p.half * 1.6, [92, 24, 40], 0.3 * ray.b * span(t, [1500, 2300]) * p.strength * (1 - span(t, [2900, 3130])));
+      }
+      for (const ray of rays) {
+        const p = place(ray);
+        // Cream at first, then peach and rose as the light deepens.
+        const k = ray.hue * deepen;
+        const color: Rgb = [255, mix(240, 170, k), mix(212, 138, k)];
+        wedge(lightCtx, q, cx, cy, p.angle, p.start, p.start + p.run, p.half, color, 0.16 * gain * ray.b * p.strength * (1 - 0.7 * pull));
+      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.drawImage(shadeRays, 0, 0, width, height);
+      ctx.globalCompositeOperation = "lighter";
+      ctx.drawImage(lightRays, 0, 0, width, height);
+
+      fall(t, cx, cy, rmax, 0.4 + 0.6 * span(t, [300, 1500]), span(t, [500, 1000]) * (1 - span(t, [2800, 3130])));
+      // The pinch the rays pour into, and glitter around it.
+      bloom(cx, cy, 70 + 220 * span(t, [300, 900]), 0.5 * gain * (1 - span(t, [2750, 3130])));
+      if (t > 900 && t < 2950) {
+        const env = easeInOutCubic(span(t, [900, 1400])) * (1 - span(t, [2650, 2950]));
+        for (let i = 0; i < 90; i++) {
+          const r = Math.random() ** 2 * Math.min(width, height) * 0.15;
+          const a = Math.random() * Math.PI * 2;
+          ctx.fillStyle = `rgba(255, 246, 236, ${(0.25 + Math.random() * 0.6) * env})`;
+          ctx.fillRect(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 1.6, 1.6);
         }
       }
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = "source-over";
-      if (wind > 0) {
-        // The point everything draws into glows as it fills.
-        const [r, g, b] = palette.dots[theme === "light" ? 3 : 2];
-        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40 + 160 * wind);
-        glow.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${0.55 * pull})`);
-        glow.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
-        ctx.fillStyle = glow;
-        ctx.fillRect(0, 0, width, height);
+    };
+
+    // The slash of light, centred on (x, y) and leaning along AXIS: long thin tails like a
+    // cinema lens flare, a salmon glow, and a white-hot spindle at its heart.
+    const slash = (x: number, y: number, core: number, tail: number, strength: number) => {
+      if (strength <= 0) return;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(AXIS);
+      ctx.globalCompositeOperation = "lighter";
+      for (const [lineWidth, alpha] of [[16, 0.08], [5, 0.28], [1.6, 0.8]]) {
+        const line = ctx.createLinearGradient(-tail, 0, tail, 0);
+        line.addColorStop(0, "rgba(255, 130, 110, 0)");
+        line.addColorStop(0.5, `rgba(255, 170, 150, ${alpha * strength})`);
+        line.addColorStop(1, "rgba(255, 130, 110, 0)");
+        ctx.strokeStyle = line;
+        ctx.lineWidth = lineWidth;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(-tail, 0);
+        ctx.lineTo(tail, 0);
+        ctx.stroke();
       }
-      return { cx, cy };
+      // The glow, a wide ellipse squashed along the axis.
+      ctx.save();
+      ctx.scale(1, 0.24);
+      const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, core * 1.7);
+      glow.addColorStop(0, `rgba(255, 120, 108, ${0.5 * strength})`);
+      glow.addColorStop(0.5, `rgba(214, 62, 72, ${0.2 * strength})`);
+      glow.addColorStop(1, "rgba(214, 62, 72, 0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(-core * 1.7, -core * 1.7, core * 3.4, core * 3.4);
+      ctx.restore();
+      // The spindle.
+      const half = core;
+      const thick = core * 0.22;
+      const body = ctx.createLinearGradient(-half, 0, half, 0);
+      body.addColorStop(0, "rgba(255, 150, 130, 0)");
+      body.addColorStop(0.3, `rgba(255, 214, 196, ${0.85 * strength})`);
+      body.addColorStop(0.5, `rgba(255, 250, 244, ${strength})`);
+      body.addColorStop(0.7, `rgba(255, 214, 196, ${0.85 * strength})`);
+      body.addColorStop(1, "rgba(255, 150, 130, 0)");
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.moveTo(-half, 0);
+      ctx.quadraticCurveTo(0, -thick, half, 0);
+      ctx.quadraticCurveTo(0, thick, -half, 0);
+      ctx.fill();
+      ctx.restore();
+      bloom(x, y, core * 0.42, 0.7 * strength);
+    };
+
+    // The reflection on the floor under the tile: a thin glowing line, with a wider haze.
+    const floorLight = (cx: number, y: number, size: number, strength: number) => {
+      if (strength <= 0) return;
+      ctx.save();
+      ctx.translate(cx, y);
+      for (const [ry, alpha] of [[0.14, 0.12], [0.04, 0.5]]) {
+        ctx.save();
+        ctx.scale(1, ry);
+        const r = size * 1.05;
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+        g.addColorStop(0, `rgba(255, 190, 170, ${alpha * strength})`);
+        g.addColorStop(0.45, `rgba(240, 100, 100, ${alpha * 0.5 * strength})`);
+        g.addColorStop(1, "rgba(214, 62, 72, 0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(-r, -r, r * 2, r * 2);
+        ctx.restore();
+      }
+      ctx.restore();
+    };
+
+    // The soft beam above the tile, wide at its foot and narrowing as it climbs, leaning a
+    // little to the right.
+    const beam = (x: number, top: number, base: number, size: number, strength: number) => {
+      if (strength <= 0) return;
+      const w = column.width;
+      const h = column.height;
+      const q = w / width;
+      const shift = base * 0.1 * q;
+      columnCtx.globalCompositeOperation = "source-over";
+      columnCtx.clearRect(0, 0, w, h);
+      const foot = size * 0.6 * q;
+      const tip = size * 0.1 * q;
+      const body = columnCtx.createLinearGradient(x * q - foot, 0, x * q + foot, 0);
+      body.addColorStop(0, "rgba(255, 120, 100, 0)");
+      body.addColorStop(0.4, "rgba(255, 150, 120, 0.24)");
+      body.addColorStop(0.5, "rgba(255, 214, 192, 0.5)");
+      body.addColorStop(0.6, "rgba(255, 150, 120, 0.24)");
+      body.addColorStop(1, "rgba(255, 120, 100, 0)");
+      columnCtx.fillStyle = body;
+      columnCtx.beginPath();
+      columnCtx.moveTo(x * q - tip + shift, 0);
+      columnCtx.lineTo(x * q + tip + shift, 0);
+      columnCtx.lineTo(x * q + foot, base * q);
+      columnCtx.lineTo(x * q - foot, base * q);
+      columnCtx.closePath();
+      columnCtx.fill();
+      columnCtx.globalCompositeOperation = "destination-in";
+      const fade = columnCtx.createLinearGradient(0, 0, 0, base * q);
+      const peak = clamp01(top / base);
+      fade.addColorStop(0, "rgba(0, 0, 0, 0)");
+      fade.addColorStop(peak * 0.7, "rgba(0, 0, 0, 0.55)");
+      fade.addColorStop(peak, "rgba(0, 0, 0, 1)");
+      fade.addColorStop(1, "rgba(0, 0, 0, 0)");
+      columnCtx.fillStyle = fade;
+      columnCtx.fillRect(0, 0, w, h);
+      ctx.globalAlpha = strength;
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(column, 0, 0, width, height);
+      ctx.globalAlpha = 1;
+    };
+
+    // Sparks adrift around the tile, twinkling.
+    const adrift = (cx: number, cy: number, size: number, strength: number) => {
+      if (strength <= 0) return;
+      for (const mote of motes) {
+        const a = mote.a + time * mote.drift;
+        const x = cx + Math.cos(a) * mote.r * size * 1.3 - lean.x * 10 * mote.size;
+        const y = cy + Math.sin(a) * mote.r * size * 0.95 - Math.sin(time * 0.0004 + mote.phase) * 6;
+        const twinkle = 0.45 + 0.55 * Math.sin(time * 0.0022 + mote.phase * 3);
+        ctx.fillStyle = `rgba(255, 222, 208, ${strength * twinkle * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(x, y, mote.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    // The whole picture at story time `t`, `out` milliseconds into the exit (or -1), after
+    // `dt` milliseconds more.
+    const draw = (t: number, out: number, dt: number) => {
+      const m = geometry();
+      ctx.clearRect(0, 0, width, height);
+      ctx.globalCompositeOperation = "source-over";
+
+      if (out < 0) {
+        warp(t, dt, m.cx, m.cy);
+        ctx.globalCompositeOperation = "lighter";
+
+        // The slash: it swells, settles to the size of the tile, travels to the logo's seam
+        // and gives way to the logo.
+        const swell = easeOutCubic(span(t, SLASH_IN));
+        const settle = easeInOutCubic(span(t, SLASH_SETTLE));
+        const melt = 1 - easeInOutCubic(span(t, MELT)) * 0.95;
+        const strength = swell * (1 - settle * 0.4) * melt;
+        const core = mix(width * 0.17, m.size * 0.82, settle) * (0.3 + 0.7 * swell);
+        const tail = mix(width * 0.7, m.size * 1.7, easeInOutCubic(span(t, [3030, 3700]))) * swell;
+        const travel = easeInOutCubic(span(t, SEAM_AT));
+        slash(mix(m.cx, m.seamX, travel), mix(m.cy, m.seamY, travel), core, tail, strength);
+        // The blaze as the light drains into the slash.
+        const blaze = span(t, [2700, 3030]) * (1 - span(t, [3030, 3300]));
+        bloom(m.cx, m.cy, Math.min(width, height) * 0.3, 0.45 * blaze);
+
+        floorLight(m.cx, m.bottom + m.size * 0.38, m.size, easeOutCubic(span(t, FLOOR)));
+        // The beam is brightest as the tile pops in and has all but gone by the time it rests.
+        const beamK = easeOutCubic(span(t, BEAM)) * (1 - 0.85 * easeInOutCubic(span(t, [4300, 5200])));
+        beam(m.cx, m.top - m.size * 0.5, m.cy, m.size, 0.9 * beamK);
+        adrift(m.cx, m.cy, m.size, easeOutCubic(span(t, MOTES)));
+      } else {
+        // Leaving: the floor light and the sparks fade out with the rest.
+        floorLight(m.cx, m.bottom + m.size * 0.38, m.size, 1 - easeInOutCubic(span(out, [0, 500])));
+        adrift(m.cx, m.cy, m.size, 1 - easeInOutCubic(span(out, [0, 400])));
+      }
+
+
+      // The grain, faint, over everything.
+      if (grainPattern) {
+        ctx.globalCompositeOperation = "source-over";
+        ctx.globalAlpha = 0.05;
+        ctx.save();
+        ctx.translate(Math.random() * 160, Math.random() * 160);
+        ctx.fillStyle = grainPattern;
+        ctx.fillRect(-160, -160, width + 320, height + 320);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+      ctx.globalCompositeOperation = "source-over";
+      return { m };
     };
 
     const cleanup = () => {
@@ -294,15 +587,18 @@ export default function Splash({ hold, panel, onDone }: Props) {
     };
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      // No motion: a still funnel, the panel simply there until signed in, then a quick fade.
-      turn = 4000;
-      draw(1, 0);
+      // No motion: the tile in place with its floor light, the panel simply there until
+      // signed in, then a quick fade.
+      time = 6000;
+      const still = () => draw(READY_AT + 2000, -1, 0);
+      timers.push(window.setTimeout(still, 30));
+      window.addEventListener("resize", still);
       const check = () => {
         if (finished) return;
         story = READY_AT;
         if (holdRef.current === true) {
           setSplit(1);
-          draw(1, 0);
+          still();
           moveTo("holding");
         } else if (holdRef.current === false) {
           setSplit(0);
@@ -313,19 +609,20 @@ export default function Splash({ hold, panel, onDone }: Props) {
         timers.push(window.setTimeout(check, 100));
       };
       check();
-      return cleanup;
+      return () => {
+        window.removeEventListener("resize", still);
+        cleanup();
+      };
     }
 
-    // A head start, so the threads are already wavering when they come into view.
-    turn = 3000;
     let last = performance.now();
-
     const tick = (now: number) => {
       if (finished) return;
       const dt = Math.min(now - last, 32);
       last = now;
+      time += dt;
       // The scene follows the pointer with a lag, as a heavy thing would.
-      const ease = 1 - Math.exp(-dt / 260);
+      const ease = 1 - Math.exp(-dt / 300);
       lean.x += (pointer.x - lean.x) * ease;
       lean.y += (pointer.y - lean.y) * ease;
       root.style.setProperty("--lean-x", lean.x.toFixed(3));
@@ -340,28 +637,16 @@ export default function Splash({ hold, panel, onDone }: Props) {
       // The story waits at READY_AT until it's known whether to sign in, and while signing in.
       if (story < READY_AT || hold === false) story += dt;
       if (exitAt < 0 && hold === false && story >= READY_AT + (split > 0 ? 0 : LINGER_MS)) exitAt = now;
-      // The name lifts once the panel is out of the way.
-      if (exitAt >= 0 && liftAt < 0 && split === 0) {
-        liftAt = now;
+      // The tile goes once the panel is out of the way.
+      if (exitAt >= 0 && leaveAt < 0 && split === 0) {
+        leaveAt = now;
         moveTo("exit");
       }
       if (exitAt < 0) moveTo(story < READY_AT ? "intro" : split === 1 ? "holding" : "ready");
 
-      const intro = clamp01(story / FADE_IN_MS);
-      const out = liftAt >= 0 ? now - liftAt : 0;
-      const wind = clamp01((out - WIND_AT) / WIND_MS);
-      turn += dt;
-      const { cx, cy } = draw(intro, wind);
-
-      // The screen opens from the centre onto the dashboard underneath.
-      const open = clamp01((out - OPEN_AT) / OPEN_MS);
-      if (open > 0) {
-        const hole = easeInCubic(open) * Math.hypot(width, height);
-        const mask = `radial-gradient(circle at ${cx}px ${cy}px, transparent ${hole}px, #000 ${hole + 80}px)`;
-        root.style.setProperty("mask-image", mask);
-        root.style.setProperty("-webkit-mask-image", mask);
-      }
-      if (open >= 1) {
+      const out = leaveAt >= 0 ? now - leaveAt : -1;
+      draw(Math.min(story, READY_AT + 4000), out, dt);
+      if (out >= EXIT_MS) {
         finish();
         return;
       }
@@ -381,21 +666,24 @@ export default function Splash({ hold, panel, onDone }: Props) {
     <div ref={rootRef} className={`splash splash--${phase}${skipped ? " splash--skipped" : ""}`}>
       <canvas ref={canvasRef} className="splash__canvas" aria-hidden="true" />
       <div className="splash__title">
-        <Logo size={112} depth={20} spin className="splash__logo" />
-        <h1 className="splash__name" aria-label={NAME}>
-          {[...NAME].map((letter, i) => (
-            <span
-              key={i}
-              className={`splash__letter${i >= 3 ? " splash__letter--dash" : ""}`}
-              style={{ "--i": i } as React.CSSProperties}
-              aria-hidden="true"
-            >
-              {letter}
-            </span>
-          ))}
-        </h1>
-        <span className="splash__rule" aria-hidden="true" />
-        <p className="splash__tagline">Every project, change and plan in one place</p>
+        {/* The slot holds the tile's place while the tile pops into it. */}
+        <div ref={slotRef} className="splash__slot">
+          <div className="splash__rise">
+            <div className="splash__sway">
+              <LightTile />
+            </div>
+          </div>
+          <div className="splash__words">
+            <h1 className="splash__name" aria-label="Looma">
+              {[...NAME].map((letter, i) => (
+                <span key={i} className="splash__letter" style={{ "--i": i, "--r": NAME.length - 1 - i } as CSSProperties} aria-hidden="true">
+                  {letter}
+                </span>
+              ))}
+            </h1>
+            <p className="splash__tagline">Every project, change and plan in one place</p>
+          </div>
+        </div>
       </div>
       <p className="splash__hint">Click or press any key to skip</p>
       {kept.current && (

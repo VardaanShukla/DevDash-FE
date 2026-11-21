@@ -28,7 +28,7 @@ export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; in
   { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
   { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit and shortcut keys", icon: <SettingsIcon /> },
-  { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
+  { id: "help", label: "Help", hint: "Set Looma up and learn what each screen shows", icon: <HelpIcon /> },
 ];
 export type SettingsSection =
   | "general"
@@ -74,9 +74,20 @@ export function settingsSectionLabel(id: SettingsSection): string {
   return "Settings";
 }
 
-// Settings and Help sit apart, at the bottom of the menu.
-const BOTTOM = 2;
-const MENU = VIEWS.filter((view) => view.inMenu !== false);
+// The menu's top level stays short: the screens about the branch's code and the ones that
+// explain the project fold into two groups, opened like Settings. A group opens by itself
+// while one of its screens is on show. Settings and Help sit apart, at the bottom.
+type Group = { id: string; label: string; hint: string; icon: ReactNode; views: View[] };
+const GROUPS: Group[] = [
+  { id: "code", label: "Code", hint: "Changes, commits, this branch and how branches flow", icon: <CodeIcon />,
+    views: ["changes", "commits", "overview", "flow"] },
+  { id: "understand", label: "Understand", hint: "The project's summary, map, KT guide and questions about it", icon: <BookIcon />,
+    views: ["summary", "map", "kt", "ask"] },
+];
+const TOP: (View | Group)[] = ["home", "digest", GROUPS[0], GROUPS[1], "project"];
+const BOTTOM: View[] = ["settings", "help"];
+const entryOf = (id: View) => VIEWS.find((view) => view.id === id)!;
+const groupOf = (id: View) => GROUPS.find((group) => group.views.includes(id));
 
 type Props = {
   view: View;
@@ -113,21 +124,24 @@ function badgeText(count: number): string {
 }
 
 const NARROW = "(max-width: 1100px)";
+// Where the menu is a bar along the bottom (see SideMenu.css).
+const PHONE = "(max-width: 720px)";
 
-function useNarrow(): boolean {
-  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
+function useMedia(media: string): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia(media).matches);
   useEffect(() => {
-    const query = window.matchMedia(NARROW);
-    const change = () => setNarrow(query.matches);
+    const query = window.matchMedia(media);
+    const change = () => setMatches(query.matches);
     query.addEventListener("change", change);
     return () => query.removeEventListener("change", change);
-  }, []);
-  return narrow;
+  }, [media]);
+  return matches;
 }
 
 export default function SideMenu({ view, onView, badges = {}, project, keys = {}, settings, onSettings, aiInUse, off = {} }: Props) {
   const [collapsed, setCollapsed] = useState(savedCollapsed);
-  const narrow = useNarrow();
+  const narrow = useMedia(NARROW);
+  const phone = useMedia(PHONE);
   const folded = collapsed || narrow;
   const fold = () => {
     setCollapsed(!collapsed);
@@ -139,10 +153,19 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
   };
   // A Home section's full screen lights Home in the menu.
   const lit = VIEWS.find((entry) => entry.id === view)?.inMenu === false ? "home" : view;
-  const item = (entry: (typeof VIEWS)[number]) => (
+  // One group is open at a time: the one picked by hand, else the one holding the screen on
+  // show. Closing that one keeps it closed until another screen is picked. On a phone a group
+  // floats over the screen, so it opens only when tapped and closes once a screen is picked.
+  const holding = groupOf(lit)?.id ?? null;
+  const [picked, setPicked] = useState<string | null>(null);
+  useEffect(() => setPicked(null), [lit]);
+  const current = picked === null ? (phone ? null : holding) : picked === "" ? null : picked;
+  const showing = (group: Group) => current === group.id;
+  const toggle = (group: Group) => setPicked(showing(group) ? "" : group.id);
+  const item = (entry: (typeof VIEWS)[number], child = false) => (
     <button
       key={entry.id}
-      className={`menu__item${lit === entry.id ? " menu__item--active" : ""}${off[entry.id] ? " menu__item--off" : ""}`}
+      className={`menu__item${child ? " menu__item--child" : ""}${lit === entry.id ? " menu__item--active" : ""}${off[entry.id] ? " menu__item--off" : ""}`}
       onClick={() => onView(entry.id)}
       data-tour={entry.id}
       aria-current={view === entry.id ? "page" : undefined}
@@ -151,7 +174,7 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
       <span className="menu__icon">{entry.icon}</span>
       <span className="menu__label">{entry.label}</span>
       {badges[entry.id] ? (
-        <span className="menu__badge" title={String(badges[entry.id])}>
+        <span className={`menu__badge menu__badge--${entry.id}`} title={String(badges[entry.id])}>
           {badgeText(badges[entry.id]!)}
         </span>
       ) : null}
@@ -201,6 +224,33 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
     </div>
   );
 
+  const group = (entry: Group) => {
+    const open = showing(entry);
+    const inside = entry.id === holding;
+    // Closed, the group carries its screens' counts so nothing hides behind it.
+    const count = open ? 0 : entry.views.reduce((sum, id) => sum + (badges[id] ?? 0), 0);
+    return (
+      <div key={entry.id} className={`menu__group${open ? " menu__group--open" : ""}`}>
+        <button
+          className={`menu__item menu__item--group${inside && !open ? " menu__item--active" : ""}${inside ? " menu__item--holding" : ""}`}
+          onClick={() => toggle(entry)}
+          aria-expanded={open}
+          title={`${entry.label}: ${entry.hint}`}
+        >
+          <span className="menu__icon">{entry.icon}</span>
+          <span className="menu__label">{entry.label}</span>
+          {count > 0 && <span className="menu__badge menu__badge--changes">{badgeText(count)}</span>}
+          <ChevronIcon open={open} />
+        </button>
+        <div className="menu__drawer" inert={!open}>
+          <div className="menu__sub menu__sub--views" role="group" aria-label={entry.label}>
+            {entry.views.map((id) => item(entryOf(id), true))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <aside className={`menu${folded ? " menu--collapsed" : ""}`}>
       <div className="menu__head">
@@ -210,21 +260,21 @@ export default function SideMenu({ view, onView, badges = {}, project, keys = {}
             type="button"
             className="menu__fold"
             onClick={fold}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Show the menu's names" : "Fold the menu to icons"}
-            title={collapsed ? "Show names" : "Fold to icons"}
+            aria-expanded={!folded}
+            aria-label={folded ? "Show the menu's names" : "Fold the menu to icons"}
+            title={folded ? "Show names" : "Fold to icons"}
           >
-            <FoldIcon collapsed={collapsed} />
+            <FoldIcon collapsed={folded} />
           </button>
         )}
       </div>
       {project && <div className="menu__project">{project}</div>}
       <nav className="menu__nav" aria-label="Views">
-        {MENU.slice(0, -BOTTOM).map(item)}
+        {TOP.map((entry) => (typeof entry === "string" ? item(entryOf(entry)) : group(entry)))}
         <span className="menu__spacer" />
-        {MENU.slice(-BOTTOM, -1).map(item)}
+        {item(entryOf(BOTTOM[0]))}
         {settingsParts}
-        {MENU.slice(-1).map(item)}
+        {item(entryOf(BOTTOM[1]))}
       </nav>
     </aside>
   );
@@ -443,6 +493,25 @@ function KtIcon() {
     <svg {...iconProps}>
       <path d="M12 6c-2-1.5-4.5-2-8-2v15c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2V4c-3.5 0-6 .5-8 2Z" />
       <path d="M12 6v15" />
+    </svg>
+  );
+}
+
+// Angle brackets, for the screens about the code itself.
+function CodeIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M8 7l-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14" />
+    </svg>
+  );
+}
+
+// An open lightbulb, for the screens that explain the project.
+function BookIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V16h5v-.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" />
     </svg>
   );
 }

@@ -63,15 +63,61 @@
   min-width: 0;
   min-height: 0;
   margin: 0;
-  padding: 18px 20px;
+  padding: 16px 18px;
   overflow: hidden;
+}
+
+/* The dashboard's own panel: a flat instrument face with a hairline edge, not a floating card. */
+.wf--glass > .wf__panel,
+.wf--glass.wf--own > .card {
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 12px;
+  background: linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+  box-shadow: var(--dd-panel-shadow);
+  backdrop-filter: none;
+}
+
+/* The branch's size is the one hot instrument: lit from below in the brand orange, its edge
+   catching the light. */
+.wf--total-changes.wf--glass > .wf__panel {
+  position: relative;
+  border-color: color-mix(in srgb, var(--dd-blue) 38%, var(--dd-panel-line));
+  background:
+    radial-gradient(110% 70% at 50% 112%, var(--dd-panel-hot), transparent 70%),
+    radial-gradient(70% 45% at 100% 0%, color-mix(in srgb, var(--dd-panel-hot) 40%, transparent), transparent 70%),
+    linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+  box-shadow: var(--dd-panel-shadow), 0 28px 60px -36px color-mix(in srgb, var(--dd-blue) 55%, transparent);
+}
+
+/* Today's AI work: the band carries a faint wash of orange along its floor, where its bars stand. */
+.wf--ai-today.wf--glass > .wf__panel {
+  background:
+    linear-gradient(to top, color-mix(in srgb, var(--dd-panel-hot) 45%, transparent), transparent 70%),
+    linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+}
+
+/* Corner marks on the big list panels, like the registration marks of a sighting frame. */
+.wf--ai-prompts.wf--glass > .wf__panel,
+.wf--activity.wf--glass > .wf__panel {
+  --mark: color-mix(in srgb, var(--dd-accent) 55%, transparent);
+  background:
+    linear-gradient(var(--mark), var(--mark)) left 6px top 6px / 10px 1px,
+    linear-gradient(var(--mark), var(--mark)) left 6px top 6px / 1px 10px,
+    linear-gradient(var(--mark), var(--mark)) right 6px top 6px / 10px 1px,
+    linear-gradient(var(--mark), var(--mark)) right 6px top 6px / 1px 10px,
+    linear-gradient(var(--mark), var(--mark)) left 6px bottom 6px / 10px 1px,
+    linear-gradient(var(--mark), var(--mark)) left 6px bottom 6px / 1px 10px,
+    linear-gradient(var(--mark), var(--mark)) right 6px bottom 6px / 10px 1px,
+    linear-gradient(var(--mark), var(--mark)) right 6px bottom 6px / 1px 10px,
+    linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+  background-repeat: no-repeat;
 }
 
 .board--narrow .wf > .wf__panel {
   overflow: visible;
 }
 
-/* The styles. Glass is the dashboard's own card. */
+/* The other styles the person can pick in a widget's settings. */
 .wf--solid > .wf__panel,
 .wf--solid.wf--own > .card {
   background: var(--dd-card);
@@ -149,7 +195,7 @@
   inset: 0;
   z-index: -1;
   border: 2px dashed var(--dd-accent);
-  border-radius: 22px;
+  border-radius: 12px;
   background: var(--dd-accent-soft);
   pointer-events: none;
 }
@@ -231,7 +277,7 @@
   touch-action: none;
   background:
     linear-gradient(135deg, transparent 0 55%, var(--dd-accent) 55% 62%, transparent 62% 72%, var(--dd-accent) 72% 79%, transparent 79%);
-  border-radius: 0 0 20px 0;
+  border-radius: 0 0 11px 0;
 }
 
 /* --- Inside every widget ------------------------------------------------------------------ */
@@ -249,9 +295,9 @@
   flex: none;
   margin: 0;
   color: var(--dd-ink);
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
 }
 
 .wf__aside {
@@ -259,7 +305,8 @@
   min-width: 0;
   overflow: hidden;
   color: var(--dd-muted);
-  font-size: 12.5px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -271,22 +318,27 @@
   font-size: 12px;
 }
 
+/* Small flat buttons on the panel's head, like an instrument's switches. */
 .wf__link {
   flex: none;
   margin-left: auto;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--dd-accent);
+  padding: 4px 10px;
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--dd-ink) 3%, transparent);
+  color: var(--dd-ink-soft);
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
 }
 
 .wf__link:hover {
-  text-decoration: underline;
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-panel-line));
+  background: var(--dd-accent-soft);
+  color: var(--dd-ink);
 }
 
 .wf__muted {
@@ -319,10 +371,9 @@
 .wf__button {
   align-self: flex-start;
   padding: 7px 14px;
-  border: 1px solid var(--dd-line);
-  border-radius: 999px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel), 0 2px 0 var(--dd-key-edge);
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dd-ink) 4%, transparent);
   color: var(--dd-ink);
   font: inherit;
   font-size: 13px;
@@ -354,11 +405,13 @@
   overflow-y: auto;
 }
 
-/* Greeting. */
+/* The welcome: a plain, confident greeting over one line of where things stand, the way an
+   operations screen names what it watches. The line opens on a light: orange and breathing
+   when something needs you, green and still when all is caught up. */
 .greet {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
   height: 100%;
   min-width: 0;
 }
@@ -370,9 +423,9 @@
 .greet h1 {
   margin: 0;
   overflow: hidden;
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: -0.04em;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -382,15 +435,39 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0 6px;
-  margin: 3px 0 0;
-  color: var(--dd-ink-soft);
-  font-size: 13.5px;
+  gap: 2px 0;
+  margin: 6px 0 0;
+  color: var(--dd-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each fact after the first is set off by a short rule rather than a dot. */
+.greet__sub > * + *::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 1px;
+  margin: 0 10px;
+  vertical-align: middle;
+  background: var(--dd-panel-line);
+  background: color-mix(in srgb, var(--dd-muted) 50%, transparent);
+}
+
+/* Where the facts would wrap, they sit apart on their own rather than behind a rule. */
+@container wf (max-width: 560px) {
+  .greet__sub {
+    gap: 2px 14px;
+  }
+
+  .greet__sub > * + *::before {
+    display: none;
+  }
 }
 
 @container wf (max-width: 420px) {
   .greet h1 {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .greet__sky {
@@ -398,16 +475,48 @@
   }
 }
 
-/* The project on show: its name, large, with the branch under it; opens its summary. */
+/* The project on show, beside an analog chronograph, at the right of the
+   welcome. The clock takes the row's height. */
 .onshow {
-  display: grid;
-  align-content: center;
-  justify-items: end;
-  gap: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
   height: 100%;
   min-width: 0;
-  padding: 0;
-  border: 0;
+}
+
+.onshow__info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.onshow .chrono {
+  width: auto;
+  height: min(104px, 100%);
+  aspect-ratio: 1;
+}
+
+@container wf (max-width: 300px) {
+  .onshow .chrono {
+    display: none;
+  }
+}
+
+/* The project on show, stacked and set right against the clock: what it is, its name, its
+   branch. The whole block opens the project's summary. */
+.onshow__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 0;
+  border: none;
   background: none;
   color: var(--dd-ink);
   font: inherit;
@@ -415,72 +524,70 @@
   cursor: pointer;
 }
 
+.onshow__chip:hover strong,
+.onshow__chip:focus-visible strong {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .onshow__label,
 .onshow__path {
   max-width: 100%;
   overflow: hidden;
   color: var(--dd-muted);
-  font-size: 12.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.onshow strong {
+.onshow__chip strong {
   max-width: 100%;
   overflow: hidden;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
+  font-size: 16px;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.onshow code {
+.onshow__chip code {
   max-width: 100%;
   overflow: hidden;
-  color: var(--dd-ink-soft);
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--dd-accent-soft);
+  color: var(--dd-brand-ink);
   font-family: var(--dd-mono);
-  font-size: 12.5px;
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.onshow:hover strong,
-.onshow:focus-visible strong {
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 4px;
-}
 
+/* The sky for the time of day, drawn in the brand's light on a dark tile. */
 .greet__sky {
   display: grid;
   flex: none;
   place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  color: #fff;
-  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--dd-blue) 35%, var(--dd-panel-line));
+  border-radius: 12px;
+  background:
+    radial-gradient(80% 70% at 50% 100%, var(--dd-panel-hot), transparent 75%),
+    linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+  box-shadow: var(--dd-panel-shadow);
+  color: var(--dd-brand-ink);
 }
 
-.greet__sky--morning {
-  background: linear-gradient(160deg, #fbbf6a, #f0763c);
-}
-
-.greet__sky--afternoon {
-  background: linear-gradient(160deg, #38bdf8, #0e7490);
-}
-
-.greet__sky--evening {
-  background: linear-gradient(160deg, #f97a5a, #9d3c78);
-}
-
-.greet__sky--night {
-  background: linear-gradient(160deg, #4f46e5, #1e1b4b);
+.greet__sky svg {
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--dd-blue) 60%, transparent));
 }
 
 .greet__mood {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 0;
   border: 0;
   background: none;
@@ -489,16 +596,37 @@
   white-space: nowrap;
 }
 
+/* The light before the status. */
+.greet__mood::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent), 0 0 10px currentColor;
+}
+
+.greet__mood--risk::before {
+  animation: light-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes light-breathe {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, currentColor 0%, transparent), 0 0 14px currentColor;
+  }
+}
+
 button.greet__mood {
   cursor: pointer;
 }
 
 button.greet__mood:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .greet__mood--risk {
-  color: var(--dd-del);
+  color: var(--dd-brand-ink);
 }
 
 .greet__mood--warn {
@@ -507,6 +635,12 @@ button.greet__mood:hover {
 
 .greet__mood--calm {
   color: var(--dd-add);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .greet__mood--risk::before {
+    animation: none;
+  }
 }
 
 .band {
@@ -528,13 +662,13 @@ button.greet__mood:hover {
   display: inline-grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 8px;
+  column-gap: 9px;
   justify-self: start;
   max-width: 100%;
   padding: 6px 12px 6px 10px;
-  border: 1px solid var(--dd-line);
-  border-radius: 12px;
-  background: var(--dd-card);
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dd-ink) 3%, transparent);
   color: var(--dd-ink);
   font: inherit;
   text-align: left;
@@ -562,16 +696,16 @@ button.greet__mood:hover {
 
 .band__state {
   grid-row: span 2;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--dd-add);
-  box-shadow: 0 0 0 3px var(--dd-add-bg);
+  box-shadow: 0 0 0 3px var(--dd-add-bg), 0 0 10px var(--dd-add);
 }
 
 .band__state--off {
   background: var(--dd-del);
-  box-shadow: 0 0 0 3px var(--dd-del-bg);
+  box-shadow: 0 0 0 3px var(--dd-del-bg), 0 0 10px var(--dd-del);
 }
 
 .band__today {
@@ -595,8 +729,8 @@ button.greet__mood:hover {
 .band__numbers strong,
 .band__numbers b {
   color: var(--dd-ink);
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 26px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
@@ -615,14 +749,31 @@ button.greet__mood:hover {
   font-size: 14px;
 }
 
-/* Today's prompts, one bar each: a low skyline along the band's floor. */
+/* Today's prompts, one bar each: a low skyline along the band's floor, first prompt to latest. */
+.band__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
 .band__bars {
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  height: 44px;
+  gap: 3px;
+  height: 46px;
   min-width: 0;
-  border-bottom: 1px solid var(--dd-line);
+  border-bottom: 1px solid var(--dd-panel-line);
+}
+
+.band__axis {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--dd-muted);
+  font-family: var(--dd-mono);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 .band__bar {
@@ -640,15 +791,17 @@ button.greet__mood:hover {
 
 .band__bar b {
   display: block;
-  border-radius: 3px 3px 0 0;
-  background: color-mix(in srgb, var(--dd-accent) 70%, transparent);
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(to top, color-mix(in srgb, var(--dd-blue) 45%, transparent), var(--dd-blue));
+  box-shadow: 0 -2px 8px -2px color-mix(in srgb, var(--dd-blue) 70%, transparent);
   transform-origin: bottom;
   animation: bar-grow 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: calc(var(--i, 0) * 30ms + 200ms);
 }
 
 .band__bar--risk b {
-  background: var(--dd-del);
+  background: linear-gradient(to top, color-mix(in srgb, var(--dd-red) 45%, transparent), var(--dd-red));
+  box-shadow: 0 -2px 8px -2px color-mix(in srgb, var(--dd-red) 70%, transparent);
 }
 
 .band__bar--undone b {
@@ -657,13 +810,7 @@ button.greet__mood:hover {
 
 .band__bar:hover b,
 .band__bar:focus-visible b {
-  background: var(--dd-accent);
-}
-
-.band__bar--risk:hover b,
-.band__bar--risk:focus-visible b {
-  background: var(--dd-del);
-  filter: brightness(1.15);
+  filter: brightness(1.25);
 }
 
 @keyframes bar-grow {
@@ -673,11 +820,10 @@ button.greet__mood:hover {
 }
 
 .band__more {
-  padding: 9px 16px;
-  border: 1px solid var(--dd-line);
-  border-radius: 999px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel), 0 2px 0 var(--dd-key-edge);
+  padding: 8px 14px;
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dd-ink) 4%, transparent);
   color: var(--dd-ink);
   font: inherit;
   font-size: 13px;
@@ -687,12 +833,12 @@ button.greet__mood:hover {
 }
 
 .band__more:hover {
-  border-color: var(--dd-accent);
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-panel-line));
+  background: var(--dd-accent-soft);
 }
 
 .band__more:active {
-  transform: translateY(2px);
-  box-shadow: var(--dd-well);
+  transform: translateY(1px);
 }
 
 .band__problems {
@@ -745,26 +891,13 @@ button.greet__mood:hover {
   position: relative;
   z-index: 1;
   display: block;
-  width: min(100%, 330px);
-  padding: 7% 7% 0;
-  border-radius: 50% 50% 28% 28% / 58% 58% 22% 22%;
-  background:
-    radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--dd-card) 92%, #fff 8%), var(--dd-card) 60%),
-    var(--dd-card);
-  box-shadow:
-    var(--dd-well),
-    0 0 0 1px var(--dd-glass-line),
-    0 0 0 7px color-mix(in srgb, var(--dd-card) 75%, var(--dd-line)),
-    0 0 0 8px var(--dd-glass-line),
-    0 30px 40px -24px rgba(0, 0, 0, 0.6);
-  transform: rotateX(16deg);
-  transform-origin: 50% 100%;
-  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  width: min(100%, 320px);
+  transition: transform 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .total__stage:hover .total__bezel,
 .total__stage:focus-visible .total__bezel {
-  transform: rotateX(6deg) translateY(-4px);
+  transform: translateY(-3px);
 }
 
 .total__bezel .ov-gauge__dial {
@@ -803,37 +936,37 @@ button.greet__mood:hover {
   gap: 8px;
 }
 
+/* Readout tiles under the gauge: the number first, what it counts under it. */
 .total__counts button {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 10px 6px 12px;
-  border: 1px solid var(--dd-line);
-  border-radius: 14px;
-  background: linear-gradient(to bottom, var(--dd-key-top), var(--dd-key-bottom));
-  box-shadow: var(--dd-bevel), 0 3px 0 var(--dd-key-edge);
-  color: var(--dd-ink-soft);
+  align-items: flex-start;
+  gap: 2px;
+  padding: 9px 11px 10px;
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dd-panel-bottom) 70%, transparent);
+  color: var(--dd-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 11.5px;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 150ms ease;
+  transition: border-color 150ms ease, color 150ms ease;
 }
 
 .total__counts button:hover {
-  border-color: color-mix(in srgb, var(--dd-accent) 50%, var(--dd-line));
+  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-panel-line));
   color: var(--dd-ink);
 }
 
 .total__counts button:active {
-  transform: translateY(3px);
-  box-shadow: var(--dd-well);
+  transform: translateY(1px);
 }
 
 .total__counts strong {
   color: var(--dd-ink);
-  font-family: var(--dd-mono);
-  font-size: 21px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -940,10 +1073,10 @@ button.greet__mood:hover {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--dd-line);
-  border-radius: 14px;
-  background: var(--dd-card);
+  padding: 12px 14px;
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--dd-ink) 3%, transparent);
 }
 
 .latest__subject {
@@ -1073,8 +1206,8 @@ button.greet__mood:hover {
 }
 
 .picker__item.is-on {
-  border-color: var(--dd-line);
-  background: var(--dd-card);
+  border-color: color-mix(in srgb, var(--dd-accent) 40%, var(--dd-panel-line));
+  background: var(--dd-accent-soft);
   color: var(--dd-ink);
   cursor: default;
 }
@@ -1451,4 +1584,31 @@ button.big:hover strong {
     transition: none;
     transform: none;
   }
+}
+
+/* The files an AI prompt touched, under its time and size. */
+.prompts__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.prompts__files code {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 1px 6px;
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 5px;
+  color: var(--dd-ink-soft);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompts__files em {
+  color: var(--dd-muted);
+  font-size: 11px;
+  font-style: normal;
 }

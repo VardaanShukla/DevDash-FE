@@ -5,6 +5,7 @@ import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { clear, job, result, since, start, useJobs } from "../../lib/aiJobs";
 import { downloadGuide } from "./ktPdf";
 import DetailedKt from "./DetailedKt";
+import Loading, { Progress } from "../Loading/Loading";
 import "./Summary.css";
 
 // The whole project on one screen: what it is, how it works, what it's built with, its
@@ -87,7 +88,6 @@ function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanat
   return (
     <div className="summary">
       <section className="card summary__hero">
-        <span className="summary__eyebrow">Project</span>
         <h2 className="summary__name">{summary.name}</h2>
         {summary.description && <p className="summary__description">{summary.description}</p>}
         {languageFiles > 0 && (
@@ -187,7 +187,7 @@ function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanat
             </ul>
           </>
         ) : (
-          <p className="summary__muted">DevDash found no code links between the parts.</p>
+          <p className="summary__muted">Looma found no code links between the parts.</p>
         )}
         {explanation?.flows?.map((flow) => (
           <div key={flow.name} className="summary__flow">
@@ -389,7 +389,7 @@ function BriefKt({ summary, scope, ai, loadGuide, writeGuide, imageUrl, onSigned
   };
   const problem = run?.state === "failed" ? run.error : null;
 
-  if (loading && !guide) return <section className="card kt"><p className="summary__muted">Reading the KT…</p></section>;
+  if (loading && !guide) return <Loading label="Reading the KT…" shape="doc" />;
   if (!guide) {
     return (
       <section className="card kt kt--empty">
@@ -558,18 +558,18 @@ function Writing({ jobKey, ai }: { jobKey: string; ai: string }) {
   const seconds = Math.max(0, (now - (since(jobKey) ?? now)) / 1000);
   const pace = expected();
   const share = seconds < pace ? (seconds / pace) * 90 : 90 + 8 * (1 - Math.exp(-(seconds - pace) / pace));
-  const stage = share < 6 ? "Reading the project's files" : share < 90 ? `${ai} is writing the KT` : "Almost done";
+  const at = (from: number, to: number): "done" | "now" | "todo" => (share >= to ? "done" : share >= from ? "now" : "todo");
   return (
-    <div className="card kt__progress" role="status">
-      <div className="kt__progress-top">
-        <span>{stage}…</span>
-        <span>{Math.round(share)}% · {Math.round(seconds)} s</span>
-      </div>
-      <div className="kt__bar" aria-hidden="true">
-        <i style={{ width: `${share}%` }} />
-      </div>
-      <p>Usually about {Math.round(pace)} seconds. You can leave this page; it keeps going.</p>
-    </div>
+    <Progress
+      steps={[
+        { label: "Reading the project's files", state: at(0, 6) },
+        { label: `${ai} is writing the KT`, state: at(6, 90) },
+        { label: "Putting the guide together", state: at(90, 101) },
+      ]}
+      share={share}
+      meta={`${Math.round(seconds)} s of about ${Math.round(pace)} s`}
+      note="You can leave this page; it keeps going."
+    />
   );
 }
 

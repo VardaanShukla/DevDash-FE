@@ -32,7 +32,7 @@ export default function Sidebar({ repos, selectedId, onSelect, onAdd, onRemove }
               </span>
               {repo.ai && <span className="sidebar__ai">{repo.ai === "claude" ? "Claude" : repo.ai}</span>}
             </button>
-            <button className="sidebar__remove" onClick={() => onRemove(repo)} aria-label={`Remove ${repo.name}`} title="Remove from DevDash">
+            <button className="sidebar__remove" onClick={() => onRemove(repo)} aria-label={`Remove ${repo.name}`} title="Remove from Looma">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                 <path d="M4 4l8 8M12 4l-8 8" />
               </svg>

@@ -6,7 +6,7 @@ import { attachKt } from "./ktInteract";
 import type { KtModel } from "./ktModel";
 
 // The detailed KT as one page to keep or send: its styles, script and pictures all inside the
-// one .html file, so it opens offline with a double click and works as it does in DevDash
+// one .html file, so it opens offline with a double click and works as it does in Looma
 // (search, the map's filter, jumping to a file, copying a command). Light or dark as the
 // computer is set.
 
@@ -36,6 +36,8 @@ async function inline(src: string) {
 export async function downloadPage(model: KtModel) {
   const images = (await Promise.all(model.images.map(async (image) => ({ ...image, src: (await inline(image.src)) ?? "" })))).filter((i) => i.src);
   const body = renderToStaticMarkup(createElement(KtDocument, { model: { ...model, images } }));
+  // Looma's mark as the tab's icon, inside the file like the pictures.
+  const icon = await inline("/looma.svg");
   const title = `${model.name} · Detailed KT`.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"));
   const html = `<!doctype html>
 <html lang="en">
@@ -43,6 +45,8 @@ export async function downloadPage(model: KtModel) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
+${icon ? `<link rel="icon" href="${icon}">` : ""}
+<meta name="generator" content="Looma">
 <style>${PAGE}
 ${styles}</style>
 </head>

@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { api } from "../../api/client";
-import Logo from "../Logo/Logo";
+import { LightTile } from "../Splash/LoomaTile";
 import "./Login.css";
 
 // The sign-in form, shown in the panel that slides in over the splash. The first time, it
@@ -67,8 +67,8 @@ export default function Login({ setup, onSignedIn }: Props) {
   return (
     <form className={`login${done ? " login--done" : ""}`} onSubmit={submit}>
       <header className="login__head">
-        <Logo size={44} depth={4} />
-        <span className="login__step">{setup ? "First time here" : "DevDash"}</span>
+        <LightTile className="login__tile" weight={2.2} />
+        <span className="login__step">{setup ? "First time here" : "Looma"}</span>
       </header>
       <div>
         <h1>{setup ? "Make your account" : "Welcome back"}</h1>

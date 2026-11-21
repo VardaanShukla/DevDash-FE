@@ -1,0 +1,103 @@
+/* The chronograph's colours come from the theme: the face is the darkest panel, the hands the
+   ink, and the seconds hand the brand's orange with the splash's soft glow. */
+.chrono {
+  display: block;
+  flex: none;
+}
+
+.chrono__bezel {
+  fill: none;
+  stroke: var(--dd-panel-line);
+  stroke-width: 6;
+}
+
+.chrono__face {
+  stroke: color-mix(in srgb, var(--dd-ink) 14%, transparent);
+  stroke-width: 1;
+}
+
+.chrono__face-top {
+  stop-color: color-mix(in srgb, var(--dd-ink) 6%, var(--dd-panel-top));
+}
+
+.chrono__face-bottom {
+  stop-color: var(--dd-panel-bottom);
+}
+
+.chrono__ticks line,
+.chrono__subticks line {
+  stroke: color-mix(in srgb, var(--dd-ink) 35%, transparent);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+
+.chrono__ticks .is-big {
+  stroke: var(--dd-ink);
+  stroke-width: 3;
+}
+
+.chrono__subticks .is-big {
+  stroke: color-mix(in srgb, var(--dd-ink) 70%, transparent);
+  stroke-width: 1.6;
+}
+
+.chrono__sub {
+  fill: color-mix(in srgb, var(--dd-ink) 4%, transparent);
+  stroke: color-mix(in srgb, var(--dd-ink) 18%, transparent);
+  stroke-width: 1;
+}
+
+.chrono__window {
+  fill: var(--dd-panel-bottom);
+  stroke: color-mix(in srgb, var(--dd-ink) 25%, transparent);
+  stroke-width: 1;
+}
+
+.chrono__date {
+  fill: var(--dd-ink);
+  font-family: var(--dd-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chrono__mark {
+  fill: var(--dd-muted);
+  font-family: var(--dd-display);
+  font-size: 8px;
+  letter-spacing: 0.3em;
+}
+
+.chrono__subhand line {
+  stroke: var(--dd-blue);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.chrono__hand--hour path,
+.chrono__hand--minute path {
+  fill: var(--dd-ink);
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45));
+}
+
+.chrono__hand--second line {
+  stroke: var(--dd-blue);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+
+.chrono__hand--second .chrono__second-glow {
+  stroke-width: 3;
+  opacity: 0.7;
+}
+
+.chrono__hand--second circle {
+  fill: var(--dd-blue);
+}
+
+.chrono__cap {
+  fill: var(--dd-blue);
+}
+
+.chrono__pin {
+  fill: var(--dd-panel-bottom);
+}

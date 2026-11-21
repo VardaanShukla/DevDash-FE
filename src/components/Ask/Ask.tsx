@@ -150,63 +150,96 @@ export default function Ask({ scope, project, ai, ask, onSignedIn }: Props) {
       .catch(() => {});
   };
 
-  const status = !ai ? "Checking your AI…" : !ready ? `${name} needs signing in` : busy ? `${name} is answering…` : `Answered by ${name}`;
+  const status = !ai ? "Checking your AI…" : !ready ? `${name} needs signing in` : busy ? `${name} is answering…` : `${name} is ready`;
+  const empty = turns.length === 0 && !busy;
+  const last = turns[turns.length - 1];
+
+  const composer =
+    ai && !ready ? (
+      <div className="qa__setup">
+        <ClaudeSetup ai={ai} onRefresh={onSignedIn} />
+      </div>
+    ) : (
+      <form className="qa__composer" onSubmit={submit} data-tour="ask-box">
+        <div className="qa__field">
+          <textarea
+            ref={input}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={onKey}
+            placeholder={empty ? `Ask anything about ${project}` : "Ask a follow-up"}
+            rows={1}
+            maxLength={2000}
+            aria-label="Your question"
+          />
+          <div className="qa__field-row">
+            <span className={`qa__model${ready ? (busy ? " qa__model--busy" : " qa__model--on") : ""}`} title={status}>
+              <i aria-hidden="true" />
+              {ai ? (ai.model ? `${name} · ${ai.model}` : name) : "Checking…"}
+            </span>
+            {draft.length > 1600 && <span className="qa__left">{2000 - draft.length} left</span>}
+            <button type="submit" className="qa__send" disabled={busy || !draft.trim() || !ready} aria-label={busy ? "Answering" : "Send"} title="Send (Enter)">
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 16V4M4.5 9.5 10 4l5.5 5.5" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </form>
+    );
 
   return (
-    <div className="qa">
-      <section className="qa__panel card">
-        <header className="qa__bar">
-          <Logo size={34} depth={4} className="qa__brand" />
-          <div className="qa__title">
-            <h2>Ask DevDash</h2>
-            <span className={`qa__status${ready ? (busy ? " qa__status--busy" : " qa__status--on") : ""}`}>
-              <i aria-hidden="true" />
-              {project} · {status}
-            </span>
-          </div>
-          {turns.length > 0 && (
-            <button className="qa__restart" onClick={restart} disabled={busy} title="Clear this conversation and start again">
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M8 3v10M3 8h10" />
-              </svg>
-              New chat
-            </button>
-          )}
-        </header>
+    <div className={`qa${empty ? " qa--empty" : ""}`}>
+      <header className="qa__bar">
+        <span className="qa__project">
+          <strong>{project}</strong>
+          <span className="qa__status">{status}</span>
+        </span>
+        {turns.length > 0 && (
+          <button className="qa__restart" onClick={restart} disabled={busy} title="Clear this conversation and start again">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+            New chat
+          </button>
+        )}
+      </header>
 
-        <div className="qa__stage">
-          <div className="qa__watermark" aria-hidden="true">
-            <Logo size={240} depth={10} />
+      {empty ? (
+        <div className="qa__welcome">
+          <Logo size={44} className="qa__mark" />
+          <h2>What would you like to know about {project}?</h2>
+          {composer}
+          <div className="qa__starters">
+            {STARTERS.map((question) => (
+              <button key={question} onClick={() => send(question)} disabled={!ready}>
+                {question}
+              </button>
+            ))}
           </div>
-
+          <p className="qa__note">Looma explains your code. It never changes it.</p>
+        </div>
+      ) : (
+        <>
           <div className="qa__log" ref={log} aria-live="polite">
-            {turns.length === 0 && !busy ? (
-              <div className="qa__empty">
-                <p>Ask anything about {project}: what a file is for, how the parts fit together, where something happens.</p>
-                <div className="qa__starters">
-                  {STARTERS.map((question) => (
-                    <button key={question} onClick={() => send(question)} disabled={!ready}>
-                      {question}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              turns.map((turn, i) => (
-                <div key={i} className={`qa__turn qa__turn--${turn.role}`}>
-                  {turn.role === "assistant" ? (
-                    <Logo size={26} depth={3} className="qa__avatar" />
-                  ) : (
-                    <span className="qa__avatar qa__avatar--user" aria-hidden="true">
-                      You
-                    </span>
-                  )}
-                  <div className="qa__body">
-                    <span className="qa__who">{turn.role === "user" ? "You" : name}</span>
-                    <div className="qa__bubble">{turn.role === "assistant" ? <Answer text={turn.text} /> : <p>{turn.text}</p>}</div>
-                    {turn.role === "assistant" && (
+            <div className="qa__column">
+              {turns.map((turn, i) =>
+                turn.role === "user" ? (
+                  <div key={i} className="qa__turn qa__turn--user">
+                    <p className="qa__ask">{turn.text}</p>
+                  </div>
+                ) : (
+                  <div key={i} className="qa__turn qa__turn--assistant">
+                    <Logo size={24} className="qa__avatar" />
+                    <div className="qa__body">
+                      <div className="qa__answer">
+                        <Answer text={turn.text} />
+                      </div>
                       <div className="qa__tools">
-                        <button className="qa__tool" onClick={() => copy(i, turn.text)}>
+                        <button className="qa__tool" onClick={() => copy(i, turn.text)} title="Copy the answer">
+                          <svg viewBox="0 0 16 16" aria-hidden="true">
+                            {copied === i ? <path d="M3.5 8.5l3 3 6-7" /> : <><rect x="5" y="5" width="8" height="8" rx="1.5" /><path d="M3 10.5V4a1 1 0 0 1 1-1h6.5" /></>}
+                          </svg>
                           {copied === i ? "Copied" : "Copy"}
                         </button>
                         {(turn.read?.length ?? 0) > 0 && (
@@ -214,92 +247,62 @@ export default function Ask({ scope, project, ai, ask, onSignedIn }: Props) {
                             Read {turn.read!.length === 1 ? turn.read![0] : `${turn.read!.length} files`}
                           </span>
                         )}
-                        {(turn.files?.length ?? 0) > 0 && (
-                          <div className="qa__files">
-                            <span>Ask about</span>
-                            {turn.files!.map((path) => (
-                              <button
-                                key={path}
-                                title={`Ask what ${path} is for`}
-                                onClick={() => send(`What is ${path} for, and how does it connect to the rest?`)}
-                                disabled={busy || !ready}
-                              >
-                                {path}
-                              </button>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    )}
+                      {(turn.files?.length ?? 0) > 0 && (
+                        <div className="qa__files">
+                          <span>Ask about</span>
+                          {turn.files!.map((path) => (
+                            <button
+                              key={path}
+                              title={`Ask what ${path} is for`}
+                              onClick={() => send(`What is ${path} for, and how does it connect to the rest?`)}
+                              disabled={busy || !ready}
+                            >
+                              {path}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ),
+              )}
+              {!busy && last?.role === "assistant" && (last.follow_ups?.length ?? 0) > 0 && (
+                <div className="qa__next">
+                  {last.follow_ups!.map((question) => (
+                    <button key={question} onClick={() => send(question)} disabled={!ready}>
+                      <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M4 4v4a2 2 0 0 0 2 2h6M9.5 7.5 12 10l-2.5 2.5" />
+                      </svg>
+                      {question}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {busy && (
+                <div className="qa__turn qa__turn--assistant">
+                  <Logo size={24} className="qa__avatar qa__avatar--thinking" />
+                  <div className="qa__body">
+                    <p className="qa__thinking">Reading the project…</p>
                   </div>
                 </div>
-              ))
-            )}
-            {!busy && turns[turns.length - 1]?.role === "assistant" && (turns[turns.length - 1].follow_ups?.length ?? 0) > 0 && (
-              <div className="qa__next">
-                <span>Ask next</span>
-                {turns[turns.length - 1].follow_ups!.map((question) => (
-                  <button key={question} onClick={() => send(question)} disabled={!ready}>
-                    {question}
-                  </button>
-                ))}
-              </div>
-            )}
-            {busy && (
-              <div className="qa__turn qa__turn--assistant">
-                <Logo size={26} depth={3} className="qa__avatar" />
-                <div className="qa__body">
-                  <span className="qa__who">{name}</span>
-                  <div className="qa__bubble qa__bubble--thinking">
-                    <i />
-                    <i />
-                    <i />
-                    <span>Reading the project…</span>
-                  </div>
+              )}
+              {failed && (
+                <div className="qa__failed" role="alert">
+                  <span>{failed}</span>
+                  <button onClick={retry}>Ask again</button>
                 </div>
-              </div>
-            )}
-            {failed && (
-              <div className="qa__failed" role="alert">
-                <span>{failed}</span>
-                <button onClick={retry}>Ask again</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {ai && !ready ? (
-          <div className="qa__setup">
-            <ClaudeSetup ai={ai} onRefresh={onSignedIn} />
-          </div>
-        ) : (
-          <form className="qa__composer" onSubmit={submit} data-tour="ask-box">
-            <div className="qa__field">
-              <textarea
-                ref={input}
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onKey}
-                placeholder={`Ask anything about ${project}…`}
-                rows={1}
-                maxLength={2000}
-                aria-label="Your question"
-              />
-              <button type="submit" className="qa__send" disabled={busy || !draft.trim() || !ready} aria-label={busy ? "Answering" : "Send"} title="Send">
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M10 16V4M4.5 9.5 10 4l5.5 5.5" />
-                </svg>
-              </button>
+              )}
             </div>
-            <p className="qa__hint">
-              <span>
-                <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
-              </span>
-              {draft.length > 1600 && <span>{2000 - draft.length} characters left</span>}
+          </div>
+          <div className="qa__dock">
+            {composer}
+            <p className="qa__note">
+              <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line. Looma explains your code; it never changes it.
             </p>
-          </form>
-        )}
-      </section>
+          </div>
+        </>
+      )}
     </div>
   );
 }

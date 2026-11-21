@@ -59,7 +59,7 @@ async function request<T>(path: string, method = "GET", body?: unknown): Promise
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError("Can't reach the DevDash backend. Start it with `devdash serve`.", 0);
+    throw new ApiError("Can't reach the Looma backend. Start it with `devdash serve`.", 0);
   }
   if (!response.ok) {
     // The dashboard's sign-in ran out or was ended elsewhere: show the login again.
@@ -68,7 +68,7 @@ async function request<T>(path: string, method = "GET", body?: unknown): Promise
     const detail = typeof body?.detail === "string" ? body.detail : response.statusText;
     // The dev proxy answers 5xx when nothing is listening on the backend's port.
     if (response.status >= 500 && !body) {
-      throw new ApiError("Can't reach the DevDash backend. Start it with `devdash serve`.", 0);
+      throw new ApiError("Can't reach the Looma backend. Start it with `devdash serve`.", 0);
     }
     // A route the running backend doesn't know: it was started before an update.
     if (response.status === 405) {
@@ -140,7 +140,7 @@ export const api = {
   ai: () => get<AiStatus>("/api/ai"),
   aiProviders: () => get<AiStatus[]>("/api/ai/providers"),
   ollama: () => get<OllamaState>("/api/ollama"),
-  // confirm: the person said yes to DevDash asking for their password (the Linux service).
+  // confirm: the person said yes to Looma asking for their password (the Linux service).
   ollamaStart: (confirm = false) => request<OllamaState>("/api/ollama/start", "POST", { confirm }),
   ollamaStop: (confirm = false) => request<OllamaState>("/api/ollama/stop", "POST", { confirm }),
   ollamaUsage: () => get<OllamaUsage>("/api/ollama/usage"),

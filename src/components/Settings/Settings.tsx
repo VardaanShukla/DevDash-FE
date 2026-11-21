@@ -5,8 +5,9 @@ import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { SETTINGS_SECTIONS, type SettingsSection } from "../SideMenu/SideMenu";
 import { FIXED, SHORTCUTS, keyLabel, keyName } from "../../shortcuts";
 import "./Settings.css";
+import BrandLogo from "../BrandLogo/BrandLogo";
 
-// Settings: how DevDash looks, whether uncommitted work shows from the start, the account
+// Settings: how Looma looks, whether uncommitted work shows from the start, the account
 // (password and signing out) and the keyboard shortcuts. Saved by the backend, so every
 // browser you sign in from gets the same.
 
@@ -35,7 +36,7 @@ type Props = {
 };
 
 export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh, onCloned, back }: Props) {
-  // An AI can be installed, signed in or out outside DevDash: look again on opening Settings.
+  // An AI can be installed, signed in or out outside Looma: look again on opening Settings.
   useEffect(() => onAiRefresh(), [onAiRefresh]);
   const [list, setList] = useState<AiStatus[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -152,10 +153,10 @@ function Appearance({ prefs, onPrefs }: { prefs: Preferences; onPrefs: Props["on
           />
           <span className="settings__track" aria-hidden="true" />
           <span>
-            <strong>Show uncommitted work from the start</strong>
+            <strong>Show uncommitted work</strong>
             <span className="settings__note">
-              Changes, This branch and the map include edits you haven't committed yet, every time DevDash opens. You
-              can still turn it on or off for a while with Uncommitted work at the top.
+              Changes, This branch and the map include edits you haven't committed yet. It applies at once and stays
+              on until you turn it off; the shortcut key for it turns it on or off for a while.
             </span>
           </span>
         </label>
@@ -164,7 +165,7 @@ function Appearance({ prefs, onPrefs }: { prefs: Preferences; onPrefs: Props["on
             <strong>Keep AI changes' lines for</strong>
             <span className="settings__note">
               Older prompts stay in AI changes with their files and line counts, but their lines are cleared to save
-              space and they can't be undone from DevDash.
+              space and they can't be undone from Looma.
             </span>
           </span>
           <select
@@ -206,6 +207,7 @@ function AiOverview({ list, error, prefs, onOpen }: {
           return (
             <li key={id}>
               <button type="button" className="ai-list__row" onClick={() => onOpen(`ai/${id}` as SettingsSection)}>
+                <BrandLogo brand={id} size={18} tile />
                 <span className="ai-list__name">
                   <strong>{p?.name ?? id}</strong>
                   <span>{inUse && p?.model ? `${BLURB[id]} Model: ${p.model}.` : BLURB[id]}</span>
@@ -249,6 +251,7 @@ function AiPage({ provider, status, prefs, onPrefs, onRefresh }: {
     <section className="card settings__section">
       <div className="settings__head">
         <span className="ai-page__title">
+          <BrandLogo brand={provider} size={20} tile />
           <h2>{status?.name ?? provider}</h2>
           <span className={`ai-picker__state ai-picker__state--${state}`}>{BADGE[state]}</span>
         </span>
@@ -620,13 +623,13 @@ type Switch = "start" | "stop";
 
 // What Start and Stop go through, under the status.
 const MANAGED_BY: Record<NonNullable<OllamaState["managed_by"]>, string> = {
-  devdash: "Started from DevDash",
+  devdash: "Started from Looma",
   service: "Runs as a Linux system service",
   app: "Runs from the Ollama app",
   command: "Started with ollama serve",
 };
 
-// Before DevDash asks Linux to start or stop Ollama's system service as administrator:
+// Before Looma asks Linux to start or stop Ollama's system service as administrator:
 // exactly what runs, what it changes, and where the password goes. The backend refuses
 // the step until this was answered, so nothing reaches the password window unseen.
 function AdminConfirm({ verb, onContinue, onCancel, onCheck }: {
@@ -649,7 +652,7 @@ function AdminConfirm({ verb, onContinue, onCancel, onCheck }: {
     <div className="ollama__ask" role="group" aria-labelledby="ollama-ask-title" onKeyDown={(event) => event.key === "Escape" && onCancel()}>
       <h4 id="ollama-ask-title">{verb === "stop" ? "Stop" : "Start"} Ollama's system service?</h4>
       <p className="settings__note">
-        Ollama was installed as a Linux service, so only an administrator can {verb} it. Here is everything DevDash will do.
+        Ollama was installed as a Linux service, so only an administrator can {verb} it. Here is everything Looma will do.
       </p>
       <dl className="ollama__facts">
         <dt>What runs</dt>
@@ -662,7 +665,7 @@ function AdminConfirm({ verb, onContinue, onCancel, onCheck }: {
           {verb === "stop" && " Explanations from Ollama pause until you start it again."}
         </dd>
         <dt>Your password</dt>
-        <dd>Linux asks for it in its own window. DevDash never sees it and never keeps it.</dd>
+        <dd>Linux asks for it in its own window. Looma never sees it and never keeps it.</dd>
       </dl>
       <div className="ollama__ask-actions">
         <button ref={yes} className="settings__button" onClick={onContinue}>
@@ -692,7 +695,7 @@ function AdminConfirm({ verb, onContinue, onCancel, onCheck }: {
 const SAMPLES = 60;
 const EVERY = 2000;
 
-// The load a local model puts on the computer: the GPU when DevDash can read one (NVIDIA or
+// The load a local model puts on the computer: the GPU when Looma can read one (NVIDIA or
 // AMD), the CPU otherwise, with the memory it holds and the models loaded now.
 function UsageChart() {
   const [usage, setUsage] = useState<OllamaUsage | null>(null);
@@ -928,7 +931,10 @@ export function AiPicker({ prefs, onPrefs, onActiveChange, active }: {
               onClick={() => chosen !== id && pick(id)}
             >
               <span className="ai-picker__top">
-                <strong>{p?.name ?? id}</strong>
+                <span className="ai-picker__name">
+                  <BrandLogo brand={id} size={16} />
+                  <strong>{p?.name ?? id}</strong>
+                </span>
                 <span className={`ai-picker__state ai-picker__state--${state}`} title={p?.detail ?? undefined}>
                   {BADGE[state]}
                 </span>
@@ -1018,7 +1024,7 @@ const CURL_EXAMPLE = `curl http://your-server:8000/v1/chat/completions \\
   -d '{"model": "qwen2.5:7b", "messages": [...]}'`;
 
 // Connecting a model on your own server: paste the curl command that reaches it, or type its
-// address, key and model. DevDash reads the command, never runs it, asks the model a test
+// address, key and model. Looma reads the command, never runs it, asks the model a test
 // question, and keeps the key to itself: the page only ever sees its last four characters.
 function HostedSetup({ ai, onConnected }: { ai: AiStatus | null; onConnected: () => void }) {
   const server = ai?.server ?? null;
@@ -1118,7 +1124,7 @@ function HostedSetup({ ai, onConnected }: { ai: AiStatus | null; onConnected: ()
             </label>
           )}
           <p className="settings__note">
-            DevDash only reads the command, it never runs it. The key stays in DevDash on this computer and isn't shown
+            Looma only reads the command, it never runs it. The key stays in Looma on this computer and isn't shown
             again.
           </p>
           <div className="settings__form-end">
@@ -1167,7 +1173,7 @@ function Account({ username, passwordSet, onSignOut, onPasswordSet }: {
             Signed in{username ? <> as <b>{username}</b></> : null}. Signing in lasts 30 days on each browser.
           </>
         ) : (
-          "No password yet: anyone who can open this computer's DevDash address can use it. Set one to lock it."
+          "No password yet: anyone who can open this computer's Looma address can use it. Set one to lock it."
         )}
       </p>
       <div className="settings__forms">
@@ -1244,7 +1250,7 @@ function PasswordForm({ passwordSet, onChanged }: { passwordSet: boolean; onChan
     setBusy(true);
     api.setPassword(passwordSet ? undefined : name.trim(), password, passwordSet ? current : undefined).then(
       () => {
-        setMessage({ ok: true, text: passwordSet ? "Password changed. Other browsers are signed out." : "Password set. DevDash now asks for it." });
+        setMessage({ ok: true, text: passwordSet ? "Password changed. Other browsers are signed out." : "Password set. Looma now asks for it." });
         setCurrent("");
         setPassword("");
         setAgain("");
@@ -1317,8 +1323,8 @@ function Recording() {
     <section className="card settings__section">
       <h2>Recording</h2>
       <p className="settings__note">
-        When your AI tool and git last told DevDash about something. A prompt only shows in AI changes if its tool
-        ran DevDash's hooks: Claude Code (terminal, editor extensions, the desktop app's Code tab), Codex and
+        When your AI tool and git last told Looma about something. A prompt only shows in AI changes if its tool
+        ran Looma's hooks: Claude Code (terminal, editor extensions, the desktop app's Code tab), Codex and
         Antigravity do; plain chats and Cowork don't.
       </p>
       <ul className="settings__health">
@@ -1370,7 +1376,7 @@ function savedCloneFolder(): string {
   }
 }
 
-// Your GitHub account, connected with GitHub's device sign-in: DevDash shows a code, you
+// Your GitHub account, connected with GitHub's device sign-in: Looma shows a code, you
 // enter it on github.com. Then your repositories, to clone one as a project.
 function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
   const [status, setStatus] = useState<GitHubStatus | null>(null);
@@ -1445,7 +1451,10 @@ function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
     <>
       <section className="card settings__section">
         <div className="settings__head">
-          <h2>GitHub</h2>
+          <span className="ai-page__title">
+            <BrandLogo brand="github" size={20} tile />
+            <h2>GitHub</h2>
+          </span>
           {status.connected && (
             <button className="settings__button settings__button--quiet" onClick={disconnect} disabled={busy}>
               Disconnect
@@ -1468,7 +1477,7 @@ function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
           </>
         ) : status.code ? (
           <div className="github__code">
-            <p className="settings__note">Enter this code on the GitHub page that opened. DevDash connects as soon as you have.</p>
+            <p className="settings__note">Enter this code on the GitHub page that opened. Looma connects as soon as you have.</p>
             <div className="github__code-row">
               <code aria-label="Your code">{status.code}</code>
               <button className="settings__button settings__button--quiet" onClick={copy}>
@@ -1489,7 +1498,7 @@ function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
           <>
             <p className="settings__note">
               Sign in to see your repositories here, clone one as a project in a click, and see each project's open pull
-              requests. Your password never passes through DevDash: you sign in on GitHub's own page.
+              requests. Your password never passes through Looma: you sign in on GitHub's own page.
             </p>
             {(status.configured || status.gh) && (
               <div className="github__signin">
@@ -1549,11 +1558,11 @@ function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
   );
 }
 
-// What DevDash can see, for each way of connecting.
+// What Looma can see, for each way of connecting.
 const CONNECTED_NOTE: Record<NonNullable<GitHubStatus["via"]>, string> = {
-  app: "DevDash can read only the repositories you installed its app on, and can't change anything there. To stop it reading them, disconnect here and revoke DevDash under GitHub → Settings → Applications.",
-  gh: "DevDash borrows the gh tool's sign-in, which can see every repository your account can and also change them. DevDash only reads. Disconnecting here leaves gh signed in; run gh auth logout to sign it out.",
-  token: "DevDash can do what the token allows, and keeps it only on this computer. Disconnecting forgets it here; delete it on GitHub to end it everywhere.",
+  app: "Looma can read only the repositories you installed its app on, and can't change anything there. To stop it reading them, disconnect here and revoke Looma under GitHub → Settings → Applications.",
+  gh: "Looma borrows the gh tool's sign-in, which can see every repository your account can and also change them. Looma only reads. Disconnecting here leaves gh signed in; run gh auth logout to sign it out.",
+  token: "Looma can do what the token allows, and keeps it only on this computer. Disconnecting forgets it here; delete it on GitHub to end it everywhere.",
 };
 
 function GitHubMark() {
@@ -1631,7 +1640,7 @@ function GitHubRepos({ installUrl, onCloned, onSignedOut }: { installUrl: string
       {repos === null && !error && <p className="settings__note">Asking GitHub…</p>}
       {repos?.length === 0 && (
         <p className="settings__note">
-          DevDash's app isn't installed on any repository yet. Press Pick repositories, choose some on GitHub, then Refresh.
+          Looma's app isn't installed on any repository yet. Press Pick repositories, choose some on GitHub, then Refresh.
         </p>
       )}
       {shown.length > 0 && (
@@ -1662,7 +1671,7 @@ function GitHubRepos({ installUrl, onCloned, onSignedOut }: { installUrl: string
   );
 }
 
-// Your AWS CodeCommit repositories, through one of this computer's AWS profiles: DevDash asks
+// Your AWS CodeCommit repositories, through one of this computer's AWS profiles: Looma asks
 // the AWS CLI to sign each request with it and keeps no keys. Then the region's repositories,
 // to clone one as a project.
 function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
@@ -1750,7 +1759,10 @@ function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
     <>
       <section className="card settings__section">
         <div className="settings__head">
-          <h2>CodeCommit</h2>
+          <span className="ai-page__title">
+            <BrandLogo brand="codecommit" size={20} tile />
+            <h2>CodeCommit</h2>
+          </span>
           {status.connected && (
             <button className="settings__button settings__button--quiet" onClick={disconnect} disabled={busy}>
               Disconnect
@@ -1759,7 +1771,7 @@ function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
         </div>
         {!status.cli ? (
           <p className="settings__note">
-            DevDash reads CodeCommit through the{" "}
+            Looma reads CodeCommit through the{" "}
             <a href="https://aws.amazon.com/cli/" target="_blank" rel="noreferrer">
               AWS CLI
             </a>
@@ -1778,7 +1790,7 @@ function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
               </div>
             </div>
             <p className="settings__note">
-              DevDash keeps no AWS keys: it asks the AWS CLI to sign each request with this profile, so it can do what the
+              Looma keeps no AWS keys: it asks the AWS CLI to sign each request with this profile, so it can do what the
               profile's IAM permissions allow, and only reads. Clones are set up to sign git with the same profile.
             </p>
             <details className="codecommit__switch">
@@ -1790,7 +1802,7 @@ function CodeCommit({ onCloned }: { onCloned?: (repo: Repo) => void }) {
           <>
             <p className="settings__note">
               Pick one of your AWS profiles to see your CodeCommit repositories here, clone one as a project in a click, and
-              see each project's open pull requests. DevDash keeps no keys: it uses the profile the way the AWS CLI does.
+              see each project's open pull requests. Looma keeps no keys: it uses the profile the way the AWS CLI does.
             </p>
             {status.profiles.length === 0 && (
               <p className="settings__note">

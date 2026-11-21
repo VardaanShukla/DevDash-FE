@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="128 128 996 996">
+<!-- The Looma mark, flat: src/components/Splash/LoomaTile.tsx's tile with the "L" drawn in light,
+     with heavier strokes (weight 2.2) so it reads as a tab icon. -->
+<defs>
+<radialGradient id="glow" cx="0.42" cy="0.66" r="0.62"><stop offset="0" stop-color="#b5303c" stop-opacity="0.4"/><stop offset="0.6" stop-color="#5a1622" stop-opacity="0.16"/><stop offset="1" stop-color="#5a1622" stop-opacity="0"/></radialGradient>
+<radialGradient id="sheen" cx="0.12" cy="0.06" r="0.55"><stop offset="0" stop-color="#ffd2b8" stop-opacity="0.1"/><stop offset="1" stop-color="#ffd2b8" stop-opacity="0"/></radialGradient>
+<linearGradient id="stand" gradientUnits="userSpaceOnUse" x1="332" y1="882" x2="470" y2="330"><stop offset="0" stop-color="#fffaf4"/><stop offset="0.55" stop-color="#ffe0cc"/><stop offset="1" stop-color="#ff9a82" stop-opacity="0.4"/></linearGradient>
+<linearGradient id="flat" gradientUnits="userSpaceOnUse" x1="332" y1="882" x2="900" y2="800"><stop offset="0" stop-color="#fffaf4"/><stop offset="0.55" stop-color="#ffe0cc"/><stop offset="1" stop-color="#ff9a82" stop-opacity="0.4"/></linearGradient>
+<radialGradient id="spark"><stop offset="0" stop-color="#fffaf4" stop-opacity="0.95"/><stop offset="0.35" stop-color="#ffb08c" stop-opacity="0.5"/><stop offset="1" stop-color="#d6404a" stop-opacity="0"/></radialGradient>
+<filter id="haze" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
+<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="7"/></filter>
+</defs>
+<rect x="128" y="128" width="996" height="996" rx="290" fill="#0d0709"/>
+<rect x="128" y="128" width="996" height="996" rx="290" fill="url(#glow)"/>
+<rect x="128" y="128" width="996" height="996" rx="290" fill="url(#sheen)"/>
+<rect x="129.5" y="129.5" width="993" height="993" rx="288.5" fill="none" stroke="#ffd2b8" stroke-opacity="0.24" stroke-width="3"/>
+<path d="M408.8 901.2Q508.4 720.8 470.0 330.0Q252.2 656.8 255.2 862.8A79.2 79.2 0 0 0 408.8 901.2Z" fill="#c8323e" opacity="0.5" filter="url(#haze)"/><path d="M376.8 893.2Q453.9 707.2 470.0 330.0Q306.7 670.4 287.2 870.8A46.2 46.2 0 0 0 376.8 893.2Z" fill="#ff8f78" opacity="0.75" filter="url(#soft)"/><path d="M359.7 888.9Q421.9 699.2 470.0 330.0Q338.7 678.4 304.3 875.1A28.6 28.6 0 0 0 359.7 888.9Z" fill="url(#stand)"/>
+<path d="M343.3 960.4Q549.7 983.9 900.0 800.0Q511.9 722.7 320.7 803.6A79.2 79.2 0 0 0 343.3 960.4Z" fill="#c8323e" opacity="0.5" filter="url(#haze)"/><path d="M338.6 927.7Q541.6 928.4 900.0 800.0Q520.0 778.2 325.4 836.3A46.2 46.2 0 0 0 338.6 927.7Z" fill="#ff8f78" opacity="0.75" filter="url(#soft)"/><path d="M336.1 910.3Q536.9 895.8 900.0 800.0Q524.7 810.8 327.9 853.7A28.6 28.6 0 0 0 336.1 910.3Z" fill="url(#flat)"/>
+<circle cx="332" cy="882" r="70" fill="url(#spark)" opacity="0.8"/>
+<g fill="none" stroke="#ffc9a8" stroke-width="35" stroke-linecap="round" stroke-linejoin="round"><path d="M768 464 L720 508 L763 548"/><path d="M851 443 L797 574"/><path d="M880 466 L922 506 L878 546"/></g>
+</svg>

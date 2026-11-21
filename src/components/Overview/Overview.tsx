@@ -9,7 +9,7 @@ import "./Overview.css";
 // left, how big the change is in the middle, where it sits in the project on the right.
 // Every card links to the view with the full detail.
 
-// "merged", "deleted on GitHub", with when DevDash stops showing it; "" for an open branch.
+// "merged", "deleted on GitHub", with when Looma stops showing it; "" for an open branch.
 export function branchNote(branch: BranchInfo): string {
   const state = branch.gone ? "deleted on GitHub" : branch.merged ? "merged" : "";
   if (!state || !branch.removes_at) return state;
@@ -79,7 +79,7 @@ export default function Overview({ comparison, branches, flow, map, onHeadChange
             <p className="ov-branch__done">
               {shown.merged ? `Already merged into ${comparison.base}.` : "Deleted on GitHub."}
               {shown.removes_at &&
-                ` DevDash stops showing it at ${new Date(shown.removes_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}{" "}
+                ` Looma stops showing it at ${new Date(shown.removes_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`}{" "}
               You can remove it with <code>git branch {shown.merged ? "-d" : "-D"} {comparison.head}</code>
             </p>
           )}

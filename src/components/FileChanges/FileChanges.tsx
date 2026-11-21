@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AiStatus, FileChange, FunctionDetail, FunctionExplanation, Hunk, Line } from "../../api/types";
 import FunctionChanges from "../FunctionChanges/FunctionChanges";
 import { FileNote, type FileNoteProps } from "../Summary/Summary";
@@ -7,9 +7,10 @@ import { keyName, typing } from "../../shortcuts";
 import { wordDiff, type Segment } from "./wordDiff";
 import "./FileChanges.css";
 
-// One file at a time: the file list on the left, the selected file's change on the right
-// as before and after, with the changed words marked. Each pane scrolls on its own, so
-// the page itself doesn't grow with the size of the change.
+// A page of its own for reading a change: the changed files down the left (with a filter and
+// the branch's totals), the picked file's change filling the rest, as before and after with
+// the changed words marked. Each pane scrolls on its own, so the page itself doesn't grow
+// with the size of the change.
 
 const STATUS = {
   added: { label: "New file", tone: "add" },
@@ -68,6 +69,7 @@ export default function FileChanges({ files, focus, version, scope, fileNote, lo
   const [selected, setSelected] = useState(ordered[0]?.path ?? null);
   const [layout, setLayout] = useState<Layout>(savedLayout);
   const [mode, setMode] = useState<Mode>("functions");
+  const [query, setQuery] = useState("");
   const narrow = useNarrow();
   const card = useRef<HTMLElement>(null);
 
@@ -111,32 +113,58 @@ export default function FileChanges({ files, focus, version, scope, fileNote, lo
   }, [ordered, index, nextKey, previousKey]);
 
   if (!file) return null;
-  const groups = groupByFolder(ordered);
+  const needle = query.trim().toLowerCase();
+  const groups = groupByFolder(needle ? ordered.filter((item) => item.path.toLowerCase().includes(needle)) : ordered);
+  const added = ordered.reduce((sum, item) => sum + item.additions, 0);
+  const removed = ordered.reduce((sum, item) => sum + item.deletions, 0);
+  const tools = (
+    <>
+      <div className="segmented" role="group" aria-label="Show the change">
+        <button className={mode === "functions" ? "is-on" : ""} onClick={() => setMode("functions")}>
+          By function
+        </button>
+        <button className={mode === "lines" ? "is-on" : ""} onClick={() => setMode("lines")}>
+          Lines
+        </button>
+      </div>
+      <div className="segmented" role="group" aria-label="Diff layout">
+        <button className={layout === "split" ? "is-on" : ""} onClick={() => setLayout("split")} title="Before and after side by side">
+          Split
+        </button>
+        <button className={layout === "unified" ? "is-on" : ""} onClick={() => setLayout("unified")} title="Before and after in one column">
+          Unified
+        </button>
+      </div>
+    </>
+  );
 
   return (
-    <section className="changes card" ref={card}>
-      <header className="changes__header">
-        <h2 className="changes__title">What changed</h2>
-        <div className="segmented" role="group" aria-label="Show the change">
-          <button className={mode === "functions" ? "is-on" : ""} onClick={() => setMode("functions")}>
-            By function
-          </button>
-          <button className={mode === "lines" ? "is-on" : ""} onClick={() => setMode("lines")}>
-            Lines
-          </button>
-        </div>
-        <div className="segmented" role="group" aria-label="Diff layout">
-          <button className={layout === "split" ? "is-on" : ""} onClick={() => setLayout("split")}>
-            Before | After
-          </button>
-          <button className={layout === "unified" ? "is-on" : ""} onClick={() => setLayout("unified")}>
-            One column
-          </button>
-        </div>
-      </header>
-
+    <section className="changes" ref={card}>
       <div className="changes__body">
+        <aside className="changes__side">
+          <div className="changes__totals">
+            <strong>
+              {ordered.length} {ordered.length === 1 ? "file" : "files"} changed
+            </strong>
+            <span>
+              <b className="changes__add">+{added.toLocaleString()}</b> <b className="changes__del">−{removed.toLocaleString()}</b>
+            </span>
+          </div>
+          <label className="changes__filter">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="M10.5 10.5 14 14" />
+            </svg>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Filter files"
+              aria-label="Filter the changed files"
+            />
+          </label>
         <nav className="changes__files" aria-label="Changed files">
+          {groups.length === 0 && <p className="changes__none">No changed file matches “{query}”.</p>}
           {groups.map((group) => (
             <div key={group.folder} className="changes__group">
               <h3 className="changes__folder">{group.folder || "Project root"}</h3>
@@ -150,6 +178,7 @@ export default function FileChanges({ files, focus, version, scope, fileNote, lo
             </div>
           ))}
         </nav>
+        </aside>
 
         <select
           className="select changes__picker"
@@ -182,6 +211,7 @@ export default function FileChanges({ files, focus, version, scope, fileNote, lo
             ai,
             onSignedIn,
           }}
+          tools={tools}
           position={`${index + 1} of ${ordered.length}`}
           onPrevious={index > 0 ? () => setSelected(ordered[index - 1].path) : undefined}
           onNext={index < ordered.length - 1 ? () => setSelected(ordered[index + 1].path) : undefined}
@@ -203,13 +233,14 @@ function FileButton({ file, active, onClick }: { file: FileChange; active: boole
     >
       <span className={`changes__status changes__status--${STATUS[file.status].tone}`} aria-label={STATUS[file.status].label} />
       <span className="changes__name">{name}</span>
-      {file.uncommitted && <span className="changes__dirty" title="Not committed" />}
-      <span className="changes__bar" aria-label={`${file.additions} added, ${file.deletions} removed`}>
-        {total > 0 && (
+      {file.uncommitted ? <span className="changes__dirty" title="Not committed" /> : <span />}
+      <span className="changes__count" aria-label={`${file.additions} added, ${file.deletions} removed`}>
+        {total > 0 ? (
           <>
-            <span className="changes__bar-add" style={{ flex: file.additions }} />
-            <span className="changes__bar-del" style={{ flex: file.deletions }} />
+            <b className="changes__add">+{file.additions}</b> <b className="changes__del">−{file.deletions}</b>
           </>
+        ) : (
+          "0"
         )}
       </span>
     </button>
@@ -231,12 +262,14 @@ type ViewProps = {
     ai: AiStatus | null;
     onSignedIn: () => void;
   };
+  // The view switches, in the file's toolbar.
+  tools: ReactNode;
   position: string;
   onPrevious?: () => void;
   onNext?: () => void;
 };
 
-function FileView({ file, layout, sideBySide, mode, onShowLines, note, functions, position, onPrevious, onNext }: ViewProps) {
+function FileView({ file, layout, sideBySide, mode, onShowLines, note, functions, tools, position, onPrevious, onNext }: ViewProps) {
   const status = STATUS[file.status];
   const slash = file.path.lastIndexOf("/");
 
@@ -256,6 +289,7 @@ function FileView({ file, layout, sideBySide, mode, onShowLines, note, functions
           <p className="view__summary">{summary(file)}</p>
         </div>
         <div className="view__nav">
+          <div className="view__tools">{tools}</div>
           <span>{position}</span>
           <button onClick={onPrevious} disabled={!onPrevious} aria-label="Previous file" title="Previous file (k)">
             ‹

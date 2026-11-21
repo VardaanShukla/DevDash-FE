@@ -73,7 +73,7 @@ export default function ClaudeSignIn({ onSignedIn, provider = "claude", title, i
           <p>
             {signIn?.state === "failed"
               ? `Signing in didn't work${signIn.detail ? ` (${signIn.detail})` : ""}. Try again.`
-              : intro ?? `DevDash asks your ${name} account. Your sign-in has run out or was never made on this computer.`}
+              : intro ?? `Looma asks your ${name} account. Your sign-in has run out or was never made on this computer.`}
           </p>
           <button type="button" className="signin__button" onClick={start} disabled={busy}>
             {busy ? "Opening the sign-in page…" : `Sign in to ${name}`}

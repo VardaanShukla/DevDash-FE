@@ -1,12 +1,11 @@
 /* Pieces shared by every view: the glass card, selects and pills. */
 .card {
-  background: var(--dd-glass);
-  border: 1px solid var(--dd-glass-line);
-  border-radius: 22px;
-  /* A raised panel: lit top edge, and a shadow that falls further than it spreads. */
-  box-shadow: var(--dd-bevel), var(--dd-raise);
+  background: linear-gradient(to bottom, var(--dd-panel-top), var(--dd-panel-bottom));
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 14px;
+  /* A flat panel with a hairline edge: depth comes from the edge, not from blur or glow. */
+  box-shadow: var(--dd-panel-shadow);
   padding: 24px 28px;
-  backdrop-filter: blur(16px) saturate(140%);
 }
 
 /* Every select draws its own chevron, so it reads the same in both themes and on every

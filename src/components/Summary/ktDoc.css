@@ -5,7 +5,7 @@
   --k-muted: var(--dd-muted, #5e6478);
   --k-line: var(--dd-line, rgba(23, 26, 43, 0.12));
   --k-card: var(--dd-card, #ffffff);
-  --k-soft: var(--dd-glass, rgba(91, 91, 214, 0.05));
+  --k-soft: var(--dd-glass, rgba(255, 106, 0, 0.05));
   --k-accent: var(--dd-accent, #5b5bd6);
   --k-code: var(--dd-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   display: grid;
@@ -80,7 +80,7 @@
 .ktdoc__cover {
   padding: 26px 28px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #10132a, #2c2f7a);
+  background: radial-gradient(120% 140% at 20% 120%, #b83d00 0%, #3a1404 45%, #0a0503 80%);
   color: #fff;
   display: flex;
   flex-direction: column;
@@ -409,8 +409,8 @@
   gap: 8px;
   padding: 8px 8px 8px 12px;
   border-radius: 10px;
-  background: #10132a;
-  color: #e7e9ff;
+  background: #120a05;
+  color: #fff1e6;
 }
 
 .ktdoc__command code {
