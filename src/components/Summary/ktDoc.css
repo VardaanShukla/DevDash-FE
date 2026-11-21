@@ -1,0 +1,875 @@
+/* The detailed KT. Used on the KT tab and inlined in the page to download, so its colours fall
+   back to their own values where the app's theme isn't there. */
+.ktdoc {
+  --k-ink: var(--dd-ink, #171a2b);
+  --k-muted: var(--dd-muted, #5e6478);
+  --k-line: var(--dd-line, rgba(23, 26, 43, 0.12));
+  --k-card: var(--dd-card, #ffffff);
+  --k-soft: var(--dd-glass, rgba(91, 91, 214, 0.05));
+  --k-accent: var(--dd-accent, #5b5bd6);
+  --k-code: var(--dd-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  color: var(--k-ink);
+  line-height: 1.5;
+}
+
+.ktdoc h2,
+.ktdoc h3,
+.ktdoc h4,
+.ktdoc p {
+  margin: 0;
+}
+
+.ktdoc code {
+  font-family: var(--k-code);
+  font-size: 0.92em;
+}
+
+/* Contents: down the side; across the top on a narrow screen. */
+.ktdoc__nav {
+  position: sticky;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--k-line);
+  border-radius: 14px;
+  background: var(--k-card);
+  font-size: 13px;
+}
+
+.ktdoc__nav ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ktdoc__nav a {
+  display: flex;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ktdoc__nav a:hover {
+  background: var(--k-soft);
+}
+
+.ktdoc__nav a span {
+  min-width: 18px;
+  color: var(--k-accent);
+  font-weight: 700;
+}
+
+.ktdoc__main {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+.ktdoc__cover {
+  padding: 26px 28px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #10132a, #2c2f7a);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ktdoc__eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.ktdoc__cover h2 {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.ktdoc__lead {
+  font-size: 16px;
+  max-width: 62ch;
+}
+
+.ktdoc__meta {
+  font-size: 12.5px;
+  opacity: 0.7;
+}
+
+.ktdoc__block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px;
+  border: 1px solid var(--k-line);
+  border-radius: 18px;
+  background: var(--k-card);
+  scroll-margin-top: 12px;
+}
+
+.ktdoc__block h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+}
+
+.ktdoc__block h3 span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--k-accent);
+  color: #fff;
+  font-size: 14px;
+}
+
+.ktdoc__block h4 {
+  margin-top: 6px;
+  font-size: 14px;
+}
+
+.ktdoc__intro,
+.ktdoc__hint,
+.ktdoc__note {
+  color: var(--k-muted);
+  font-size: 13.5px;
+}
+
+.ktdoc__facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.ktdoc__fact {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--k-soft);
+}
+
+.ktdoc__fact span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--k-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ktdoc__tech {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ktdoc__tech li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border: 1px solid var(--k-line);
+  border-radius: 10px;
+  font-size: 13px;
+  max-width: 260px;
+}
+
+.ktdoc__tech span {
+  color: var(--k-muted);
+  font-size: 12px;
+}
+
+.ktdoc__picture {
+  margin: 4px 0 0;
+}
+
+.ktdoc__picture img {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--k-line);
+  border-radius: 12px;
+}
+
+.ktdoc__picture figcaption {
+  margin-top: 6px;
+  color: var(--k-muted);
+  font-size: 12.5px;
+}
+
+/* The map. */
+.ktdoc__map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+}
+
+.ktdoc__link {
+  stroke: var(--k-muted);
+  stroke-width: 1.4;
+  opacity: 0.7;
+}
+
+.ktdoc__arrowhead {
+  fill: var(--k-muted);
+}
+
+.ktdoc__node {
+  cursor: pointer;
+  outline: none;
+}
+
+.ktdoc__nodebox {
+  stroke: rgba(0, 0, 0, 0.12);
+  transition: filter 0.15s;
+}
+
+.ktdoc__node:hover .ktdoc__nodebox,
+.ktdoc__node:focus-visible .ktdoc__nodebox {
+  filter: brightness(1.12);
+  stroke: var(--k-ink);
+  stroke-width: 2;
+}
+
+.ktdoc__nodename {
+  fill: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ktdoc__nodewhat {
+  fill: rgba(255, 255, 255, 0.88);
+  font-size: 9.5px;
+}
+
+.ktdoc__nodecount {
+  fill: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ktdoc__legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ktdoc__legend button {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 2px 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--k-line);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ktdoc__legend button:hover {
+  border-color: var(--part);
+}
+
+.ktdoc__legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--part);
+}
+
+.ktdoc__legend span {
+  grid-column: 2 / 4;
+  color: var(--k-muted);
+  font-size: 12.5px;
+}
+
+.ktdoc__legend small {
+  grid-row: 1;
+  grid-column: 3;
+  color: var(--k-muted);
+}
+
+/* File names you can click, coloured by their part. */
+.ktdoc__chip {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--part, #888) 45%, transparent);
+  background: color-mix(in srgb, var(--part, #888) 12%, transparent);
+  color: inherit;
+  font-family: var(--k-code);
+  font-size: 12px;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.ktdoc__chip:hover {
+  background: color-mix(in srgb, var(--part, #888) 26%, transparent);
+}
+
+.ktdoc__steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.ktdoc__steps li {
+  position: relative;
+  padding: 10px 14px 10px 46px;
+  border-radius: 12px;
+  background: var(--k-soft);
+  counter-increment: step;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ktdoc__steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--k-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ktdoc__after {
+  color: var(--k-muted);
+  font-size: 13px;
+}
+
+.ktdoc__setup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.ktdoc__setup li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ktdoc__setup p,
+.ktdoc__run p {
+  color: var(--k-muted);
+  font-size: 13.5px;
+}
+
+.ktdoc__run {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ktdoc__command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 10px;
+  background: #10132a;
+  color: #e7e9ff;
+}
+
+.ktdoc__command code {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.ktdoc__command button {
+  flex: none;
+  padding: 3px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Flows: numbered steps joined by arrows. */
+.ktdoc__flows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ktdoc__flow {
+  padding: 14px;
+  border: 1px solid var(--k-line);
+  border-radius: 14px;
+}
+
+.ktdoc__flow h4 {
+  margin: 0 0 10px;
+}
+
+.ktdoc__flow ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ktdoc__step {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--part, var(--k-accent)) 28%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--part, var(--k-accent)) 7%, transparent);
+}
+
+.ktdoc__step b {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--part, var(--k-accent));
+  color: #fff;
+  font-size: 12px;
+}
+
+.ktdoc__step p {
+  font-size: 13px;
+}
+
+.ktdoc__arrow {
+  display: block;
+  margin: 2px 0 2px 22px;
+  padding-left: 14px;
+  border-left: 2px dashed var(--k-line);
+  color: var(--k-muted);
+  font-size: 11.5px;
+}
+
+.ktdoc__arrow::after {
+  content: " ↓";
+}
+
+.ktdoc__found {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.ktdoc__card {
+  padding: 14px;
+  border: 1px solid var(--k-line);
+  border-radius: 12px;
+}
+
+.ktdoc__card h4 {
+  margin: 0;
+}
+
+.ktdoc__card ul,
+.ktdoc__commands,
+.ktdoc__careful {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.ktdoc__card li,
+.ktdoc__commands li,
+.ktdoc__careful li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+
+.ktdoc__commands span {
+  color: var(--k-muted);
+}
+
+.ktdoc__routes summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ktdoc__routes table,
+.ktdoc__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ktdoc__routes th,
+.ktdoc__routes td,
+.ktdoc__table th,
+.ktdoc__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--k-line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.ktdoc__routes th,
+.ktdoc__table th {
+  color: var(--k-muted);
+  font-weight: 600;
+}
+
+.ktdoc__method {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #0f9d8a22;
+  color: #0f9d8a;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ktdoc__method--post,
+.ktdoc__method--put,
+.ktdoc__method--patch {
+  background: #d9770622;
+  color: #b45309;
+}
+
+.ktdoc__method--delete {
+  background: #e0457b22;
+  color: #be185d;
+}
+
+.ktdoc__words {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.ktdoc__words div {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--k-soft);
+}
+
+.ktdoc__words dt {
+  font-weight: 700;
+}
+
+.ktdoc__words dd {
+  margin: 2px 0 0;
+  color: var(--k-muted);
+  font-size: 13px;
+}
+
+.ktdoc__careful li {
+  padding: 8px 12px;
+  border: 1px solid #d9770640;
+  border-radius: 8px;
+  background: #d9770612;
+}
+
+/* Every file: find, filter, and a table per part. */
+.ktdoc__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--k-card);
+}
+
+.ktdoc__toolbar input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--k-line);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.ktdoc__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ktdoc__filters button {
+  padding: 4px 10px;
+  border: 1px solid var(--k-line);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.ktdoc__filters button[style]::before,
+.ktdoc__part > summary strong::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 3px;
+  background: var(--part);
+}
+
+.ktdoc__filters button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--part, var(--k-accent)) 18%, transparent);
+  border-color: var(--part, var(--k-accent));
+  font-weight: 600;
+}
+
+.ktdoc__key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--k-muted);
+  font-size: 12px;
+}
+
+.ktdoc__key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ktdoc__count {
+  color: var(--k-muted);
+  font-size: 12.5px;
+}
+
+.ktdoc__count:empty {
+  display: none;
+}
+
+.ktdoc__dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ktdoc__dot--ai {
+  background: var(--k-accent);
+}
+
+.ktdoc__dot--file {
+  background: #d97706;
+}
+
+.ktdoc__dot--none {
+  border: 1.5px solid var(--k-muted);
+}
+
+.ktdoc__part {
+  border: 1px solid var(--k-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ktdoc__part[hidden] {
+  display: none;
+}
+
+.ktdoc__part > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--part) 12%, transparent);
+  cursor: pointer;
+}
+
+.ktdoc__part > summary strong {
+  font-size: 15px;
+}
+
+.ktdoc__part > summary span {
+  flex: 1 1 200px;
+  color: var(--k-muted);
+  font-size: 13px;
+}
+
+.ktdoc__part > summary small {
+  color: var(--k-muted);
+}
+
+.ktdoc__scroll {
+  overflow-x: auto;
+}
+
+.ktdoc__table {
+  min-width: 680px;
+}
+
+.ktdoc__table td:first-child {
+  width: 22%;
+}
+
+.ktdoc__table td:nth-child(2) {
+  width: 40%;
+}
+
+.ktdoc__table td small {
+  display: block;
+  color: var(--k-muted);
+  font-size: 11.5px;
+}
+
+.ktdoc__table td p + p {
+  margin-top: 4px;
+}
+
+.ktdoc__table tr[hidden] {
+  display: none;
+}
+
+.ktdoc__table tr.is-hit td {
+  animation: ktdoc-hit 2.4s ease-out;
+}
+
+@keyframes ktdoc-hit {
+  0%,
+  40% {
+    background: color-mix(in srgb, var(--k-accent) 22%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.ktdoc__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--k-code);
+  font-weight: 700;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+
+.ktdoc__role {
+  display: inline-block;
+  margin: 3px 0 2px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--part) 16%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ktdoc__empty {
+  color: var(--k-muted);
+  font-style: italic;
+}
+
+.ktdoc__warn {
+  color: #b45309;
+  font-size: 12.5px;
+}
+
+.ktdoc__checked {
+  display: block;
+  margin-top: 4px;
+  color: var(--k-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .ktdoc {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .ktdoc__nav {
+    top: 0;
+    z-index: 3;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    padding: 8px 10px;
+  }
+
+  .ktdoc__nav strong {
+    display: none;
+  }
+
+  .ktdoc__nav ol {
+    flex-direction: row;
+  }
+
+  .ktdoc__nav a {
+    white-space: nowrap;
+  }
+
+  .ktdoc__block {
+    padding: 16px;
+  }
+
+  .ktdoc__cover {
+    padding: 20px;
+  }
+}
+
+@media print {
+  .ktdoc {
+    display: block;
+  }
+
+  .ktdoc__nav,
+  .ktdoc__toolbar {
+    display: none;
+  }
+}

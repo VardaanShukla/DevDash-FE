@@ -199,7 +199,6 @@ body {
 }
 
 /* The page's big headings: solid ink, so they read the same in both themes. */
-.dd-heading,
 .topbar__title h1,
 .welcome h1,
 .login h1 {

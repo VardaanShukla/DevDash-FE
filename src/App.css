@@ -151,21 +151,6 @@
   letter-spacing: -0.02em;
 }
 
-.brand__dev {
-  color: var(--dd-brand-ink);
-}
-
-.brand__tag {
-  color: var(--dd-brand-red);
-  font-family: var(--dd-mono);
-  font-size: 0.65em;
-  padding: 0 2px;
-}
-
-.brand__dash {
-  color: var(--dd-ink);
-}
-
 .topbar__controls {
   display: flex;
   flex: none;
@@ -223,20 +208,6 @@
   border: 1px solid var(--dd-glass-line);
   border-radius: 14px;
   background: var(--dd-glass);
-}
-
-.switcher__select {
-  flex: 1;
-  min-width: 0;
-  max-width: none;
-  border-color: transparent;
-  background-color: transparent;
-  box-shadow: none;
-  font-weight: 700;
-}
-
-.switcher__select option {
-  background: var(--dd-card);
 }
 
 .switcher__add {
@@ -315,7 +286,6 @@
   min-height: 0;
   flex: 0 1 auto;
 }
-
 
 .branches {
   display: flex;
@@ -629,3 +599,42 @@
   margin-top: 12px;
 }
 
+/* Said once after adding a project with something turned off, such as one without git.
+   Floats over the screen, so it takes none of the screen's own height. */
+.screen > .added-note {
+  height: auto;
+  position: fixed;
+  z-index: 50;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  margin-left: auto;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--dd-line);
+  border-radius: 10px;
+  background: var(--dd-card);
+}
+
+.screen > .added-note p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  color: var(--dd-ink-soft);
+}
+
+.screen > .added-note button {
+  flex: none;
+  padding: 4px 12px;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}

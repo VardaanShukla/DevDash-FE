@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api/client";
 import type {
-  AiStatus, BranchInfo, Comparison, Digest, Flow, PlacedWidget, PreferenceChange, Preferences, ProjectCard, ProjectMap,
-  RecordingHealth, Repo, WidgetAccent, WidgetStyle, WidgetType,
+  AiStatus, BranchInfo, Comparison, Digest, Flow, PlacedWidget, PreferenceChange, Preferences, ProjectMap,
+  RecordingHealth, Repo, WidgetType,
 } from "../../api/types";
 import type { View } from "../SideMenu/SideMenu";
 import { spec, type HomeData } from "../Widgets/catalog";
 import Grid from "../Widgets/Grid";
 import { compact, freeSpot, place } from "../Widgets/layout";
-import { ACCENTS, AddWidget, STYLES, WidgetSettings } from "../Widgets/WidgetEditor";
+import { AddWidget, WidgetSettings } from "../Widgets/WidgetEditor";
 import "./Home.css";
 
 // The start screen: the person's widgets on a grid (see Widgets/Grid). It opens as the
-// greeting and the project on show, today's AI work, the branch's size beside today's
-// activity, then the latest commit beside the branches. Edit Home moves, resizes, restyles,
-// adds and removes widgets; the layout is kept in the person's settings.
+// greeting (with what needs you) and the project on show, today's AI work, the branch's size beside today's AI
+// prompts, then the changed files beside the latest commit. Edit Home moves, resizes, adds
+// and removes widgets; the layout is kept in the person's settings.
 
 type Props = {
   repos: Repo[];
@@ -49,7 +49,6 @@ export default function Home(props: Props) {
   const { repos, repoId, version, prefs } = props;
   const [digest, setDigest] = useState<Digest | null>(null);
   const [health, setHealth] = useState<RecordingHealth | null>(null);
-  const [cards, setCards] = useState<ProjectCard[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Shown at once while a change saves; the saved settings win when they arrive.
   const [widgets, setWidgets] = useState<PlacedWidget[] | null>(prefs?.home.widgets ?? null);
@@ -71,7 +70,6 @@ export default function Home(props: Props) {
       (e: Error) => !stale && setError(e.message),
     );
     api.recordingHealth().then((result) => !stale && setHealth(result), () => {});
-    api.home().then((result) => !stale && setCards(result), () => {});
     return () => {
       stale = true;
     };
@@ -122,10 +120,6 @@ export default function Home(props: Props) {
     update(compact(widgets.filter((w) => w.id !== widget.id)));
     setSelected(null);
   };
-  // One look for every widget at once.
-  const restyle = (changes: { style?: WidgetStyle; accent?: WidgetAccent }) => {
-    if (widgets) update(widgets.map((w) => ({ ...w, ...changes })));
-  };
   const reset = () =>
     api.resetHome().then((saved) => setWidgets(saved.home.widgets), (e: Error) => setSaveError(`Couldn't reset Home: ${e.message}`));
   const finish = () => {
@@ -146,17 +140,13 @@ export default function Home(props: Props) {
     digest,
     health,
     onHealth: setHealth,
-    cards,
     error,
-    shortcuts: prefs?.shortcuts ?? {},
     username: props.username,
     onHeadChange: props.onHeadChange,
     onView: props.onView,
     onOpenFile: props.onOpenFile,
     onDigest: props.onDigest,
     onOpenChange: props.onOpenChange,
-    onAdd: props.onAdd,
-    onSync: props.onSync,
   };
   const picked = widgets?.find((w) => w.id === selected) ?? null;
   const panel = editing && (adding || picked);
@@ -171,26 +161,6 @@ export default function Home(props: Props) {
               <button className="home__tool" onClick={() => (setAdding(true), setSelected(null))}>
                 Add a widget
               </button>
-              <span className="home__all">
-                <select className="select" value="" aria-label="Style for every widget"
-                        onChange={(event) => event.target.value && restyle({ style: event.target.value as WidgetStyle })}>
-                  <option value="">Style all…</option>
-                  {STYLES.map((style) => (
-                    <option key={style.id} value={style.id}>
-                      {style.label}
-                    </option>
-                  ))}
-                </select>
-                <select className="select" value="-" aria-label="Accent for every widget"
-                        onChange={(event) => event.target.value !== "-" && restyle({ accent: event.target.value as WidgetAccent })}>
-                  <option value="-">Accent all…</option>
-                  {ACCENTS.map((accent) => (
-                    <option key={accent.id || "theme"} value={accent.id}>
-                      {accent.label}
-                    </option>
-                  ))}
-                </select>
-              </span>
               <button className="home__tool" onClick={reset} title="Put back the widgets Home starts with">
                 Reset
               </button>
@@ -199,7 +169,7 @@ export default function Home(props: Props) {
               </button>
             </>
           ) : (
-            <button className="home__tool home__tool--quiet" onClick={() => setEditing(true)} title="Move, resize, restyle, add or remove widgets">
+            <button className="home__tool home__tool--quiet" onClick={() => setEditing(true)} title="Move, resize, add or remove widgets">
               Edit Home
             </button>
           )}

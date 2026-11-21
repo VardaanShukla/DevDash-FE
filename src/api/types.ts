@@ -4,7 +4,11 @@ export type Repo = {
   id: number;
   name: string;
   path: string;
+  // The folder is still there.
   exists: boolean;
+  // It's a git repository. Without git, branches, changes, commits, pull requests and AI
+  // recording are off; the summary, KT, Ask and the project map still work.
+  git: boolean;
   branch: string | null;
   claude: boolean;
   ai: AiToolId | null;
@@ -335,6 +339,60 @@ export type KtFile = {
 
 export type KnowledgeTransfer = { files: KtFile[]; explained: number };
 
+// The detailed KT. Everything but the words is read from the code; the words are the AI's
+// (summary, part names, reading reasons, flows, glossary), kept only where the code bears them out.
+export type KtDetailFile = {
+  path: string;
+  // The id of its part (see KtPart); tests are all in "checks".
+  part: string;
+  language: string;
+  lines: number;
+  bytes: number;
+  depends_on: string[];
+  // Files that import this one, tests left out; the tests that import it are apart.
+  used_by: string[];
+  tests: string[];
+  flow: string;
+  role: "Starts the app" | "Screen" | "Logic" | "Data" | "Helper" | "Settings" | "Docs" | "Check";
+  // What the file says about itself at its top, word for word.
+  own_note: string | null;
+  explanation: FileExplanation | null;
+};
+
+export type KtPart = { id: string; folder: string; name: string; what: string; files: number; lines: number; languages: string[] };
+export type KtFound = { name: string; files: string[] };
+
+export type KtDetail = {
+  // A branch and its commit, or the working folder with changes not committed yet.
+  source: { kind: "branch" | "worktree"; branch: string | null; commit: string | null };
+  revision: string;
+  worktree: boolean;
+  has_changes: boolean;
+  // False when the project had too many files to read every import.
+  complete: boolean;
+  // The AI's words are written for the project as it is.
+  written: boolean;
+  summary: string;
+  audience: string;
+  problem: string;
+  size: { files: number; lines: number; languages: { name: string; files: number }[] };
+  parts: KtPart[];
+  // Code in source uses code in target.
+  links: { source: string; target: string; imports: number }[];
+  reading: { path: string; why: string; after: string | null }[];
+  // Each step's link says how it joins the step before, read from the imports.
+  flows: { name: string; steps: { path: string; what: string; link: "uses" | "used by" | null }[] }[];
+  glossary: { term: string; meaning: string }[];
+  tables: KtFound[];
+  settings: KtFound[];
+  storage: KtFound[];
+  routes: { method: string; path: string; file: string }[];
+  commands: { name: string; does: string; file: string }[];
+  cautions: { path: string; note: string }[];
+  files: KtDetailFile[];
+  explained: number;
+};
+
 // Your GitHub account, connected through DevDash's GitHub App.
 export type GitHubStatus = {
   // DevDash's GitHub App is set up (its client ID is known).
@@ -457,40 +515,6 @@ export type Summary = {
   explanation: ProjectExplanation | null;
 };
 
-export type CalendarEvent = {
-  title: string;
-  // A date for all-day events, otherwise a time with its offset.
-  start: string;
-  end: string;
-  all_day: boolean;
-  location: string | null;
-};
-
-export type Agenda = {
-  connected: boolean;
-  // The calendar's site, never its private address.
-  source: string | null;
-  events: CalendarEvent[];
-  fetched_at: string | null;
-  error: string | null;
-};
-
-export type ProjectCard = {
-  id: number;
-  name: string;
-  path: string;
-  exists: boolean;
-  branch: string | null;
-  base: string | null;
-  // Commits on the branch that the base doesn't have; null on the base itself.
-  ahead: number | null;
-  // Files changed but not committed.
-  uncommitted: number;
-  last_commit: { subject: string; author: string; at: string } | null;
-  commits_this_week: number;
-  branches: number;
-};
-
 // How recording has gone lately, from the hook logs.
 export type RecordingHealth = {
   errors: number;
@@ -534,9 +558,7 @@ export type Preferences = {
 };
 export type WidgetType =
   | "greeting" | "project" | "ai-today" | "total-changes" | "activity" | "latest-commit" | "branches"
-  | "changed-files" | "commits" | "branch-flow" | "project-map" | "languages" | "ai-prompts" | "needs-a-look"
-  | "recording" | "projects" | "uncommitted" | "commit-days" | "jump-to" | "calendar" | "clock" | "pull-requests"
-  | "note" | "number";
+  | "changed-files" | "commits" | "ai-prompts";
 export type WidgetStyle = "glass" | "solid" | "outline" | "tinted" | "bare";
 export type WidgetAccent = "" | "blue" | "teal" | "green" | "amber" | "red" | "violet" | "pink";
 // One widget on Home's 12-column grid: its column and row, its width in columns and height

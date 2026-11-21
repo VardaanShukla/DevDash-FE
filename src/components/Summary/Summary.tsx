@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import type { AiStatus, FileExplanation, KtGuide, ProjectExplanation, Summary as SummaryData } from "../../api/types";
+import type { AiStatus, FileExplanation, KtDetail, KtGuide, ProjectExplanation, Summary as SummaryData } from "../../api/types";
 import { languageColor } from "../ProjectMap/ProjectMap";
 import ClaudeSetup from "../ClaudeSignIn/ClaudeSetup";
 import { clear, job, result, since, start, useJobs } from "../../lib/aiJobs";
 import { downloadGuide } from "./ktPdf";
+import DetailedKt from "./DetailedKt";
 import "./Summary.css";
 
 // The whole project on one screen: what it is, how it works, what it's built with, its
@@ -26,6 +27,10 @@ type Props = {
   loadGuide: () => Promise<{ guide: KtGuide | null }>;
   writeGuide: (fresh?: boolean) => Promise<KtGuide>;
   imageUrl: (path: string) => string;
+  // The detailed KT: every file with its connections, and the AI note on one file.
+  loadDetail: (worktree?: boolean) => Promise<KtDetail>;
+  writeDetail: (worktree: boolean, fresh?: boolean) => Promise<KtDetail>;
+  explainFile: (path: string, fresh?: boolean, worktree?: boolean) => Promise<FileExplanation>;
   onSignedIn: () => void;
   onOpenMap: () => void;
 };
@@ -294,10 +299,61 @@ function Overview({ summary, scope, ai, explain, onSignedIn, onOpenMap, explanat
   );
 }
 
+// The KT tab offers two: the brief KT, a short guide written with one request to the AI,
+// and the detailed KT, a table of every file with what it does, uses and is used by.
+type KtKind = "brief" | "detailed";
+const KT_KINDS: { id: KtKind; title: string; what: string }[] = [
+  { id: "brief", title: "Brief KT", what: "A short guide: what it is, how to set it up and run it, and its major functions." },
+  { id: "detailed", title: "Detailed KT", what: "Every file in a table: what it does, what it uses and what uses it." },
+];
+
+function Kt(props: Props) {
+  const [kind, setKind] = useState<KtKind>(() => {
+    try {
+      return localStorage.getItem("devdash.kt-kind") === "detailed" ? "detailed" : "brief";
+    } catch {
+      return "brief";
+    }
+  });
+  const pick = (next: KtKind) => {
+    setKind(next);
+    try {
+      localStorage.setItem("devdash.kt-kind", next);
+    } catch {
+      // Not kept; the brief KT shows next time.
+    }
+  };
+  return (
+    <div className="kt-choice">
+      <div className="kt-choice__options" role="tablist" aria-label="Kind of KT">
+        {KT_KINDS.map((option) => (
+          <button
+            key={option.id}
+            role="tab"
+            aria-selected={kind === option.id}
+            className={`card kt-choice__option${kind === option.id ? " is-on" : ""}`}
+            onClick={() => pick(option.id)}
+          >
+            <strong>{option.title}</strong>
+            <span>{option.what}</span>
+          </button>
+        ))}
+      </div>
+      {kind === "brief" ? (
+        <BriefKt {...props} />
+      ) : (
+        <DetailedKt summary={props.summary} scope={props.scope} ai={props.ai} loadGuide={props.loadGuide}
+          imageUrl={props.imageUrl} loadDetail={props.loadDetail} writeDetail={props.writeDetail}
+          explainFile={props.explainFile} onSignedIn={props.onSignedIn} />
+      )}
+    </div>
+  );
+}
+
 // The knowledge transfer: one short page on what the project is, what it needs, how to set
 // it up and run it, and how to use it. One request to the AI, so it's done in about a minute,
 // and saved until the project's readme, setup files or commands change.
-function Kt({ summary, scope, ai, loadGuide, writeGuide, imageUrl, onSignedIn }: Props) {
+function BriefKt({ summary, scope, ai, loadGuide, writeGuide, imageUrl, onSignedIn }: Props) {
   const [saved, setSaved] = useState<KtGuide | null>(null);
   const [loading, setLoading] = useState(true);
   const key = `kt-guide:${scope}`;

@@ -4,22 +4,22 @@ import type { KtGuide, Summary } from "../../api/types";
 // fonts (Helvetica and Courier), so it needs no library and no print dialog. The project's
 // pictures go in as JPEGs, whatever they were, written as hex so the file stays plain text.
 
-type Font = "R" | "B" | "I" | "M" | "MB";
-type Rgb = [number, number, number];
-type Picture = { hex: string; w: number; h: number };
-type Word = { text: string; font: Font; x: number };
+export type Font = "R" | "B" | "I" | "M" | "MB";
+export type Rgb = [number, number, number];
+export type Picture = { hex: string; w: number; h: number };
+export type Word = { text: string; font: Font; x: number };
 
-const INK: Rgb = [0.1, 0.11, 0.17];
-const MUTED: Rgb = [0.42, 0.44, 0.52];
-const NAVY: Rgb = [0.05, 0.06, 0.13];
-const INDIGO: Rgb = [0.31, 0.33, 0.86];
-const SOFT: Rgb = [0.95, 0.955, 0.985];
-const LINE: Rgb = [0.87, 0.88, 0.93];
-const WHITE: Rgb = [1, 1, 1];
+export const INK: Rgb = [0.1, 0.11, 0.17];
+export const MUTED: Rgb = [0.42, 0.44, 0.52];
+export const NAVY: Rgb = [0.05, 0.06, 0.13];
+export const INDIGO: Rgb = [0.31, 0.33, 0.86];
+export const SOFT: Rgb = [0.95, 0.955, 0.985];
+export const LINE: Rgb = [0.87, 0.88, 0.93];
+export const WHITE: Rgb = [1, 1, 1];
 const PALE: Rgb = [0.72, 0.75, 0.9];
 const COMMAND: Rgb = [0.93, 0.95, 1];
-const PAGE = { w: 595.28, h: 841.89, x: 50, top: 58, bottom: 62 };
-const FULL = PAGE.w - 2 * PAGE.x;
+export const PAGE = { w: 595.28, h: 841.89, x: 50, top: 58, bottom: 62 };
+export const FULL = PAGE.w - 2 * PAGE.x;
 const COVER = 172;
 const FONTS: Record<Font, string> = { R: "Helvetica", B: "Helvetica-Bold", I: "Helvetica-Oblique", M: "Courier", MB: "Courier-Bold" };
 const MAX_PICTURE_PIXELS = 1400;
@@ -43,7 +43,7 @@ function encode(text: string) {
 // Text widths, measured once per font: Arial (or Liberation Sans, where it stands in) has
 // Helvetica's metrics, and Courier is 0.6 of the size for every character.
 let ruler: CanvasRenderingContext2D | null = null;
-function width(text: string, font: Font, size: number) {
+export function width(text: string, font: Font, size: number) {
   if (font === "M" || font === "MB") return [...text].length * 0.6 * size;
   ruler ??= document.createElement("canvas").getContext("2d");
   if (!ruler) return text.length * 0.5 * size;
@@ -52,7 +52,7 @@ function width(text: string, font: Font, size: number) {
 }
 
 // "**bold**" and "`code`" inside a line become runs in their own fonts.
-function runs(text: string, base: Font): { text: string; font: Font }[] {
+export function runs(text: string, base: Font): { text: string; font: Font }[] {
   return text
     .split(/(\*\*[^*]+\*\*|`[^`]+`)/)
     .filter(Boolean)
@@ -74,7 +74,7 @@ function fitted(image: Picture) {
 const rgb = (c: Rgb) => c.map((v) => v.toFixed(3)).join(" ");
 
 // One picture as a JPEG, on white in case it has see-through parts; null if it can't be read.
-function picture(url: string): Promise<Picture | null> {
+export function picture(url: string): Promise<Picture | null> {
   return new Promise((resolve) => {
     const image = new Image();
     image.onerror = () => resolve(null);
@@ -155,39 +155,43 @@ export async function downloadGuide(summary: Summary, guide: KtGuide, imageUrl: 
 
 type Para = { size?: number; font?: Font; color?: Rgb; bullet?: string; gap?: number };
 
-class KtPdf {
-  private pages: string[][] = [];
+export class KtPdf {
+  protected pages: string[][] = [];
   private pictures: Picture[] = [];
-  private y = 0;
+  protected y = 0;
+  // Bookmarks for the PDF's side panel, and places on a page that jump to another: both point
+  // at a page and a height on it. Only the detailed KT adds them.
+  protected bookmarks: { title: string; page: number; y: number }[] = [];
+  protected jumps: { page: number; rect: [number, number, number, number]; to: { page: number; y: number } }[] = [];
   private sections = 0;
   constructor(private footer: string) {
     this.page();
   }
 
-  private page() {
+  protected page() {
     this.pages.push([]);
     this.y = PAGE.h - PAGE.top;
   }
 
-  private get ops() {
+  protected get ops() {
     return this.pages[this.pages.length - 1];
   }
 
   // Starts a new page unless `height` still fits on this one.
-  private room(height: number) {
+  protected room(height: number) {
     if (this.y - height < PAGE.bottom) this.page();
   }
 
-  private put(text: string, x: number, y: number, font: Font, size: number, color: Rgb) {
+  protected put(text: string, x: number, y: number, font: Font, size: number, color: Rgb) {
     this.ops.push(`BT /${font} ${size} Tf ${rgb(color)} rg ${x.toFixed(2)} ${y.toFixed(2)} Td ${encode(text)} Tj ET`);
   }
 
-  private rect(x: number, y: number, w: number, h: number, color: Rgb) {
+  protected rect(x: number, y: number, w: number, h: number, color: Rgb) {
     this.ops.push(`${rgb(color)} rg ${x.toFixed(2)} ${y.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f`);
   }
 
   // A filled box with round corners, drawn with four curves.
-  private box(x: number, y: number, w: number, h: number, r: number, color: Rgb) {
+  protected box(x: number, y: number, w: number, h: number, r: number, color: Rgb) {
     const k = r * 0.45;
     const [l, b, t, e] = [x, y, y + h, x + w].map((v) => v.toFixed(2));
     const n = (v: number) => v.toFixed(2);
@@ -326,7 +330,7 @@ class KtPdf {
     this.y = bottom - 36;
   }
 
-  private line(words: Word[], left: number, y: number, size: number, color: Rgb, code: Rgb = INDIGO) {
+  protected line(words: Word[], left: number, y: number, size: number, color: Rgb, code: Rgb = INDIGO) {
     for (const w of words) {
       const mono = w.font === "M" || w.font === "MB";
       this.put(w.text, left + w.x, y, w.font, mono ? size * 0.92 : size, mono && w.font === "M" ? code : color);
@@ -334,7 +338,7 @@ class KtPdf {
   }
 
   // Breaks runs into lines that fit `max`; a word too long for a line (a long path) is cut.
-  private wrap(parts: { text: string; font: Font }[], size: number, max: number) {
+  protected wrap(parts: { text: string; font: Font }[], size: number, max: number) {
     const lines: Word[][] = [[]];
     let x = 0;
     const space = width(" ", "R", size);
@@ -386,6 +390,10 @@ class KtPdf {
       .join(" ");
     const first = 3 + Object.keys(FONTS).length;
     const firstPicture = first + total * 2;
+    const firstJump = firstPicture + this.pictures.length;
+    const firstMark = firstJump + this.jumps.length;
+    const pageId = (i: number) => first + i * 2 + 1;
+    const at = (to: { page: number; y: number }) => `[${pageId(to.page)} 0 R /XYZ 0 ${Math.min(PAGE.h, to.y + 30).toFixed(2)} null]`;
     const images = this.pictures.map((_, i) => `/Im${i} ${firstPicture + i} 0 R`).join(" ");
     const resources = `/Font << ${fonts} >>${images ? ` /XObject << ${images} >>` : ""}`;
     const kids: string[] = [];
@@ -401,14 +409,24 @@ class KtPdf {
       const stream = [...ops, ...frame].join("\n");
       const content = first + i * 2;
       objects[content] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
-      objects[content + 1] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.w} ${PAGE.h}] /Resources << ${resources} >> /Contents ${content} 0 R >>`;
+      const annots = this.jumps.map((jump, k) => (jump.page === i ? `${firstJump + k} 0 R` : "")).filter(Boolean);
+      objects[content + 1] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE.w} ${PAGE.h}] /Resources << ${resources} >> /Contents ${content} 0 R${annots.length ? ` /Annots [${annots.join(" ")}]` : ""} >>`;
       kids.push(`${content + 1} 0 R`);
     });
     this.pictures.forEach((image, i) => {
       const data = `${image.hex}>`;
       objects[firstPicture + i] = `<< /Type /XObject /Subtype /Image /Width ${image.w} /Height ${image.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /DCTDecode] /Length ${data.length} >>\nstream\n${data}\nendstream`;
     });
-    objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+    this.jumps.forEach((jump, k) => {
+      objects[firstJump + k] = `<< /Type /Annot /Subtype /Link /Rect [${jump.rect.map((v) => v.toFixed(2)).join(" ")}] /Border [0 0 0] /Dest ${at(jump.to)} >>`;
+    });
+    const marks = this.bookmarks.length;
+    this.bookmarks.forEach((mark, k) => {
+      const id = firstMark + 1 + k;
+      objects[id] = `<< /Title ${encode(mark.title)} /Parent ${firstMark} 0 R${k ? ` /Prev ${id - 1} 0 R` : ""}${k < marks - 1 ? ` /Next ${id + 1} 0 R` : ""} /Dest ${at(mark)} >>`;
+    });
+    if (marks) objects[firstMark] = `<< /Type /Outlines /First ${firstMark + 1} 0 R /Last ${firstMark + marks} 0 R /Count ${marks} >>`;
+    objects[1] = `<< /Type /Catalog /Pages 2 0 R${marks ? ` /Outlines ${firstMark} 0 R /PageMode /UseOutlines` : ""} >>`;
     objects[2] = `<< /Type /Pages /Kids [${kids.join(" ")}] /Count ${total} >>`;
     // Everything above is plain ASCII (text and pictures are hex), so string length is the byte count.
     let out = "%PDF-1.4\n";

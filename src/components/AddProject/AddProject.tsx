@@ -7,7 +7,8 @@ import "./AddProject.css";
 
 type Props = {
   onClose: () => void;
-  onAdded: (repo: Repo) => void;
+  // A note for the person when the project was added with something turned off.
+  onAdded: (repo: Repo, note?: string) => void;
   // Opens Settings → GitHub, to sign in and clone one of your repositories instead.
   onGitHub?: () => void;
   // Opens Settings → CodeCommit, to connect an AWS profile and clone from there.
@@ -26,6 +27,14 @@ const AFTER: Record<string, string> = {
   codex: "Once it's added, open Codex and type /hooks to trust DevDash's hooks (Codex asks once). Restart Codex if it's open.",
   antigravity: "Once it's added, restart Antigravity (agy, the app or the IDE) if it's open, so it loads DevDash's hooks.",
 };
+
+export function noGitNote(repo: Repo, askedForAi = false): string {
+  return (
+    `${repo.name} isn't a git repository, so it was added with branches, changes, commits and pull requests off` +
+    (askedForAi ? ", and without recording your AI tool, which needs git" : "") +
+    ". Run git init in its folder to turn them on."
+  );
+}
 
 export default function AddProject({ onClose, onAdded, onGitHub, onCodeCommit }: Props) {
   const [path, setPath] = useState("");
@@ -61,7 +70,8 @@ export default function AddProject({ onClose, onAdded, onGitHub, onCodeCommit }:
     setSaving(true);
     setError(null);
     try {
-      onAdded(await api.addRepo(path, ai === "none" ? null : (ai as AiToolId)));
+      const repo = await api.addRepo(path, ai === "none" ? null : (ai as AiToolId));
+      onAdded(repo, repo.git ? undefined : noGitNote(repo, ai !== "none"));
     } catch (e) {
       setError((e as ApiError).message);
       setSaving(false);
@@ -72,7 +82,10 @@ export default function AddProject({ onClose, onAdded, onGitHub, onCodeCommit }:
     <div className="modal" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <form className="modal__panel card" role="dialog" aria-labelledby="add-project-title" onSubmit={submit}>
         <h2 id="add-project-title">Add a project</h2>
-        <p className="modal__lead">Any folder that is a git repository. DevDash only reads it.</p>
+        <p className="modal__lead">
+          Any project folder. DevDash only reads it. Without git, the summary, KT, Ask and project map still work;
+          branches, changes, commits and AI recording need git.
+        </p>
         {onGitHub && (
           <button type="button" className="add-github" onClick={onGitHub}>
             <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" fill="currentColor">

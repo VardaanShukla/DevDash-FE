@@ -49,15 +49,6 @@
   font-size: 13px;
 }
 
-.home__all {
-  display: inline-flex;
-  gap: 6px;
-}
-
-.home__all .select {
-  max-width: 140px;
-}
-
 .home__tool {
   padding: 7px 14px;
   border: 1px solid var(--dd-line);
@@ -182,100 +173,6 @@
 
 .editor__field legend {
   margin-bottom: 8px;
-}
-
-.editor__styles {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-
-.editor__style {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 4px;
-  border: 1px solid var(--dd-line);
-  border-radius: 10px;
-  background: none;
-  color: var(--dd-ink-soft);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.editor__style i {
-  width: 34px;
-  height: 22px;
-  border-radius: 6px;
-}
-
-.editor__style--glass i {
-  border: 1px solid var(--dd-glass-line);
-  background: var(--dd-glass);
-  box-shadow: var(--dd-bevel), 0 4px 8px -4px rgba(0, 0, 0, 0.5);
-}
-
-.editor__style--solid i {
-  background: var(--dd-ink-soft);
-}
-
-.editor__style--outline i {
-  border: 1.5px solid var(--dd-ink-soft);
-}
-
-.editor__style--tinted i {
-  border: 1px solid color-mix(in srgb, var(--dd-accent) 40%, transparent);
-  background: var(--dd-accent-soft);
-}
-
-.editor__style--bare i {
-  border: 1.5px dashed var(--dd-line);
-}
-
-.editor__style:hover {
-  border-color: color-mix(in srgb, var(--dd-accent) 55%, var(--dd-line));
-}
-
-.editor__style.is-on {
-  border-color: var(--dd-accent);
-  background: var(--dd-accent-soft);
-  color: var(--dd-ink);
-}
-
-.editor__accents {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.editor__accent {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  background: none;
-  cursor: pointer;
-}
-
-.editor__accent i {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--swatch, var(--dd-ink-soft));
-}
-
-.editor__accent.wf--accent-theme i {
-  background: conic-gradient(var(--dd-ink) 0 50%, var(--dd-card) 50%);
-  box-shadow: inset 0 0 0 1px var(--dd-line);
-}
-
-.editor__accent.is-on {
-  border-color: var(--dd-ink);
 }
 
 .editor__size {

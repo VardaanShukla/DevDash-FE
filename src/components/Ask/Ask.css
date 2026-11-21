@@ -530,8 +530,7 @@
 }
 
 @media (max-width: 700px) {
-  .qa__bar,
-  .qa__coverage {
+  .qa__bar {
     padding-left: 16px;
     padding-right: 16px;
   }

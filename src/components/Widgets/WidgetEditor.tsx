@@ -1,28 +1,10 @@
 import { useEffect, useRef } from "react";
-import type { PlacedWidget, WidgetAccent, WidgetStyle, WidgetType } from "../../api/types";
+import type { PlacedWidget, WidgetType } from "../../api/types";
 import { CATALOG, option, spec } from "./catalog";
 import { COLUMNS, MAX_ROWS } from "./layout";
 
 // The panel beside Home while it's being edited: every widget there is to add, or the
-// settings of the one picked (its title, style, accent, size and its own options).
-
-export const STYLES: { id: WidgetStyle; label: string; hint: string }[] = [
-  { id: "glass", label: "Glass", hint: "Smoked glass, raised off the page" },
-  { id: "solid", label: "Solid", hint: "An opaque panel" },
-  { id: "outline", label: "Outline", hint: "Just a line around it" },
-  { id: "tinted", label: "Tinted", hint: "Washed in its accent colour" },
-  { id: "bare", label: "Bare", hint: "No panel at all" },
-];
-export const ACCENTS: { id: WidgetAccent; label: string }[] = [
-  { id: "", label: "Theme" },
-  { id: "blue", label: "Blue" },
-  { id: "teal", label: "Teal" },
-  { id: "green", label: "Green" },
-  { id: "amber", label: "Amber" },
-  { id: "red", label: "Red" },
-  { id: "violet", label: "Violet" },
-  { id: "pink", label: "Pink" },
-];
+// settings of the one picked (its title, size and its own options).
 
 export function AddWidget({ onAdd, onClose }: { onAdd: (type: WidgetType) => void; onClose: () => void }) {
   return (
@@ -75,31 +57,6 @@ export function WidgetSettings({ widget, onChange, onDuplicate, onRemove, onClos
         <input ref={first} className="input" value={widget.title} maxLength={60} placeholder={about.name}
                onChange={(event) => set({ title: event.target.value })} />
       </label>
-
-      <fieldset className="editor__field">
-        <legend>Style</legend>
-        <div className="editor__styles">
-          {STYLES.map((style) => (
-            <button key={style.id} className={`editor__style editor__style--${style.id}${widget.style === style.id ? " is-on" : ""}`}
-                    aria-pressed={widget.style === style.id} title={style.hint} onClick={() => set({ style: style.id })}>
-              <i aria-hidden="true" />
-              {style.label}
-            </button>
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="editor__field">
-        <legend>Accent</legend>
-        <div className="editor__accents">
-          {ACCENTS.map((accent) => (
-            <button key={accent.id || "theme"} className={`editor__accent wf--accent-${accent.id || "theme"}${widget.accent === accent.id ? " is-on" : ""}`}
-                    aria-pressed={widget.accent === accent.id} aria-label={accent.label} title={accent.label} onClick={() => set({ accent: accent.id })}>
-              <i aria-hidden="true" />
-            </button>
-          ))}
-        </div>
-      </fieldset>
 
       <fieldset className="editor__field">
         <legend>Size</legend>

@@ -14,17 +14,18 @@ import "./SideMenu.css";
 export type View = "home" | "digest" | "summary" | "kt" | "ask" | "overview" | "flow" | "map" | "changes" | "commits" | "project" | "settings" | "help";
 
 // Screens marked inMenu: false are sections of Home; Home's links open their full screen.
+// The menu runs from tracking changes (git and AI) to understanding the project.
 export const VIEWS: { id: View; label: string; hint: string; icon: ReactNode; inMenu?: false }[] = [
-  { id: "home", label: "Home", hint: "Your dashboard: the branch dial, AI changes today, your commits and shortcuts. Customise it to show what you need", icon: <HomeIcon /> },
+  { id: "home", label: "Home", hint: "Your dashboard: what needs you, AI changes today and the branch at a glance. Customise it to show what you need", icon: <HomeIcon /> },
   { id: "digest", label: "AI changes", hint: "What your AI coding tool changed each day, and what to check", icon: <DigestIcon /> },
+  { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
+  { id: "commits", label: "Commits", hint: "Each saved step on this branch, and the project's open pull requests", icon: <CommitIcon /> },
+  { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon /> },
+  { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon /> },
+  { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon /> },
   { id: "summary", label: "Summary", hint: "The whole project: what it is and how it works", icon: <SummaryIcon /> },
   { id: "kt", label: "KT", hint: "A guide for a new developer, with setup, run commands and major functions", icon: <KtIcon /> },
   { id: "ask", label: "Ask", hint: "Ask questions about the project: what a file or function is for and how the parts fit together", icon: <AskIcon /> },
-  { id: "overview", label: "This branch", hint: "The branch on screen at a glance", icon: <GaugeIcon />, inMenu: false },
-  { id: "flow", label: "Branch flow", hint: "How branches split off and merge back", icon: <FlowIcon />, inMenu: false },
-  { id: "map", label: "Project map", hint: "The parts of the project and what uses what", icon: <MapIcon />, inMenu: false },
-  { id: "changes", label: "Changes", hint: "Every changed file and function, before and after", icon: <DiffIcon /> },
-  { id: "commits", label: "Commits", hint: "Each saved step on this branch", icon: <CommitIcon /> },
   { id: "project", label: "Projects", hint: "Add, switch or remove projects", icon: <FolderIcon /> },
   { id: "settings", label: "Settings", hint: "Your account, the look, the AI that explains, recording, GitHub, CodeCommit and shortcut keys", icon: <SettingsIcon /> },
   { id: "help", label: "Help", hint: "Set DevDash up and learn what each screen shows", icon: <HelpIcon /> },
@@ -305,6 +306,7 @@ export function ProjectPicker({ repos, selectedId, onSelect, onAdd }: {
                 <span className="picker__name">
                   {repo.name}
                   {!repo.exists && <em> folder missing</em>}
+                  {repo.exists && !repo.git && <em> no git</em>}
                 </span>
                 {repo.id === selectedId && (
                   <svg {...iconProps} width={14} height={14} aria-hidden="true">

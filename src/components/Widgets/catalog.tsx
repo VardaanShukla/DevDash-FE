@@ -1,14 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { api } from "../../api/client";
 import type {
-  AiStatus, BranchInfo, Comparison, Digest, DigestChange, Flow, FlowCommit, PlacedWidget, ProjectCard, ProjectMap,
-  PullRequests, RecordingHealth, Repo, WidgetStyle, WidgetType,
+  AiStatus, BranchInfo, Comparison, Digest, DigestChange, Flow, FlowCommit, PlacedWidget, ProjectMap,
+  RecordingHealth, Repo, WidgetStyle, WidgetType,
 } from "../../api/types";
-import Agenda from "../Agenda/Agenda";
-import FlowGraph from "../FlowGraph/FlowGraph";
 import { branchNote, GaugeDial, SIZES } from "../Overview/Overview";
-import { languageColor, languageTotals, mapParts } from "../ProjectMap/ProjectMap";
-import { VIEWS, type View } from "../SideMenu/SideMenu";
+import type { View } from "../SideMenu/SideMenu";
 
 // Every widget Home can show. Each reads what Home already loaded (HomeData), draws its own
 // heading and body, and has options the person sets in the widget's settings; its size and
@@ -27,18 +24,13 @@ export type HomeData = {
   digest: Digest | null;
   health: RecordingHealth | null;
   onHealth: (health: RecordingHealth) => void;
-  // Every project at a glance; null while it loads.
-  cards: ProjectCard[] | null;
   error: string | null;
-  shortcuts: Record<string, string>;
   username?: string;
   onHeadChange: (head: string) => void;
   onView: (view: View) => void;
   onOpenFile: (path: string) => void;
   onDigest: () => void;
   onOpenChange: (id: string) => void;
-  onAdd: () => void;
-  onSync: () => void;
 };
 
 type Value = string | number | boolean;
@@ -60,34 +52,35 @@ export type WidgetSpec = {
   size: { w: number; h: number };
   min: { w: number; h: number };
   style?: WidgetStyle;
-  // Draws its own panel (the flow graph, the calendar), so the frame adds none.
+  // Draws its own panel, so the frame adds none.
   ownCard?: boolean;
   options: OptionSpec[];
   render: (props: WidgetProps) => ReactNode;
 };
+
+// Said by a widget that needs git when the project on show isn't a git repository.
+export const NO_GIT = "Needs git. This project isn't a git repository, so it has no branches or commits. Run git init in its folder to turn this on.";
+
+// A widget that reads branches or commits: on a project without git it says why it's empty,
+// instead of "Reading…" forever. `own` widgets draw their own panel, so this one draws it.
+function gitOnly(render: WidgetSpec["render"], own = false): WidgetSpec["render"] {
+  return (p) => {
+    if (!p.data.picked || p.data.picked.git) return render(p);
+    const body = (
+      <>
+        <Head title={p.title} />
+        <Muted>{NO_GIT}</Muted>
+      </>
+    );
+    return own ? <section className="card wf__panel" aria-label={p.title}>{body}</section> : body;
+  };
+}
 
 const toggle = (key: string, label: string, value = true): OptionSpec => ({ key, label, kind: "toggle", default: value });
 const count = (key: string, label: string, value: number, min: number, max: number): OptionSpec =>
   ({ key, label, kind: "number", default: value, min, max });
 const choice = (key: string, label: string, choices: [string, string][], value?: string): OptionSpec =>
   ({ key, label, kind: "choice", default: value ?? choices[0][0], choices: choices.map(([v, l]) => ({ value: v, label: l })) });
-
-// What the One number widget can show.
-const NUMBERS: { id: string; label: string; value: (data: HomeData) => number | null; view?: View }[] = [
-  { id: "lines", label: "Lines changed on the branch", value: (d) => (d.comparison ? branchTotals(d.comparison).lines : null), view: "overview" },
-  { id: "files", label: "Files changed on the branch", value: (d) => (d.comparison ? branchTotals(d.comparison).files.length : null), view: "changes" },
-  { id: "functions", label: "Functions changed on the branch", value: (d) => (d.comparison ? branchTotals(d.comparison).functions : null), view: "changes" },
-  { id: "commits", label: "Commits on the branch", value: (d) => d.comparison?.commits.length ?? null, view: "commits" },
-  { id: "behind", label: "Commits behind the base", value: (d) => d.comparison?.behind ?? null, view: "overview" },
-  { id: "branches", label: "Branches", value: (d) => (d.branches.length ? d.branches.length : null), view: "flow" },
-  { id: "today", label: "Commits today", value: (d) => (d.flow ? todaysCommits(d.flow).length : null) },
-  { id: "people", label: "People who committed today", value: (d) => (d.flow ? new Set(todaysCommits(d.flow).map((c) => c.author)).size : null) },
-  { id: "prompts", label: "AI prompts today in this project", value: (d) => (d.digest ? kept(projectChanges(d)).length : null), view: "digest" },
-  { id: "ai-lines", label: "Lines the AI changed today in this project", value: (d) => (d.digest ? kept(projectChanges(d)).reduce((s, c) => s + c.additions + c.deletions, 0) : null), view: "digest" },
-  { id: "uncommitted", label: "Files not committed, every project", value: (d) => (d.cards ? d.cards.reduce((s, c) => s + c.uncommitted, 0) : null) },
-  { id: "week", label: "Commits this week, every project", value: (d) => (d.cards ? d.cards.reduce((s, c) => s + c.commits_this_week, 0) : null) },
-  { id: "projects", label: "Projects", value: (d) => d.repos.length, view: "project" },
-];
 
 export const CATALOG: WidgetSpec[] = [
   {
@@ -113,54 +106,37 @@ export const CATALOG: WidgetSpec[] = [
     size: { w: 5, h: 8 }, min: { w: 2, h: 2 },
     options: [choice("view", "Show it as", [["dial", "A dial"], ["number", "A big number"], ["bar", "A bar of added and removed"]]),
               toggle("counts", "Show files, functions and commits")],
-    render: (p) => <TotalChanges {...p} />,
+    render: gitOnly((p) => <TotalChanges {...p} />),
   },
   {
     type: "activity", name: "Today's activity", description: "Who committed to this project today, on any branch, and when.",
     size: { w: 7, h: 8 }, min: { w: 3, h: 3 },
     options: [toggle("day", "Show each person's day")],
-    render: (p) => <Activity {...p} />,
+    render: gitOnly((p) => <Activity {...p} />),
   },
   {
     type: "latest-commit", name: "Latest commit", description: "The newest commit on the branch on show, with the ones before it.",
     size: { w: 5, h: 6 }, min: { w: 3, h: 3 },
     options: [count("earlier", "Earlier commits to list", 4, 0, 10)],
-    render: (p) => <LatestCommit {...p} />,
+    render: gitOnly((p) => <LatestCommit {...p} />),
   },
   {
     type: "branches", name: "Branches", description: "Every branch; pick one to show it across the dashboard.",
     size: { w: 7, h: 6 }, min: { w: 3, h: 3 },
     options: [toggle("merged", "List merged and deleted branches")],
-    render: (p) => <Branches {...p} />,
+    render: gitOnly((p) => <Branches {...p} />),
   },
   {
     type: "changed-files", name: "Changed files", description: "The branch's files, biggest change first; each opens in Changes.",
     size: { w: 6, h: 6 }, min: { w: 3, h: 3 },
     options: [count("count", "Files to list", 12, 3, 50), choice("sort", "Order", [["size", "Biggest change first"], ["name", "By name"]])],
-    render: (p) => <ChangedFiles {...p} />,
+    render: gitOnly((p) => <ChangedFiles {...p} />),
   },
   {
     type: "commits", name: "Branch commits", description: "The commits this branch adds to its base, newest first.",
     size: { w: 6, h: 6 }, min: { w: 3, h: 3 },
     options: [count("count", "Commits to list", 8, 3, 40), toggle("author", "Show who wrote each")],
-    render: (p) => <Commits {...p} />,
-  },
-  {
-    type: "branch-flow", name: "Branch flow", description: "How the branches split off and merge back, as a graph.",
-    size: { w: 12, h: 6 }, min: { w: 6, h: 4 }, ownCard: true, options: [],
-    render: (p) => <BranchFlow {...p} />,
-  },
-  {
-    type: "project-map", name: "Project map", description: "The project's parts as tiles, the ones this branch changed lit up.",
-    size: { w: 8, h: 6 }, min: { w: 4, h: 3 },
-    options: [toggle("languages", "Show the mix of languages")],
-    render: (p) => <MapTiles {...p} />,
-  },
-  {
-    type: "languages", name: "Languages", description: "Which languages the project is written in, by files.",
-    size: { w: 4, h: 4 }, min: { w: 2, h: 2 },
-    options: [count("count", "Languages to list", 6, 1, 12)],
-    render: (p) => <Languages {...p} />,
+    render: gitOnly((p) => <Commits {...p} />),
   },
   {
     type: "ai-prompts", name: "AI prompts today", description: "Today's prompts that changed code, newest first; each opens its changes.",
@@ -168,70 +144,6 @@ export const CATALOG: WidgetSpec[] = [
     options: [count("count", "Prompts to list", 6, 1, 30), toggle("risky", "Only the ones that need a look", false),
               toggle("all", "From every project", false)],
     render: (p) => <AiPrompts {...p} />,
-  },
-  {
-    type: "needs-a-look", name: "Needs a look", description: "How many of today's AI changes touched something risky.",
-    size: { w: 3, h: 3 }, min: { w: 2, h: 2 },
-    options: [toggle("all", "Count every project", false)],
-    render: (p) => <NeedsALook {...p} />,
-  },
-  {
-    type: "recording", name: "Recording", description: "Whether the AI hooks record, when they last ran, and a repair.",
-    size: { w: 4, h: 3 }, min: { w: 3, h: 2 }, options: [],
-    render: (p) => <Recording {...p} />,
-  },
-  {
-    type: "projects", name: "Projects", description: "Every project: its branch, commits this week and work not committed.",
-    size: { w: 6, h: 5 }, min: { w: 3, h: 3 },
-    options: [toggle("busy", "Only projects with uncommitted work", false)],
-    render: (p) => <Projects {...p} />,
-  },
-  {
-    type: "uncommitted", name: "Not committed", description: "Files changed but not committed, across every project.",
-    size: { w: 3, h: 3 }, min: { w: 2, h: 2 }, options: [],
-    render: (p) => <Uncommitted {...p} />,
-  },
-  {
-    type: "commit-days", name: "Commits by day", description: "Commits to this project per day, on any branch.",
-    size: { w: 6, h: 4 }, min: { w: 3, h: 3 },
-    options: [choice("days", "Days", [["7", "Last 7 days"], ["14", "Last 14 days"], ["30", "Last 30 days"]], "14")],
-    render: (p) => <CommitDays {...p} />,
-  },
-  {
-    type: "jump-to", name: "Jump to", description: "The screens one press away, with their shortcut keys.",
-    size: { w: 4, h: 6 }, min: { w: 2, h: 3 },
-    options: [toggle("keys", "Show shortcut keys")],
-    render: (p) => <JumpTo {...p} />,
-  },
-  {
-    type: "calendar", name: "Calendar", description: "The days ahead from your calendar.",
-    size: { w: 4, h: 6 }, min: { w: 3, h: 4 }, ownCard: true,
-    options: [choice("days", "Days ahead", [["1", "Today"], ["3", "3 days"], ["7", "A week"]], "3")],
-    render: (p) => <Agenda days={Number(p.o("days"))} />,
-  },
-  {
-    type: "clock", name: "Clock", description: "The time and date on this computer.",
-    size: { w: 3, h: 2 }, min: { w: 2, h: 2 },
-    options: [toggle("seconds", "Show seconds", false), toggle("h24", "24-hour clock", false), toggle("date", "Show the date")],
-    render: (p) => <Clock {...p} />,
-  },
-  {
-    type: "pull-requests", name: "Pull requests", description: "Open pull requests on GitHub or CodeCommit for this project.",
-    size: { w: 6, h: 4 }, min: { w: 3, h: 3 },
-    options: [count("count", "Pull requests to list", 5, 1, 20), toggle("drafts", "List drafts")],
-    render: (p) => <PullRequestList {...p} />,
-  },
-  {
-    type: "note", name: "Note", description: "Your own words: a reminder, a checklist, today's plan.",
-    size: { w: 3, h: 3 }, min: { w: 2, h: 2 }, style: "tinted",
-    options: [{ key: "text", label: "Text", kind: "text", default: "" }, choice("size", "Text size", [["normal", "Normal"], ["large", "Large"]])],
-    render: (p) => <Note {...p} />,
-  },
-  {
-    type: "number", name: "One number", description: "A single number you pick: lines, files, commits, prompts and more.",
-    size: { w: 3, h: 2 }, min: { w: 2, h: 2 },
-    options: [choice("metric", "Number", NUMBERS.map((n) => [n.id, n.label]), "lines")],
-    render: (p) => <OneNumber {...p} />,
   },
 ];
 
@@ -732,95 +644,6 @@ function Commits({ data, title, o }: WidgetProps) {
   );
 }
 
-function BranchFlow({ data, title }: WidgetProps) {
-  if (data.flow && data.comparison && data.flow.commits.length > 1) {
-    return (
-      <FlowGraph flow={data.flow} head={data.comparison.head} branches={data.branches} onPick={data.onHeadChange} compact fill
-                 onOpen={() => data.onView("flow")} />
-    );
-  }
-  return (
-    <section className="card wf__panel">
-      <Head title={title} />
-      <Muted>{data.flow ? "Not enough history to draw yet." : "Reading the branches…"}</Muted>
-    </section>
-  );
-}
-
-function MapTiles({ data, title, o }: WidgetProps) {
-  const map = data.map;
-  const parts = map ? mapParts(map, data.comparison?.files ?? []) : [];
-  const languages = map ? languageTotals(map.areas) : [];
-  const total = languages.reduce((sum, l) => sum + l.files, 0);
-  const sorted = [...parts].sort((a, b) => b.changed.length - a.changed.length || b.files - a.files);
-  return (
-    <>
-      <Head title={title} link={{ label: "Full map", go: () => data.onView("map") }} />
-      {!map ? (
-        <Muted>Reading the project's folders…</Muted>
-      ) : (
-        <>
-          {o("languages") && total > 0 && (
-            <div className="langbar" title={languages.map((l) => `${l.name} ${Math.round((l.files / total) * 100)}%`).join(", ")}>
-              {languages.map((l) => (
-                <span key={l.name} style={{ flex: l.files, background: languageColor(l.name) }} />
-              ))}
-            </div>
-          )}
-          <ul className="tiles">
-            {sorted.map((part) => {
-              const hot = part.changed.length > 0;
-              return (
-                <li key={part.id}>
-                  <button className={`tiles__part${hot ? " tiles__part--hot" : ""}`} onClick={() => data.onView("map")} title={part.path || "top of the project"}>
-                    <strong>{part.name}</strong>
-                    <span>
-                      {part.files} file{part.files === 1 ? "" : "s"}
-                      {hot && <em> · {part.changed.length} changed</em>}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
-    </>
-  );
-}
-
-function Languages({ data, title, o }: WidgetProps) {
-  const languages = data.map ? languageTotals(data.map.areas) : [];
-  const total = languages.reduce((sum, l) => sum + l.files, 0);
-  return (
-    <>
-      <Head title={title} />
-      {!data.map ? (
-        <Muted>Reading the project's files…</Muted>
-      ) : total === 0 ? (
-        <Muted>No source files found.</Muted>
-      ) : (
-        <>
-          <div className="langbar">
-            {languages.map((l) => (
-              <span key={l.name} style={{ flex: l.files, background: languageColor(l.name) }} />
-            ))}
-          </div>
-          <ul className="langs">
-            {languages.slice(0, Number(o("count"))).map((l) => (
-              <li key={l.name}>
-                <i style={{ background: languageColor(l.name) }} aria-hidden="true" />
-                <span>{l.name}</span>
-                <b>{Math.round((l.files / total) * 100)}%</b>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </>
-  );
-}
-
 function AiPrompts({ data, title, o }: WidgetProps) {
   const changes = projectChanges(data, Boolean(o("all"))).filter((change) => !o("risky") || change.risky);
   return (
@@ -852,288 +675,6 @@ function AiPrompts({ data, title, o }: WidgetProps) {
   );
 }
 
-function NeedsALook({ data, title, o }: WidgetProps) {
-  const risky = kept(projectChanges(data, Boolean(o("all")))).filter((change) => change.risky);
-  return (
-    <>
-      <Head title={title} />
-      {!data.digest ? (
-        <Muted>Reading…</Muted>
-      ) : (
-        <button className={`big${risky.length ? " big--risk" : ""}`} onClick={data.onDigest}>
-          <strong>{risky.length}</strong>
-          <span>{risky.length === 0 ? "Nothing risky from the AI today" : `AI ${risky.length === 1 ? "change touches" : "changes touch"} something risky`}</span>
-        </button>
-      )}
-    </>
-  );
-}
-
-function Recording({ data, title }: WidgetProps) {
-  const [repairing, setRepairing] = useState(false);
-  const [repairError, setRepairError] = useState<string | null>(null);
-  const health = data.health;
-  const repair = () => {
-    setRepairing(true);
-    setRepairError(null);
-    api.repairRecording().then(data.onHealth, (e: Error) => setRepairError(e.message)).finally(() => setRepairing(false));
-  };
-  const lastCall = health ? Object.values(health.last_call).sort().pop() : undefined;
-  const recording = (health?.tools.length ?? 0) > 0;
-  const problems = health?.problems ?? [];
-  return (
-    <>
-      <Head title={title} />
-      {!health ? (
-        <Muted>Checking the hooks…</Muted>
-      ) : (
-        <>
-          <p className={`rec${problems.length || !recording ? " rec--warn" : ""}`}>
-            {!recording ? "Not recording any project" : problems.length ? "Needs a fix" : "Recording"}
-          </p>
-          <p className="wf__muted">
-            {recording && `${health.tools.join(", ")}. `}
-            {lastCall ? `Last hook ${ago(lastCall)}.` : "No hook has run yet."}
-            {health.errors > 0 && ` ${health.errors} errors in ${health.days} days.`}
-          </p>
-          {problems.map((problem) => (
-            <p key={problem} className="rec__problem">
-              {problem}
-            </p>
-          ))}
-          {repairError && <p className="rec__problem">{repairError}</p>}
-          {health.repairable && (
-            <button className="wf__button" onClick={repair} disabled={repairing}>
-              {repairing ? "Repairing…" : "Repair the hooks"}
-            </button>
-          )}
-        </>
-      )}
-    </>
-  );
-}
-
-function Projects({ data, title, o }: WidgetProps) {
-  const cards = (data.cards ?? []).filter((card) => !o("busy") || card.uncommitted > 0);
-  return (
-    <>
-      <Head title={title} aside={data.cards && String(cards.length)} link={{ label: "Projects", go: () => data.onView("project") }} />
-      {!data.cards ? (
-        <Muted>Reading your projects…</Muted>
-      ) : cards.length === 0 ? (
-        <Muted>{o("busy") ? "Every project is committed." : "No projects yet."}</Muted>
-      ) : (
-        <ul className="cards">
-          {cards.map((card) => (
-            <li key={card.id} className={card.id === data.picked?.id ? "is-on" : undefined}>
-              <strong>{card.name}</strong>
-              <code>{card.branch ?? "no branch"}</code>
-              <span>
-                {card.commits_this_week} this week
-                {card.uncommitted > 0 && <em>, {card.uncommitted} not committed</em>}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </>
-  );
-}
-
-function Uncommitted({ data, title }: WidgetProps) {
-  const cards = data.cards ?? [];
-  const files = cards.reduce((sum, card) => sum + card.uncommitted, 0);
-  const projects = cards.filter((card) => card.uncommitted > 0).length;
-  return (
-    <>
-      <Head title={title} />
-      {!data.cards ? (
-        <Muted>Reading…</Muted>
-      ) : (
-        <div className={`big${files ? " big--warn" : ""}`}>
-          <strong>{files}</strong>
-          <span>{files === 0 ? "Everything is committed" : `${files === 1 ? "file" : "files"} in ${projects} ${projects === 1 ? "project" : "projects"}`}</span>
-        </div>
-      )}
-    </>
-  );
-}
-
-function CommitDays({ data, title, o }: WidgetProps) {
-  const days = Number(o("days"));
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const buckets = Array.from({ length: days }, (_, i) => {
-    const day = new Date(start);
-    day.setDate(day.getDate() - (days - 1 - i));
-    return { day, count: 0 };
-  });
-  for (const commit of data.flow?.commits ?? []) {
-    const at = new Date(commit.authored_at);
-    at.setHours(0, 0, 0, 0);
-    const bucket = buckets.find((b) => b.day.getTime() === at.getTime());
-    if (bucket) bucket.count += 1;
-  }
-  const most = Math.max(1, ...buckets.map((b) => b.count));
-  const total = buckets.reduce((sum, b) => sum + b.count, 0);
-  return (
-    <>
-      <Head title={title} aside={data.flow && `${total} in ${days} days`} />
-      {!data.flow ? (
-        <Muted>Reading the history…</Muted>
-      ) : (
-        <div className="days" role="img" aria-label={buckets.map((b) => `${b.day.toLocaleDateString()}: ${b.count}`).join(", ")}>
-          {buckets.map((b, i) => (
-            <span key={i} title={`${b.day.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}: ${b.count}`}>
-              <b style={{ height: `${(b.count / most) * 100}%` }} className={b.count ? undefined : "is-empty"} />
-              {(i === 0 || i === buckets.length - 1 || days <= 7) && (
-                <i>{b.day.toLocaleDateString(undefined, days <= 7 ? { weekday: "narrow" } : { day: "numeric", month: "short" })}</i>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
-      {data.flow?.truncated && <p className="wf__foot">Counts the newest commits DevDash reads, not the whole history.</p>}
-    </>
-  );
-}
-
-const KEY_VIEWS: View[] = ["changes", "commits", "summary", "digest", "map", "flow", "project"];
-
-function JumpTo({ data, title, o }: WidgetProps) {
-  const caps: { id: string; label: string; icon: ReactNode; legend?: string; go: () => void }[] = [
-    ...KEY_VIEWS.map((id) => {
-      const view = VIEWS.find((item) => item.id === id)!;
-      return { id, label: view.label, icon: view.icon, legend: data.shortcuts[`view:${id}`], go: () => data.onView(id) };
-    }),
-    { id: "sync", label: "Sync GitHub", icon: <SyncIcon />, legend: data.shortcuts.sync, go: data.onSync },
-    { id: "add", label: "Add project", icon: <PlusIcon />, go: data.onAdd },
-  ];
-  return (
-    <>
-      <Head title={title} />
-      <div className="keys">
-        {caps.map((cap) => (
-          <button key={cap.id} className="keycap" onClick={cap.go} title={cap.legend ? `${cap.label} (key ${cap.legend.toUpperCase()})` : cap.label}>
-            <span className="keycap__top">
-              {o("keys") && cap.legend && <kbd className="keycap__legend">{cap.legend.toUpperCase()}</kbd>}
-              <span className="keycap__icon" aria-hidden="true">
-                {cap.icon}
-              </span>
-              <span className="keycap__label">{cap.label}</span>
-            </span>
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function Clock({ o }: WidgetProps) {
-  const seconds = Boolean(o("seconds"));
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), seconds ? 1000 : 15_000);
-    return () => clearInterval(timer);
-  }, [seconds]);
-  return (
-    <div className="clockface">
-      <strong>
-        {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: seconds ? "2-digit" : undefined, hour12: !o("h24") })}
-      </strong>
-      {o("date") && <span>{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>}
-    </div>
-  );
-}
-
-function PullRequestList({ data, title, o }: WidgetProps) {
-  const repoId = data.picked?.id ?? null;
-  const [found, setFound] = useState<PullRequests | null>(null);
-  useEffect(() => {
-    if (repoId === null) return;
-    let stale = false;
-    setFound(null);
-    api.pulls(repoId).then((result) => !stale && setFound(result), () => !stale && setFound({ repo: null, connected: false, pulls: [], error: "Couldn't read the pull requests." }));
-    return () => {
-      stale = true;
-    };
-  }, [repoId]);
-  const pulls = (found?.pulls ?? []).filter((pull) => o("drafts") || !pull.draft);
-  return (
-    <>
-      <Head title={title} aside={found?.repo ?? undefined} />
-      {!found ? (
-        <Muted>Reading pull requests…</Muted>
-      ) : found.error ? (
-        <Muted>{found.error}</Muted>
-      ) : !found.connected ? (
-        <Muted>Connect {found.host === "codecommit" ? "CodeCommit" : "GitHub"} in Settings to see pull requests.</Muted>
-      ) : pulls.length === 0 ? (
-        <Muted>No open pull requests.</Muted>
-      ) : (
-        <ol className="pulls">
-          {pulls.slice(0, Number(o("count"))).map((pull) => (
-            <li key={pull.number}>
-              <a href={pull.url} target="_blank" rel="noreferrer">
-                <span className="pulls__title">
-                  <b>#{pull.number}</b> {pull.title}
-                  {pull.draft && <em> draft</em>}
-                </span>
-                <span className="pulls__meta">
-                  {pull.author ?? "someone"}
-                  {pull.branch && (
-                    <>
-                      {" "}
-                      on <code>{pull.branch}</code>
-                    </>
-                  )}
-                  {pull.updated_at && `, ${ago(pull.updated_at)}`}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ol>
-      )}
-    </>
-  );
-}
-
-function Note({ widget, title, o }: WidgetProps) {
-  const text = String(o("text"));
-  return (
-    <>
-      {widget.title && <Head title={title} />}
-      {text ? (
-        <p className={`note${o("size") === "large" ? " note--large" : ""}`}>{text}</p>
-      ) : (
-        <Muted>An empty note. Press Edit Home, then this note's settings, to write in it.</Muted>
-      )}
-    </>
-  );
-}
-
-function OneNumber({ data, widget, o }: WidgetProps) {
-  const metric = NUMBERS.find((n) => n.id === o("metric")) ?? NUMBERS[0];
-  const value = metric.value(data);
-  const content = (
-    <>
-      <strong>{value === null ? "…" : value.toLocaleString()}</strong>
-      <span>{widget.title || metric.label}</span>
-    </>
-  );
-  return metric.view ? (
-    <button className="big big--tile" onClick={() => data.onView(metric.view!)}>
-      {content}
-    </button>
-  ) : (
-    <div className="big big--tile">{content}</div>
-  );
-}
-
-// --- Helpers --------------------------------------------------------------------------------
-
-// The branch's newest commits, newest first: from its tip in the flow down its first
-// parents, or the commits ahead of the base when the flow hasn't loaded.
 function branchLine(flow: Flow | null, comparison: Comparison, most: number): (FlowCommit | Comparison["commits"][number])[] {
   if (flow) {
     const bySha = new Map(flow.commits.map((commit) => [commit.sha, commit]));
@@ -1207,26 +748,6 @@ function SkyIcon({ part }: { part: Part }) {
       <path d="M7 17a5 5 0 0 1 10 0" />
       <path d="M3 17h18M12 7v2M5.6 10.6l1.4 1.4M18.4 10.6L17 12M3.5 21h17" />
       <path d={part === "morning" ? "M10 4.5l2-2 2 2" : "M10 2.5l2 2 2-2"} />
-    </svg>
-  );
-}
-
-function SyncIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" />
-      <path d="M4 4v4h4" />
-      <path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" />
-      <path d="M20 20v-4h-4" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
-      <path d="M12 8v8M8 12h8" />
     </svg>
   );
 }
