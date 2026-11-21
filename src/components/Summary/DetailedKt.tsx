@@ -7,6 +7,7 @@ import KtDocument from "./KtDocument";
 import { attachKt } from "./ktInteract";
 import { buildModel } from "./ktModel";
 import "./ktDoc.css";
+import Loading, { Progress } from "../Loading/Loading";
 
 // The detailed KT: the project explained for someone who has never coded, with a map of its
 // parts, a reading path, how things flow, where data lives and every file. The facts are read
@@ -81,9 +82,13 @@ export default function DetailedKt({ summary, scope, ai, loadGuide, imageUrl, lo
 
   if (!detail || !model) {
     return (
-      <section className="card kt__card">
-        {problem ? <p className="kt__error" role="alert">{problem}</p> : <p className="summary__muted">Reading every file…</p>}
-      </section>
+      problem ? (
+        <section className="card kt__card">
+          <p className="kt__error" role="alert">{problem}</p>
+        </section>
+      ) : (
+        <Loading label="Reading every file…" shape="doc" />
+      )
     );
   }
 
@@ -100,6 +105,8 @@ export default function DetailedKt({ summary, scope, ai, loadGuide, imageUrl, lo
   };
   const position = explaining?.label ? order.indexOf(explaining.label) : -1;
   const progress = position >= 0 ? position : 0;
+  // Every step but the last is one file's note; the last writes the project's words.
+  const files = Math.max(0, order.length - 1);
   const pdf = async () => {
     setSaving("PDF");
     try {
@@ -169,16 +176,15 @@ export default function DetailedKt({ summary, scope, ai, loadGuide, imageUrl, lo
       )}
       {ai && !ready && <ClaudeSetup ai={ai} onRefresh={onSignedIn} />}
       {explaining?.running && (
-        <div className="card kt__progress" role="status">
-          <div className="kt__progress-top">
-            <span>Writing about <code>{explaining.label}</code>…</span>
-            <span>{progress} of {order.length}</span>
-          </div>
-          <div className="kt__bar" aria-hidden="true">
-            <i style={{ width: `${(progress / Math.max(1, order.length)) * 100}%` }} />
-          </div>
-          <p>One request per file, then one for the whole project. You can leave this page; it keeps going.</p>
-        </div>
+        <Progress
+          steps={[
+            { label: `Notes on each file, ${Math.min(progress, files)} of ${files}`, state: progress >= files ? "done" : "now" },
+            { label: "The project's map, flows and words", state: progress >= files ? "now" : "todo" },
+          ]}
+          share={(progress / Math.max(1, order.length)) * 100}
+          meta={progress < files ? `Now: ${explaining.label}` : `${progress} of ${order.length} steps`}
+          note="One request per file, then one for the whole project. You can leave this page; it keeps going."
+        />
       )}
       {explaining?.error && <p className="kt__error" role="alert">{explaining.error}</p>}
       <div ref={page}>

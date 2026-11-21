@@ -52,7 +52,7 @@ function write(model: KtModel, pictures: { caption: string; found: Picture }[], 
   const colorOf = (path: string) => color.get(partOf.get(path) ?? "") ?? INDIGO;
   const list = sections(model);
 
-  pdf.cover(model.name, `Detailed knowledge transfer  ·  ${model.date}`, model.tech.map((t) => t.name).slice(0, 8));
+  pdf.cover(model.name, `Detailed knowledge transfer by Looma  ·  ${model.date}`, model.tech.map((t) => t.name).slice(0, 8));
   if (model.summary) pdf.para(model.summary, { size: 12.5 });
   pdf.para(`Read from: ${model.source}.`, { color: MUTED, size: 9.5, gap: 14 });
   pdf.contents(list);

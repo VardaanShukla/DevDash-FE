@@ -28,7 +28,7 @@ export type SetupStep = {
   title: string;
   detail: string;
   command: string | null;
-  // null where DevDash can't check, such as restarting Claude Code.
+  // null where Looma can't check, such as restarting Claude Code.
   done: boolean | null;
 };
 
@@ -38,7 +38,7 @@ export type BranchInfo = {
   merged: boolean;
   // Its upstream was deleted on the remote, usually after a merged pull request.
   gone: boolean;
-  // When DevDash stops listing a merged or deleted branch; null for an open one.
+  // When Looma stops listing a merged or deleted branch; null for an open one.
   removes_at: string | null;
 };
 
@@ -215,7 +215,7 @@ export type FunctionDetail = {
 // or a model on your own server (hosted).
 export type AiProvider = "claude" | "codex" | "ollama" | "antigravity" | "hosted";
 
-// The server a hosted model is on, as DevDash shows it: never the key itself.
+// The server a hosted model is on, as Looma shows it: never the key itself.
 export type HostedServer = {
   url: string;
   // OpenAI-style /v1/chat/completions (vLLM, llama.cpp, LM Studio), or Ollama's /api/chat.
@@ -269,7 +269,7 @@ export type OllamaState = {
   running: boolean;
   version: string | null;
   host: string;
-  // Started from DevDash.
+  // Started from Looma.
   started_here: boolean;
   // What runs it: Start and Stop go through the same thing. "service" is the Linux systemd
   // service, which takes an administrator's password.
@@ -298,7 +298,7 @@ export type OllamaAdvice = {
 
 // What a local model costs the computer, for the chart on the Ollama page.
 export type OllamaUsage = {
-  // Empty when there's no GPU DevDash can read: the CPU is shown instead.
+  // Empty when there's no GPU Looma can read: the CPU is shown instead.
   gpus: { name: string; percent: number; memory_used: number; memory_total: number }[];
   cpu: number | null;
   cores: number;
@@ -393,9 +393,9 @@ export type KtDetail = {
   explained: number;
 };
 
-// Your GitHub account, connected through DevDash's GitHub App.
+// Your GitHub account, connected through Looma's GitHub App.
 export type GitHubStatus = {
-  // DevDash's GitHub App is set up (its client ID is known).
+  // Looma's GitHub App is set up (its client ID is known).
   configured: boolean;
   // GitHub's gh tool is installed, to sign in through.
   gh: boolean;
@@ -405,7 +405,7 @@ export type GitHubStatus = {
   login: string | null;
   name: string | null;
   avatar: string | null;
-  // Where to pick the repositories DevDash may read.
+  // Where to pick the repositories Looma may read.
   install_url: string | null;
   // While signing in: the code to enter at verify_url, and when it runs out (Unix time).
   code: string | null;
@@ -421,7 +421,7 @@ export type GitHubRepo = {
   url: string | null;
   clone_url: string | null;
   updated_at: string | null;
-  // The folder of the DevDash project cloned from it.
+  // The folder of the Looma project cloned from it.
   tracked: string | null;
 };
 
@@ -437,7 +437,7 @@ export type PullRequest = {
 };
 
 // Your AWS CodeCommit repositories, read through the AWS CLI with one of your AWS profiles.
-// DevDash keeps no AWS keys, only the profile's name and the region.
+// Looma keeps no AWS keys, only the profile's name and the region.
 export type CodeCommitStatus = {
   // The AWS CLI is installed, to sign requests with.
   cli: boolean;
@@ -459,7 +459,7 @@ export type CodeCommitRepo = {
   url: string | null;
   clone_url: string | null;
   updated_at: string | null;
-  // The folder of the DevDash project cloned from it.
+  // The folder of the Looma project cloned from it.
   tracked: string | null;
 };
 

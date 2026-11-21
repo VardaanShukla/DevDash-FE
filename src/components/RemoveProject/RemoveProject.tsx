@@ -37,14 +37,14 @@ export default function RemoveProject({ repo, onClose, onRemoved }: Props) {
   return (
     <div className="modal" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="modal__panel card" role="alertdialog" aria-labelledby="remove-project-title">
-        <h2 id="remove-project-title">Remove {repo.name} from DevDash?</h2>
+        <h2 id="remove-project-title">Remove {repo.name} from Looma?</h2>
         <p className="modal__lead remove__path">{repo.path}</p>
         <ul className="remove__list">
           <li>Your files, branches and git history stay exactly as they are.</li>
           {repo.ai ? (
-            <li>DevDash stops recording AI changes here and deletes the AI requests it recorded for this project.</li>
+            <li>Looma stops recording AI changes here and deletes the AI requests it recorded for this project.</li>
           ) : (
-            <li>DevDash just stops showing it.</li>
+            <li>Looma just stops showing it.</li>
           )}
           <li>You can add it again any time.</li>
         </ul>

@@ -64,11 +64,9 @@
 
 .summary__eyebrow,
 .summary__ai-label {
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--dd-accent);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--dd-ink-soft);
 }
 
 .summary__ai-label--plain {
@@ -130,9 +128,9 @@
   gap: 8px;
   margin-top: 6px;
   padding: 14px 16px;
-  border: 1px solid color-mix(in srgb, var(--dd-accent) 35%, transparent);
-  border-radius: 14px;
-  background: var(--dd-accent-soft);
+  border: 1px solid var(--dd-panel-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dd-ink) 2.5%, transparent);
 }
 
 .summary__overview {
@@ -893,10 +891,19 @@
 }
 
 /* The KT tab's choice: the brief KT or the detailed one, as two cards. */
+/* It fills what's left under the page's tabs, and the KT below the two cards scrolls inside it:
+   without a height of its own the KT grew to its full length and the screen clipped it. */
 .kt-choice {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
+}
+
+.kt-choice > .kt {
+  flex: 1;
+  min-height: 0;
 }
 
 .kt-choice__options {

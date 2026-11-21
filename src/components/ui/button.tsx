@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
-// The SaaS template's button, on DevDash's colours so it works in both themes. "gradient" is
+// The SaaS template's button, on Looma's colours so it works in both themes. "gradient" is
 // the main action on a screen; "default" a solid one; "ghost" and "outline" the quiet ones.
 const buttonVariants = cva(
   "inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-transparent font-medium transition-[transform,background-color,color,opacity] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50",

@@ -59,7 +59,7 @@ function NotRecording({ explainer, onConnect, project }: { explainer?: string; o
     <section className="card digest__empty digest__off" role="status">
       <h3>{project ? `${project} isn't recording AI changes` : "AI changes is off: no coding tool is connected"}</h3>
       <p>
-        AI changes works only with <b>Claude Code</b>, <b>Codex</b> or <b>Antigravity</b>. DevDash records each prompt you
+        AI changes works only with <b>Claude Code</b>, <b>Codex</b> or <b>Antigravity</b>. Looma records each prompt you
         give one of them in a connected project, with exactly what it changed.
       </p>
       <p>
@@ -198,7 +198,7 @@ function Day({ connected, project, version, onConnect, onOpen, explainer }: Prop
             {connected === 0 ? (
               <>
                 <h3>No project is recording AI changes yet</h3>
-                <p>DevDash records AI changes only in projects connected to your AI coding tool. Connect one, then restart any coding session that's open.</p>
+                <p>Looma records AI changes only in projects connected to your AI coding tool. Connect one, then restart any coding session that's open.</p>
                 <button className="digest__button" onClick={onConnect}>Open Projects</button>
               </>
             ) : (

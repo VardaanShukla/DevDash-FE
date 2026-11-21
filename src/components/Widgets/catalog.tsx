@@ -4,6 +4,7 @@ import type {
   AiStatus, BranchInfo, Comparison, Digest, DigestChange, Flow, FlowCommit, PlacedWidget, ProjectMap,
   RecordingHealth, Repo, WidgetStyle, WidgetType,
 } from "../../api/types";
+import Chrono from "../Chrono/Chrono";
 import { branchNote, GaugeDial, SIZES } from "../Overview/Overview";
 import type { View } from "../SideMenu/SideMenu";
 
@@ -90,9 +91,9 @@ export const CATALOG: WidgetSpec[] = [
     render: (p) => <Greeting {...p} />,
   },
   {
-    type: "project", name: "Project on show", description: "The project picked in the menu, and its branch. Opens its summary.",
+    type: "project", name: "Project on show", description: "The time, and the project picked in the menu with its branch. Opens its summary.",
     size: { w: 4, h: 2 }, min: { w: 2, h: 2 }, style: "bare",
-    options: [toggle("branch", "Show the branch"), toggle("path", "Show the folder", false)],
+    options: [toggle("clock", "Show the clock"), toggle("branch", "Show the branch"), toggle("path", "Show the folder", false)],
     render: (p) => <ProjectName {...p} />,
   },
   {
@@ -117,7 +118,7 @@ export const CATALOG: WidgetSpec[] = [
   {
     type: "latest-commit", name: "Latest commit", description: "The newest commit on the branch on show, with the ones before it.",
     size: { w: 5, h: 6 }, min: { w: 3, h: 3 },
-    options: [count("earlier", "Earlier commits to list", 4, 0, 10)],
+    options: [count("earlier", "Earlier commits to list", 7, 0, 12)],
     render: gitOnly((p) => <LatestCommit {...p} />),
   },
   {
@@ -197,10 +198,13 @@ function todaysCommits(flow: Flow | null) {
 
 // --- The widgets ----------------------------------------------------------------------------
 
+// The welcome at the top of Home: the greeting, then one line of where things stand, led by
+// a light that says whether anything needs you.
 function Greeting({ data, o }: WidgetProps) {
   const moment = timeOfDay();
   const risky = kept(projectChanges(data)).filter((change) => change.risky).length;
   const broken = (data.health?.problems.length ?? 0) > 0;
+  const today = data.digest ? kept(data.digest.changes).length : null;
   const status: { text: string; tone: "risk" | "calm"; go?: () => void } = broken
     ? { text: "AI recording needs a fix", tone: "risk" }
     : risky > 0
@@ -220,8 +224,6 @@ function Greeting({ data, o }: WidgetProps) {
         </h1>
         {(o("date") || o("status")) && (
           <p className="greet__sub">
-            {o("date") && <span>{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>}
-            {o("date") && o("status") && <span aria-hidden="true">·</span>}
             {o("status") &&
               (data.error ? (
                 <span className="greet__mood greet__mood--risk">{data.error}</span>
@@ -232,6 +234,15 @@ function Greeting({ data, o }: WidgetProps) {
               ) : (
                 <span className={`greet__mood greet__mood--${status.tone}`}>{status.text}</span>
               ))}
+            {o("date") && <span>{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</span>}
+            <span>
+              {data.repos.length} {data.repos.length === 1 ? "project" : "projects"}
+            </span>
+            {today !== null && (
+              <span>
+                {today} AI {today === 1 ? "change" : "changes"} today
+              </span>
+            )}
           </p>
         )}
       </div>
@@ -239,16 +250,26 @@ function Greeting({ data, o }: WidgetProps) {
   );
 }
 
+// Beside the welcome: the project and branch on show as a chip that opens the
+// project's summary, and an analog chronograph with the time on this computer.
 function ProjectName({ data, title, widget, o }: WidgetProps) {
   const picked = data.picked;
-  if (!picked) return <Muted>Pick a project in the menu.</Muted>;
   return (
-    <button className="onshow" onClick={() => data.onView("summary")} title={`${picked.path}\nOpen its summary`}>
-      <span className="onshow__label">{widget.title ? title : "Viewing"}</span>
-      <strong>{picked.name}</strong>
-      {o("branch") && data.comparison && <code>{data.comparison.head}</code>}
-      {o("path") && <span className="onshow__path">{picked.path}</span>}
-    </button>
+    <div className="onshow">
+      <div className="onshow__info">
+        {!picked ? (
+          <Muted>Pick a project in the menu.</Muted>
+        ) : (
+          <button className="onshow__chip" onClick={() => data.onView("summary")} title={`${picked.path}\nOpen its summary`}>
+            <span className="onshow__label">{widget.title ? title : "Viewing"}</span>
+            <strong>{picked.name}</strong>
+            {o("branch") && data.comparison && <code>{data.comparison.head}</code>}
+          </button>
+        )}
+        {picked && o("path") && <span className="onshow__path">{picked.path}</span>}
+      </div>
+      {o("clock") && <Chrono size={104} />}
+    </div>
   );
 }
 
@@ -304,18 +325,24 @@ function AiToday({ data, title, o }: WidgetProps) {
           </p>
         )}
         {o("bars") && bars.length > 0 && (
-          <div className="band__bars" aria-label="Today's prompts in this project, oldest first">
-            {bars.map((change, i) => (
-              <button
-                key={change.id}
-                className={`band__bar${change.risky ? " band__bar--risk" : ""}${change.undone_at ? " band__bar--undone" : ""}`}
-                onClick={() => data.onOpenChange(change.id)}
-                style={{ ["--i" as string]: i }}
-                title={promptTitle(change)}
-              >
-                <b style={{ height: `${Math.max(10, ((change.additions + change.deletions) / most) * 100)}%` }} />
-              </button>
-            ))}
+          <div className="band__chart">
+            <div className="band__bars" aria-label="Today's prompts in this project, oldest first">
+              {bars.map((change, i) => (
+                <button
+                  key={change.id}
+                  className={`band__bar${change.risky ? " band__bar--risk" : ""}${change.undone_at ? " band__bar--undone" : ""}`}
+                  onClick={() => data.onOpenChange(change.id)}
+                  style={{ ["--i" as string]: i }}
+                  title={promptTitle(change)}
+                >
+                  <b style={{ height: `${Math.max(10, ((change.additions + change.deletions) / most) * 100)}%` }} />
+                </button>
+              ))}
+            </div>
+            <p className="band__axis" aria-hidden="true">
+              <span>{time(bars[0].at)}</span>
+              <span>{bars.length > 1 ? time(bars[bars.length - 1].at) : ""}</span>
+            </p>
           </div>
         )}
       </div>
@@ -666,6 +693,16 @@ function AiPrompts({ data, title, o }: WidgetProps) {
                   {time(change.at)}
                   {o("all") && ` · ${change.repo.name}`} · <b className="wf__add">+{change.additions}</b> <b className="wf__del">−{change.deletions}</b>
                 </span>
+                {change.files.length > 0 && (
+                  <span className="prompts__files">
+                    {change.files.slice(0, 4).map((file) => (
+                      <code key={file.path} title={file.path}>
+                        {file.path.split("/").pop()}
+                      </code>
+                    ))}
+                    {change.files.length > 4 && <em>+{change.files.length - 4} more</em>}
+                  </span>
+                )}
               </button>
             </li>
           ))}

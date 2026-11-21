@@ -9,7 +9,7 @@
 /* `dark:` classes follow the theme switch in Settings, not the system setting. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* shadcn names, read from DevDash's own colours in styles/theme.css, so a pasted shadcn
+/* shadcn names, read from Looma's own colours in styles/theme.css, so a pasted shadcn
    component matches both themes without its own palette. */
 @theme inline {
   --color-background: var(--dd-bg);

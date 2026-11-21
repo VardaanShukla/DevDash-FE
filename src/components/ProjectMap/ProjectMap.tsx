@@ -68,7 +68,17 @@ export default function ProjectMap({ map, files, onOpenFile, onSelect }: Props) 
         const r = cards.current.get(id)?.getBoundingClientRect();
         return r && { left: r.left - origin.left + box.scrollLeft, right: r.right - origin.left + box.scrollLeft, mid: r.top - origin.top + box.scrollTop + r.height / 2 };
       };
-      setSize({ width: box.scrollWidth, height: box.scrollHeight });
+      // Sized from the cards, not the scroll area: the arrows' own layer would otherwise hold
+      // the area at its old, wider size after the cards close up.
+      let right = 0;
+      let bottom = 0;
+      for (const el of cards.current.values()) {
+        if (!box.contains(el)) continue;
+        const r = el.getBoundingClientRect();
+        right = Math.max(right, r.right - origin.left + box.scrollLeft);
+        bottom = Math.max(bottom, r.bottom - origin.top + box.scrollTop);
+      }
+      setSize({ width: Math.max(box.clientWidth, right + 8), height: Math.max(box.clientHeight, bottom + 8) });
       setLines(
         map.edges.flatMap((edge) => {
           const from = rect(edge.source);
@@ -216,7 +226,7 @@ export default function ProjectMap({ map, files, onOpenFile, onSelect }: Props) 
 
         <p className="map__hint">
           Arrows come from imports in the code: an arrow from one part to another means the first uses code from the second.
-          {layers.length === 0 && " DevDash found no imports between these parts."}
+          {layers.length === 0 && " Looma found no imports between these parts."}
           {!map.complete && " This project is large, so only some of its imports were read."}
         </p>
       </div>
@@ -261,7 +271,6 @@ function Details(props: {
 
   return (
     <aside className="details" aria-label={`About ${part.name}`}>
-      <span className="details__eyebrow">Part of the project</span>
       <h3 className="details__name">{part.name}</h3>
       <code className="details__path">{part.path || "Files at the top of the project"}</code>
       <p className="details__role">{describe(part)}</p>

@@ -41,7 +41,7 @@ type Props = {
   onOpenChange: (id: string) => void;
   onAdd: () => void;
   onSync: () => void;
-  // The signed-in DevDash username, for the greeting; none before a password is set.
+  // The signed-in Looma username, for the greeting; none before a password is set.
   username?: string;
 };
 

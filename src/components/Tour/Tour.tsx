@@ -17,7 +17,7 @@ type Step = {
 };
 
 const STEPS: Step[] = [
-  { title: "Welcome to DevDash", text: "A one-minute look round. Use the arrow keys or the buttons, and skip any time." },
+  { title: "Welcome to Looma", text: "A one-minute look round. Use the arrow keys or the buttons, and skip any time." },
   { view: "home", targets: ["home"], title: "Home", text: "Your dashboard: this branch, what your AI changed today, recent commits and shortcuts. Edit it to show what you need." },
   { view: "digest", targets: ["digest"], title: "AI changes", text: "Every change your AI coding tool made, grouped by the request behind it, with what to check." },
   { view: "summary", targets: ["summary"], title: "Summary", text: "The whole project on one page: what it is, what it's built with, its parts and who works on it." },
@@ -25,8 +25,7 @@ const STEPS: Step[] = [
   { view: "ask", targets: ["ask-box", "ask"], title: "Ask", text: "Ask anything about the project, such as what a file is for or how a flow works. It explains; it never changes code." },
   { view: "changes", targets: ["changes"], title: "Changes", text: "Every changed file and function, before and after, explained in plain words when you ask." },
   { view: "commits", targets: ["commits"], title: "Commits", text: "Each saved step on this branch, newest first." },
-  { targets: ["uncommitted"], title: "Uncommitted work", text: "Turn this on to see edits you haven't committed yet, everywhere in DevDash." },
-  { targets: ["project"], title: "Projects", text: "Add, switch or remove the projects DevDash watches." },
+  { targets: ["project"], title: "Projects", text: "Add, switch or remove the projects Looma watches." },
   { targets: ["settings"], title: "Settings", text: "Pick the AI that writes explanations (Claude, Ollama on this computer and more), the look and the shortcut keys." },
   { targets: ["help"], title: "Help", text: "Setup checks for this project, and this tour again whenever you want it." },
   { view: "home", title: "You're set", text: "Start with Summary or KT on your project. Everything stays on this computer." },

@@ -1,18 +1,24 @@
-# DevDash (dashboard page)
+<img src="public/looma.svg" width="72" alt="Looma logo">
 
-DevDash shows what changed in your code in plain words, so people who don't read code can
+# Looma (dashboard page)
+
+Looma shows what changed in your code in plain words, so people who don't read code can
 follow it: what a branch changed, what your AI coding tool did and why, the whole project on one
 page, and knowledge-transfer guides (a brief one, and a detailed one with a map, step-by-step
 flows and every file) to download as a PDF or an interactive page.
 
 This repo is the dashboard page: React and TypeScript, built with Vite. Everything it shows
-comes from the DevDash backend, [DevDash-BE](https://github.com/VardaanShukla/DevDash-BE),
+comes from the Looma backend, [DevDash-BE](https://github.com/VardaanShukla/DevDash-BE),
 which also serves a built copy of this page. The backend's README describes every feature,
-how to install DevDash and every endpoint.
+how to install Looma and every endpoint.
+
+Looma was called DevDash until November 2026. Only the name changed: the command is still
+`devdash` (`looma` works too once installed from this version), your data stays in `~/.devdash`,
+the `DEVDASH_*` settings and the `/api` addresses are the same, and the repos keep their names.
 
 ## Use it
 
-You don't need this repo or Node to use DevDash: the backend comes with a built copy of
+You don't need this repo or Node to use Looma: the backend comes with a built copy of
 this page. On Linux, macOS or Windows:
 
 ```sh
@@ -73,4 +79,4 @@ that on http://localhost:4173.
 
 ## License
 
-DevDash is created by [Vardaan Shukla](https://github.com/VardaanShukla) and released under the [Apache License 2.0](LICENSE). Copies and forks must keep the [NOTICE](NOTICE) file with that credit.
+Looma is created by [Vardaan Shukla](https://github.com/VardaanShukla) and released under the [Apache License 2.0](LICENSE). Copies and forks must keep the [NOTICE](NOTICE) file with that credit.

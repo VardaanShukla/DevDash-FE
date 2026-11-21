@@ -40,7 +40,7 @@ const GUIDE: Partial<Record<View, string>> = {
   changes: "One file at a time, function by function: what it looked like before, what it does now, and, from your AI, what the change improves and what it costs. Lines shows every changed line. Press j and k to move between files.",
   commits: "Every commit on this branch, newest first, with who made it and when, and the project's open pull requests on GitHub or CodeCommit.",
   project: "Add another git folder, connect your AI coding tool to record the request behind each change, or remove a project.",
-  settings: "Dark or light, whether uncommitted work shows from the start, your password and signing out, GitHub (connect your account to clone your repositories as projects and see open pull requests), CodeCommit (pick one of your AWS profiles for the same, with no keys kept by DevDash), and the shortcut keys: click a key to change it. Settings are saved by DevDash, so every browser you sign in from gets the same.",
+  settings: "Dark or light, whether uncommitted work shows from the start, your password and signing out, GitHub (connect your account to clone your repositories as projects and see open pull requests), CodeCommit (pick one of your AWS profiles for the same, with no keys kept by Looma), and the shortcut keys: click a key to change it. Settings are saved by Looma, so every browser you sign in from gets the same.",
 };
 
 const COLOURS = [
@@ -60,7 +60,7 @@ export default function Help({ repo, steps, error, onTour }: { repo: Repo; steps
       <section className="card help__setup">
         <header className="help__header">
           <div>
-            <h2>Set up DevDash</h2>
+            <h2>Set up Looma</h2>
             <p className="help__note">For {repo.name}</p>
           </div>
           <button className="help__tour" onClick={onTour}>
@@ -111,7 +111,7 @@ export default function Help({ repo, steps, error, onTour }: { repo: Repo; steps
         </ul>
       </section>
       <footer className="help__credit">
-        DevDash was created by{" "}
+        Looma was created by{" "}
         <a href="https://github.com/VardaanShukla" target="_blank" rel="noreferrer">
           Vardaan Shukla
         </a>

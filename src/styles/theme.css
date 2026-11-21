@@ -1,50 +1,58 @@
-/* Brand colours and surfaces. Components read these; canvas code reads them with
-   getComputedStyle. Dark mode swaps the surfaces and ink, never the brand blue and red.
+/* Brand colours and surfaces: Looma's black, orange and white. Components read these; canvas
+   code reads them with getComputedStyle. The --dd-blue names are kept from before the
+   rename and now hold the brand orange.
    Tailwind and shadcn read the same values through src/index.css. */
 :root {
-  --dd-blue: #4fc3f7;
-  --dd-blue-strong: #0288d1;
+  /* Looma's orange, as a fill and a glow; the darker one where it sits behind white. */
+  --dd-blue: #ff7a1a;
+  --dd-blue-strong: #e8590c;
   --dd-red: #ef4444;
-  /* The brand's blue as text (the "Dev" of the logo): deep enough to read on light glass. */
-  --dd-brand-ink: #0369a1;
+  /* The brand's orange as text: deep enough to read on white. */
+  --dd-brand-ink: #c2410c;
   --dd-brand-red: #b91c1c;
   /* Text that warns (trade-offs, behind its base): amber, deep enough to read. */
   --dd-warn: #92400e;
   /* The glow colour of the dashboard: gauges, active menu items, changed parts. Every text
      colour in the light theme reads at 4.5:1 or more on the cards and the page (WCAG AA). */
-  --dd-accent: #0b5f59;
-  --dd-accent-soft: rgba(11, 95, 89, 0.12);
+  --dd-accent: #c2410c;
+  --dd-accent-soft: rgba(232, 89, 12, 0.1);
   --dd-on-accent: #fff;
-  /* Light is a latte: a light coffee page, cream cards, warm tan borders and coffee-dark ink. */
-  --dd-ink: #24180f;
-  --dd-ink-soft: #45392d;
-  --dd-muted: #5e5044;
-  --dd-bg: #e4d3bf;
+  /* Light is clean paper: neutral greys, black ink, orange kept for what's active. */
+  --dd-ink: #18181b;
+  --dd-ink-soft: #3f3f46;
+  --dd-muted: #6b6b74;
+  --dd-bg: #f6f6f7;
   --dd-backdrop:
-    radial-gradient(900px 520px at 78% 70%, rgba(150, 104, 62, 0.16), transparent 62%),
-    radial-gradient(800px 480px at 12% 8%, rgba(255, 242, 222, 0.6), transparent 60%);
+    radial-gradient(1200px 420px at 50% -20%, rgba(255, 122, 26, 0.05), transparent 70%);
   /* Opaque card colour, for things drawn on top of a card; cards themselves are glass. */
-  --dd-card: #f8f0e5;
-  --dd-glass: rgba(255, 249, 240, 0.74);
-  --dd-glass-line: rgba(84, 56, 30, 0.14);
-  --dd-line: #dac8b1;
-  --dd-shadow: 0 18px 40px -22px rgba(74, 46, 20, 0.32), 0 1px 3px rgba(74, 46, 20, 0.07);
+  --dd-card: #ffffff;
+  --dd-glass: rgba(255, 255, 255, 0.94);
+  --dd-glass-line: rgba(24, 24, 27, 0.09);
+  --dd-line: #e4e4e7;
+  /* Home's panels: flat instruments with a hairline edge, lit a little from above; the hot
+     one (the branch's size) glows from below in the brand orange. */
+  --dd-panel-top: #ffffff;
+  --dd-panel-bottom: #ffffff;
+  --dd-panel-line: rgba(24, 24, 27, 0.09);
+  --dd-panel-hot: rgba(234, 88, 12, 0.07);
+  --dd-panel-shadow: 0 1px 2px rgba(24, 24, 27, 0.04), 0 8px 24px -18px rgba(24, 24, 27, 0.18);
+  --dd-shadow: 0 12px 32px -20px rgba(24, 24, 27, 0.22), 0 1px 2px rgba(24, 24, 27, 0.05);
   /* The thin scroll bar thumb, shown only while the pointer is over what scrolls. */
-  --dd-scroll: rgba(94, 70, 48, 0.4);
+  --dd-scroll: rgba(63, 63, 70, 0.3);
   /* What dims the page behind a dialog. */
-  --dd-scrim: rgba(36, 24, 15, 0.38);
+  --dd-scrim: rgba(24, 24, 27, 0.4);
   /* Depth. Raised parts are lit from above: a bright top edge (bevel) and a shadow that
      grows with height (raise, lift for something pressed toward you). Wells are pressed in. */
-  --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 -1px 0 rgba(84, 56, 30, 0.08);
-  --dd-raise: 0 1px 1px rgba(74, 46, 20, 0.07), 0 8px 16px -6px rgba(74, 46, 20, 0.16), 0 28px 44px -22px rgba(74, 46, 20, 0.34);
-  --dd-lift: 0 2px 2px rgba(74, 46, 20, 0.08), 0 16px 26px -8px rgba(74, 46, 20, 0.24), 0 44px 64px -28px rgba(74, 46, 20, 0.42);
-  --dd-well: inset 0 2px 5px rgba(74, 46, 20, 0.13), inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+  --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --dd-raise: 0 1px 2px rgba(24, 24, 27, 0.05), 0 10px 24px -16px rgba(24, 24, 27, 0.2);
+  --dd-lift: 0 2px 4px rgba(24, 24, 27, 0.06), 0 20px 40px -20px rgba(24, 24, 27, 0.3);
+  --dd-well: inset 0 1px 2px rgba(24, 24, 27, 0.06);
   /* Solid surfaces for controls: a field, a key, a raised button. */
-  --dd-field: #fffaf3;
-  --dd-key-top: #fffaf3;
-  --dd-key-bottom: #efe2d1;
-  --dd-key-edge: #cdb69a;
-  --dd-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2345392d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dd-field: #ffffff;
+  --dd-key-top: #ffffff;
+  --dd-key-bottom: #fafafa;
+  --dd-key-edge: #e4e4e7;
+  --dd-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%233f3f46' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   /* Change colours: added, removed, changed. */
   --dd-add: #166534;
@@ -56,66 +64,76 @@
   --dd-mod: #035e8f;
   --dd-mod-bg: #e0f2fe;
   /* The line on the Ollama usage chart (checked for contrast on the cards). */
-  --dd-chart: #035e8f;
-  /* Amber marks what an AI tool wrote: dots on the graphs and the commit list. */
-  --dd-ai: #c2740a;
-  --dd-ai-bg: rgba(194, 116, 10, 0.14);
+  --dd-chart: #c2410c;
+  /* Gold marks what an AI tool wrote: dots on the graphs and the commit list. Yellower than
+     the brand orange, so the two never read as one. */
+  --dd-ai: #a16207;
+  --dd-ai-bg: rgba(202, 138, 4, 0.14);
 
-  /* Big headings and the main button fade from solid ink to softer ink, top to bottom. */
-  --dd-gradient-from: #24180f;
-  --dd-gradient-to: rgba(36, 24, 15, 0.72);
-  --dd-gradient-ink: #f8f0e5;
+  /* The main button: a bar of Looma orange, a little deeper toward the bottom. */
+  --dd-gradient-from: #c2410c;
+  --dd-gradient-to: #a8360a;
+  --dd-gradient-ink: #fff;
 
-  --dd-font: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Manrope for reading and working; Unbounded, wide and confident, for the LOOMA wordmark
+     and the big headings only. */
+  --dd-font: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --dd-display: "Unbounded", "Manrope", system-ui, sans-serif;
   --dd-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 
-/* Dark is the dashboard look: black, smoked-glass panels, grey hairlines and white ink. */
+/* Dark is the Looma look: neutral graphite and white ink, with orange only where something is
+   active or needs attention. */
 :root[data-theme="dark"] {
-  /* Monochrome: white is the accent, so gauges, active items and the main button glow white. */
-  --dd-accent: #f5f5f5;
-  --dd-accent-soft: rgba(255, 255, 255, 0.08);
-  --dd-on-accent: #000;
-  --dd-ink: #fff;
-  --dd-ink-soft: #d1d5db;
-  --dd-brand-ink: #4fc3f7;
+  --dd-accent: #ff7a1a;
+  --dd-accent-soft: rgba(255, 122, 26, 0.12);
+  --dd-on-accent: #0b0b0c;
+  --dd-ink: #f4f4f5;
+  --dd-ink-soft: #d4d4d8;
+  --dd-brand-ink: #ff8a3d;
   --dd-brand-red: #ef4444;
   --dd-warn: #f59e0b;
-  --dd-muted: #9ca3af;
-  --dd-bg: #000;
-  /* One soft light from above the page, where the template has its glow. */
-  --dd-backdrop: radial-gradient(1100px 560px at 50% -14%, rgba(255, 255, 255, 0.1), transparent 66%);
-  --dd-card: #101012;
-  --dd-glass: rgba(18, 18, 20, 0.72);
-  --dd-glass-line: rgba(75, 85, 99, 0.38);
-  --dd-line: rgba(75, 85, 99, 0.5);
-  --dd-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  --dd-scroll: rgba(156, 163, 175, 0.3);
+  --dd-muted: #9d9da6;
+  --dd-bg: #09090b;
+  /* A faint orange light from above; the rest is neutral graphite. */
+  --dd-backdrop:
+    radial-gradient(1200px 460px at 50% -22%, rgba(255, 122, 26, 0.07), transparent 70%);
+  --dd-card: #111113;
+  --dd-glass: rgba(17, 17, 19, 0.92);
+  --dd-glass-line: rgba(255, 255, 255, 0.08);
+  --dd-line: rgba(255, 255, 255, 0.08);
+  --dd-panel-top: #131316;
+  --dd-panel-bottom: #101012;
+  --dd-panel-line: rgba(255, 255, 255, 0.08);
+  --dd-panel-hot: rgba(255, 106, 0, 0.13);
+  --dd-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --dd-shadow: 0 16px 36px -22px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --dd-scroll: rgba(255, 255, 255, 0.18);
   --dd-scrim: rgba(0, 0, 0, 0.6);
-  --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.09), inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-  --dd-raise: 0 1px 1px rgba(0, 0, 0, 0.7), 0 12px 22px -10px rgba(0, 0, 0, 0.85), 0 40px 64px -32px rgba(0, 0, 0, 0.95);
-  --dd-lift: 0 2px 2px rgba(0, 0, 0, 0.7), 0 20px 34px -12px rgba(0, 0, 0, 0.9), 0 60px 90px -40px rgba(0, 0, 0, 1);
-  --dd-well: inset 0 2px 8px rgba(0, 0, 0, 0.75), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
-  --dd-field: #141417;
-  --dd-key-top: #26262b;
-  --dd-key-bottom: #17171a;
+  --dd-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --dd-raise: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 28px -18px rgba(0, 0, 0, 0.8);
+  --dd-lift: 0 2px 4px rgba(0, 0, 0, 0.5), 0 24px 48px -24px rgba(0, 0, 0, 0.9);
+  --dd-well: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  --dd-field: #0f0f11;
+  --dd-key-top: #1b1b1f;
+  --dd-key-bottom: #151518;
   --dd-key-edge: #050506;
-  --dd-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23d1d5db' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --dd-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%23d4d4d8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --dd-add: #4ade80;
   --dd-add-bg: rgba(74, 222, 128, 0.14);
   --dd-del: #fb8a8a;
   --dd-del-bg: rgba(248, 113, 113, 0.14);
   /* Dark red reads on the light red that dark mode's buttons use; white wouldn't. */
   --dd-on-del: #2a0707;
-  --dd-mod: #4fc3f7;
-  --dd-mod-bg: rgba(79, 195, 247, 0.14);
-  --dd-chart: #2f9fd8;
-  --dd-ai: #fbbf24;
-  --dd-ai-bg: rgba(251, 191, 36, 0.16);
-  --dd-gradient-from: #fff;
-  --dd-gradient-to: rgba(255, 255, 255, 0.6);
-  --dd-gradient-ink: #000;
+  --dd-mod: #7cc4ff;
+  --dd-mod-bg: rgba(124, 196, 255, 0.14);
+  --dd-chart: #ff8a3d;
+  --dd-ai: #fcd34d;
+  --dd-ai-bg: rgba(252, 211, 77, 0.15);
+  --dd-gradient-from: #ff8a3d;
+  --dd-gradient-to: #f06000;
+  --dd-gradient-ink: #0b0b0c;
   color-scheme: dark;
 }
 
@@ -194,7 +212,7 @@ body {
 }
 
 ::selection {
-  background: var(--dd-accent-soft);
+  background: color-mix(in srgb, var(--dd-accent) 30%, transparent);
   color: var(--dd-ink);
 }
 

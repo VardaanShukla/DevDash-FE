@@ -11,6 +11,7 @@ import FlowGraph from "./components/FlowGraph/FlowGraph";
 import Help, { useSetup } from "./components/Help/Help";
 import Tour from "./components/Tour/Tour";
 import Home from "./components/Home/Home";
+import Loading from "./components/Loading/Loading";
 import Login from "./components/Login/Login";
 import Logo from "./components/Logo/Logo";
 import Overview, { branchNote } from "./components/Overview/Overview";
@@ -237,6 +238,8 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
     (changes: PreferenceChange) =>
       api.setPreferences(changes).then((saved) => {
         setPrefs(saved);
+        // Settings is where uncommitted work is turned on or off, so it applies at once.
+        if (changes.uncommitted !== undefined) setUncommitted(saved.uncommitted === true);
         setTheme(saved.theme);
       }),
     [],
@@ -549,7 +552,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           back={settingsBack}
         />
       ) : (
-        <Notice title="Loading">Reading your settings…</Notice>
+        <Loading label="Reading your settings…" />
       );
     }
     if (error && !repos) return <Notice title="Something needs attention">{error}</Notice>;
@@ -642,7 +645,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           onOpenMap={() => setView("map")}
         />
       ) : (
-        <Notice title="Loading">Reading the project…</Notice>
+        <Loading label="Reading the project…" shape="doc" />
       );
     }
     if (view === "ask") {
@@ -655,13 +658,13 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           onSignedIn={refreshAi}
         />
       ) : (
-        <Notice title="Loading">Reading the project…</Notice>
+        <Loading label="Reading the project…" shape="doc" />
       );
     }
     if (noGit) {
       if (view === "map") {
         return !map ? (
-          <Notice title="Project map">Reading the project's folders…</Notice>
+          <Loading label="Reading the project's folders…" shape="graph" />
         ) : map.areas.length === 0 ? (
           <Notice title="Project map">No files found in this folder.</Notice>
         ) : (
@@ -678,7 +681,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
       );
     }
     if (branches && !branches.default_base && !base) return <BasePicker branches={branches} head={head} onPick={setBase} />;
-    if (!comparison) return <Notice title="Loading">Reading your branch from git…</Notice>;
+    if (!comparison) return <Loading label="Reading your branch from git…" />;
 
     const compareOptions = { base: base ?? undefined, head: comparison.head, uncommitted: comparison.uncommitted };
     switch (view) {
@@ -709,13 +712,13 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
         return map && map.areas.length > 0 ? (
           <ProjectMap map={map} files={comparison.files} onOpenFile={openFile} onSelect={pickMap} />
         ) : (
-          <Notice title="Project map">Reading the project's folders…</Notice>
+          <Loading label="Reading the project's folders…" shape="graph" />
         );
       case "changes":
         return comparison.files.length === 0 ? (
           <Notice title="Nothing changed yet">
             <code>{comparison.head}</code> has no changes compared with <code>{comparison.base}</code>.
-            {canIncludeUncommitted && !uncommitted && " Turn on “Include uncommitted work” to see edits you haven't committed."}
+            {canIncludeUncommitted && !uncommitted && " Turn on Show uncommitted work in Settings to see edits you haven't committed."}
           </Notice>
         ) : (
           <FileChanges
@@ -781,7 +784,9 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
 
   return (
     <div className="app">
-      {repos && repos.length > 0 && (
+      {/* Changes is a page of its own: its file list is the menu there, and the breadcrumb's
+          back arrow leads out. */}
+      {repos && repos.length > 0 && view !== "changes" && (
         <SideMenu
           view={view}
           onView={(next) => {
@@ -828,25 +833,6 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           )}
           <div className="topbar__controls">
             {sync && <SyncStatus sync={sync} onSync={() => syncNow.current()} />}
-            <label
-              data-tour="uncommitted"
-              className={`toggle${canIncludeUncommitted ? "" : " toggle--disabled"}`}
-              title={
-                noGit
-                  ? NEEDS_GIT
-                  : canIncludeUncommitted
-                  ? `Also show edits you haven't committed yet${shortcuts.uncommitted ? ` (key ${shortcuts.uncommitted.toUpperCase()})` : ""}. Settings decides whether it starts on.`
-                  : "Only for the branch that is checked out"
-              }
-            >
-              <input
-                type="checkbox"
-                checked={uncommitted && canIncludeUncommitted}
-                disabled={!canIncludeUncommitted}
-                onChange={(event) => setUncommitted(event.target.checked)}
-              />
-              Uncommitted work
-            </label>
             {/* Without a project the menu is hidden, so Settings is reached from here. */}
             {!(repos && repos.length > 0) && (
               <button className="theme-button" onClick={() => setView("settings")}>
@@ -900,7 +886,7 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
       <section className="card ask__card">
         <h2 id="ask-title">Show work you haven't committed yet?</h2>
         <p className="settings__note">
-          DevDash can include edits you haven't committed in Changes, This branch and the map, every time it opens. You can
+          Looma can include edits you haven't committed in Changes, This branch and the map, every time it opens. You can
           change this any time in Settings.
         </p>
         <div className="ask__choices">
@@ -910,7 +896,7 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
           </button>
           <button className="ask__choice" onClick={() => onAnswer(false)}>
             <strong>No, only committed work to start with</strong>
-            <span>Turn on Uncommitted work at the top when you want it.</span>
+            <span>Turn it on in Settings when you want it.</span>
           </button>
         </div>
       </section>
@@ -1000,7 +986,7 @@ function SyncStatus({ sync, onSync }: { sync: Sync & { running: boolean }; onSyn
   );
 }
 
-// Most projects merge into main, master, develop or dev and DevDash finds it. For any
+// Most projects merge into main, master, develop or dev and Looma finds it. For any
 // other name, the user says which branch work is merged into.
 function BasePicker({ branches, head, onPick }: { branches: Branches; head: string | null; onPick: (base: string) => void }) {
   const others = branches.branches.filter((name) => name !== head);
@@ -1008,7 +994,7 @@ function BasePicker({ branches, head, onPick }: { branches: Branches; head: stri
     <section className="card notice">
       <h2>Which branch do you merge into?</h2>
       <p>
-        This project has no main, master, develop or dev branch, so DevDash doesn't know what to compare{" "}
+        This project has no main, master, develop or dev branch, so Looma doesn't know what to compare{" "}
         {head ? <code>{head}</code> : "this branch"} with.
       </p>
       {others.length === 0 ? (
@@ -1041,7 +1027,7 @@ function Welcome({ ai, onAiRefresh, onAdd, prefs, onPrefs }: {
   return (
     <section className="card welcome">
       <h1>See what changed in your code</h1>
-      <p>DevDash turns your branches and commits into a page anyone can read. Two quick steps and you're in.</p>
+      <p>Looma turns your branches and commits into a page anyone can read. Two quick steps and you're in.</p>
       <ol className="welcome__steps">
         <li>
           <strong>Connect an AI {ready ? "✓" : <span className="welcome__optional">optional</span>}</strong>
@@ -1052,7 +1038,7 @@ function Welcome({ ai, onAiRefresh, onAdd, prefs, onPrefs }: {
         </li>
         <li>
           <strong>Add a project</strong>
-          <span>Point DevDash at any git folder on this computer, and pick your AI coding tool to record the request behind each change.</span>
+          <span>Point Looma at any git folder on this computer, and pick your AI coding tool to record the request behind each change.</span>
         </li>
         <li>
           <strong>Open a branch</strong>
