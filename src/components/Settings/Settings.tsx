@@ -29,9 +29,12 @@ type Props = {
   onAiRefresh: () => void;
   // A repository cloned from GitHub or CodeCommit, now a project.
   onCloned?: (repo: Repo) => void;
+  // Where the Back button at the top goes: up a level (an AI's page back to AI), or back to
+  // the screen Settings was opened from (Home, or the first-run setup).
+  back?: { label: string; go: () => void };
 };
 
-export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh, onCloned }: Props) {
+export default function Settings({ section, onSection, standalone, prefs, onPrefs, onResetShortcuts, username, passwordSet, onSignOut, onPasswordSet, ai, onAiRefresh, onCloned, back }: Props) {
   // An AI can be installed, signed in or out outside DevDash: look again on opening Settings.
   useEffect(() => onAiRefresh(), [onAiRefresh]);
   const [list, setList] = useState<AiStatus[] | null>(null);
@@ -83,6 +86,14 @@ export default function Settings({ section, onSection, standalone, prefs, onPref
 
   return (
     <div className={`settings${standalone ? " settings--standalone" : ""}`}>
+      {back && (
+        <button className="settings__back" onClick={back.go}>
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+          Back to {back.label}
+        </button>
+      )}
       {/* With no side menu (no project yet, or a phone), Settings' parts are picked here. */}
       <label className="settings__jump">
         <span>Settings</span>
@@ -1511,9 +1522,18 @@ function GitHub({ onCloned }: { onCloned?: (repo: Repo) => void }) {
                   </span>
                   <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="github_pat_…" autoComplete="off" spellCheck={false} />
                 </label>
-                <button className="settings__button" type="submit" disabled={busy || !token.trim()}>
-                  {busy ? "Checking…" : "Connect"}
-                </button>
+                <div className="github__token-actions">
+                  <button className="settings__button" type="submit" disabled={busy || !token.trim()}>
+                    {busy ? "Checking…" : "Connect"}
+                  </button>
+                  {/* Back to signing in on GitHub's page, when that's possible here. */}
+                  {(status.configured || status.gh) && (
+                    <button type="button" className="settings__button settings__button--quiet"
+                            onClick={() => (setPasting(false), setToken(""), setError(null))} disabled={busy}>
+                      Back
+                    </button>
+                  )}
+                </div>
               </form>
             ) : (
               <button className="github__alt" onClick={() => setPasting(true)}>

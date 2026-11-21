@@ -28,7 +28,7 @@ export default function Sidebar({ repos, selectedId, onSelect, onAdd, onRemove }
               <span className="sidebar__avatar">{repo.name.slice(0, 1).toUpperCase()}</span>
               <span className="sidebar__text">
                 <span className="sidebar__name">{repo.name}</span>
-                <span className="sidebar__branch">{repo.exists ? repo.branch ?? "detached" : "folder missing"}</span>
+                <span className="sidebar__branch">{!repo.exists ? "folder missing" : !repo.git ? "no git" : repo.branch ?? "detached"}</span>
               </span>
               {repo.ai && <span className="sidebar__ai">{repo.ai === "claude" ? "Claude" : repo.ai}</span>}
             </button>

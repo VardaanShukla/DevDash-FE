@@ -891,3 +891,65 @@
   font-size: 12.5px;
   opacity: 0.7;
 }
+
+/* The KT tab's choice: the brief KT or the detailed one, as two cards. */
+.kt-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kt-choice__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.kt-choice__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.kt-choice__option span {
+  font-size: 13px;
+  color: var(--dd-muted);
+}
+
+.kt-choice__option.is-on {
+  border-color: var(--dd-accent);
+  box-shadow: 0 0 0 2px var(--dd-accent-soft), var(--dd-raise);
+}
+
+/* The detailed KT: a table per part, a row per file. */
+.kt--detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.kt-detail__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.kt-detail__confirm p {
+  flex: 1 1 320px;
+  margin: 0;
+}
+
+.kt-detail__worktree {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}

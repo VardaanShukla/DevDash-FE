@@ -1,9 +1,14 @@
-# devdash-ui
+# DevDash (dashboard page)
 
-The DevDash dashboard: shows what changed in your repos, in a way people who don't read
-code can follow. It is a React and TypeScript page built with Vite. Everything it shows
+DevDash shows what changed in your code in plain words, so people who don't read code can
+follow it: what a branch changed, what your AI coding tool did and why, the whole project on one
+page, and knowledge-transfer guides (a brief one, and a detailed one with a map, step-by-step
+flows and every file) to download as a PDF or an interactive page.
+
+This repo is the dashboard page: React and TypeScript, built with Vite. Everything it shows
 comes from the DevDash backend, [DevDash-BE](https://github.com/VardaanShukla/DevDash-BE),
-which also serves a built copy of this page.
+which also serves a built copy of this page. The backend's README describes every feature,
+how to install DevDash and every endpoint.
 
 ## Use it
 
@@ -47,20 +52,24 @@ that on http://localhost:4173.
 
 ## What's inside
 
-- `src/App.tsx` picks the screen from the side menu and loads its data.
+- `src/main.tsx` starts the page; `src/App.tsx` picks the screen from the side menu and loads
+  its data.
 - `src/api/` talks to the backend: `client.ts` for requests, `types.ts` for what each
   endpoint returns.
 - `src/components/<Name>/` holds one screen or part of a screen each, with its own CSS:
-  Home (and Widgets, the grid of widgets it's made of, with every kind of widget in
-  `catalog.tsx`), Summary (with the KT tab; `ktPdf.ts` writes its PDF), Ask, Overview
-  (this branch), FlowGraph (branch flow), ProjectMap, FileChanges, CommitList, Digest
-  (the AI's changes), Settings (with Ollama's model suggestions), Tour (the first-time
-  walkthrough), and the menus, sign-in and help around them.
-- `src/lib/aiJobs.ts` keeps AI runs going when you leave a screen, and paces the KT's
-  progress bar.
+  - Home, and Widgets: the grid of widgets it's made of, with every kind in `catalog.tsx`.
+  - Overview (this branch), FlowGraph (branch flow), ProjectMap, FileChanges and
+    FunctionChanges (Changes), CommitList and PullRequests (Commits), Digest (AI changes).
+  - Summary, with the KT tab: `ktPdf.ts` writes the Brief KT's PDF; the Detailed KT is
+    `DetailedKt.tsx`, built from one model (`ktModel.ts`) drawn by `KtDocument.tsx` with its
+    styles in `ktDoc.css`. `ktInteract.ts` wires its search, map and jumps, `ktDetailPdf.ts`
+    writes its PDF and `ktHtml.ts` the one-file interactive page.
+  - Ask, Settings, Tour (the first-time walkthrough), and the menus, sign-in, project list
+    and help around them.
+- `src/lib/aiJobs.ts` keeps AI runs going when you leave a screen, and runs "explain all"
+  one request at a time.
+- `src/shortcuts.ts` lists what keyboard shortcuts can do (the keys are set in Settings).
 - `src/styles/` has the colours and type shared by every screen, in dark and light themes.
-
-The backend's README lists every endpoint the page uses.
 
 ## License
 

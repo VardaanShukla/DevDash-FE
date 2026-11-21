@@ -319,12 +319,6 @@
   color: var(--dd-ink-soft);
 }
 
-.fn__ai-off {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--dd-muted);
-}
-
 /* The code, before and after. */
 .fn__code {
   display: grid;

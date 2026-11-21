@@ -85,10 +85,18 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
       <dl className="panel__facts">
         <dt>Folder</dt>
         <dd className="panel__path">{repo.path}</dd>
+        <dt>Git</dt>
+        <dd>{repo.git ? `Yes, on ${repo.branch ?? "a detached commit"}` : "No, this folder isn't a git repository"}</dd>
         <dt>AI tool</dt>
         <dd>{repo.ai ? `${NAMES[repo.ai]}, recording each request` : "None, your changes only"}</dd>
       </dl>
-      {tools.length > 1 && (
+      {!repo.git && (
+        <p className="panel__note">
+          Branches, changes, commits, pull requests and recording an AI tool need git, so they're off here. The summary,
+          KT, Ask and project map work. Run <code>git init</code> in the folder to turn the rest on.
+        </p>
+      )}
+      {repo.git && tools.length > 1 && (
         <fieldset className="panel__tools" disabled={busy}>
           <legend>{repo.ai ? "Record a different AI tool" : "Record an AI tool's changes"}</legend>
           {tools.map((tool) => (
@@ -106,7 +114,7 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
           ))}
         </fieldset>
       )}
-      {repo.ai ? (
+      {!repo.git && !repo.ai ? null : repo.ai ? (
         <Button variant="outline" onClick={() => choose(null)} disabled={busy}>
           {busy ? "Saving…" : "Stop recording AI changes"}
         </Button>
@@ -120,7 +128,7 @@ export default function ProjectPanel({ repo, onRepoChange, onRemove }: Props) {
       {repo.ai === "codex" && <p className="panel__note">In Codex, type /hooks once and trust DevDash's hooks.</p>}
       {repo.ai && <p className="panel__note">Stopping keeps everything already recorded.</p>}
       {error && <p className="panel__error">{error}</p>}
-      <Pulls repoId={repo.id} />
+      {repo.git && <Pulls repoId={repo.id} />}
       <button className="panel__remove" onClick={onRemove}>
         Remove project from DevDash
       </button>

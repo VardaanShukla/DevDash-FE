@@ -5,6 +5,7 @@ import type { AiStatus, AuthStatus, Branches, Comparison, FileExplanation, Flow,
 import AddProject from "./components/AddProject/AddProject";
 import Digest, { NOT_RECORDING } from "./components/Digest/Digest";
 import CommitList from "./components/CommitList/CommitList";
+import PullRequests from "./components/PullRequests/PullRequests";
 import FileChanges from "./components/FileChanges/FileChanges";
 import FlowGraph from "./components/FlowGraph/FlowGraph";
 import Help, { useSetup } from "./components/Help/Help";
@@ -165,6 +166,10 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
   const [sync, setSync] = useState<(Sync & { running: boolean }) | null>(null);
   const syncNow = useRef<() => void>(() => {});
   branchesRef.current = branches;
+  // A folder that isn't a git repository: no branches, commits or compare, only its files.
+  const noGit = repos?.find((item) => item.id === repoId)?.git === false;
+  // Said once a project is added with something turned off, such as one without git.
+  const [addedNote, setAddedNote] = useState<string | null>(null);
 
   // Everything shown belongs to one project, so switching clears it in the same render;
   // otherwise one request would go out with the old project's branch names.
@@ -255,6 +260,12 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
 
   useEffect(() => {
     if (repoId === null) return;
+    // Without git there are no branches: the files are read as they are in the folder.
+    if (noGit) {
+      setBranches(null);
+      setHead("HEAD");
+      return;
+    }
     let stale = false;
     api
       .branches(repoId)
@@ -274,7 +285,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
     return () => {
       stale = true;
     };
-  }, [repoId, revision]);
+  }, [repoId, revision, noGit]);
 
   // Merged and deleted branches are listed for a while, then dropped: reload when the
   // first of them is due to go.
@@ -290,6 +301,10 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
   // The branch flow: reloaded with everything else when git changes.
   useEffect(() => {
     if (repoId === null) return;
+    if (noGit) {
+      setFlow(null);
+      return;
+    }
     let stale = false;
     api
       .flow(repoId)
@@ -298,7 +313,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
     return () => {
       stale = true;
     };
-  }, [repoId, revision]);
+  }, [repoId, revision, noGit]);
 
   // The project map for the branch on screen, from its committed files.
   useEffect(() => {
@@ -345,9 +360,10 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
   // Only remote-tracking refs change; the watcher below notices and reloads.
   useEffect(() => {
     if (repoId === null) return;
+    setSync(null);
+    if (noGit) return; // nothing to fetch without git
     let stopped = false;
     let lastAttempt = 0;
-    setSync(null);
     const run = async (force = false) => {
       const now = Date.now();
       if (stopped || document.visibilityState !== "visible" || (!force && now - lastAttempt < 15_000)) return;
@@ -370,7 +386,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, [repoId]);
+  }, [repoId, noGit]);
 
   // Uncommitted work exists only on the checked-out branch.
   const canIncludeUncommitted = branches !== null && head === branches.current;
@@ -481,10 +497,11 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
     setRemoving(null);
   };
 
-  const added = (newRepo: Repo) => {
+  const added = (newRepo: Repo, note?: string) => {
     replaceRepo(newRepo);
     selectRepo(newRepo.id);
     setAdding(false);
+    setAddedNote(note ?? null);
   };
 
   const openFile = (path: string) => {
@@ -497,6 +514,19 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
     if (view !== "changes") setOpenedFrom(null);
   }, [view]);
   const details = branches?.details ?? [];
+
+  // Settings' own Back button: an AI's page goes up to AI; anywhere else leaves Settings for the
+  // screen it was opened from (however many of its parts were opened since), or Home, which is
+  // the first-run setup while there is no project yet.
+  const beforeSettings = useRef<View>("home");
+  useEffect(() => {
+    if (view !== "settings") beforeSettings.current = view;
+  }, [view]);
+  const hasProjects = Boolean(repos && repos.length > 0);
+  const leaveTo: View = hasProjects ? beforeSettings.current : "home";
+  const settingsBack = section.startsWith("ai/")
+    ? { label: "AI", go: () => setSection("ai") }
+    : { label: hasProjects ? VIEWS.find((item) => item.id === leaveTo)!.label : "setup", go: () => setView(leaveTo) };
 
   const content = () => {
     // Settings work with no project at all.
@@ -516,6 +546,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           ai={ai}
           onAiRefresh={refreshAi}
           onCloned={added}
+          back={settingsBack}
         />
       ) : (
         <Notice title="Loading">Reading your settings…</Notice>
@@ -604,6 +635,9 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           loadGuide={() => api.ktGuide(repoId, head)}
           writeGuide={(fresh) => watchSignIn(api.writeKtGuide(repoId, head, fresh))}
           imageUrl={(path) => api.ktImageUrl(repoId, head, path)}
+          loadDetail={(worktree) => api.ktDetail(repoId, head, worktree)}
+          writeDetail={(worktree, fresh) => watchSignIn(api.writeKtDetail(repoId, head, worktree, fresh))}
+          explainFile={(path, fresh, worktree) => watchSignIn(api.explainFile(repoId, path, head, fresh, worktree))}
           onSignedIn={refreshAi}
           onOpenMap={() => setView("map")}
         />
@@ -622,6 +656,25 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
         />
       ) : (
         <Notice title="Loading">Reading the project…</Notice>
+      );
+    }
+    if (noGit) {
+      if (view === "map") {
+        return !map ? (
+          <Notice title="Project map">Reading the project's folders…</Notice>
+        ) : map.areas.length === 0 ? (
+          <Notice title="Project map">No files found in this folder.</Notice>
+        ) : (
+          // No changes to open a file in without git: its note in the KT instead.
+          <ProjectMap map={map} files={[]} onOpenFile={() => setView("kt")} onSelect={pickMap} />
+        );
+      }
+      const screen = VIEWS.find((item) => item.id === view)?.label ?? "This screen";
+      return (
+        <Notice title={`${screen} needs git`}>
+          {repo?.name ?? "This project"} isn't a git repository, so it has no branches, commits or changes to show.
+          The summary, KT, Ask and project map work. Run <code>git init</code> in its folder to turn this on.
+        </Notice>
       );
     }
     if (branches && !branches.default_base && !base) return <BasePicker branches={branches} head={head} onPick={setBase} />;
@@ -697,7 +750,12 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           />
         );
       case "commits":
-        return <CommitList commits={comparison.commits} base={comparison.base} />;
+        return (
+          <>
+            <CommitList commits={comparison.commits} base={comparison.base} />
+            <PullRequests repoId={repoId} />
+          </>
+        );
     }
   };
 
@@ -734,7 +792,10 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           settings={section}
           onSettings={setSection}
           aiInUse={prefs?.ai.provider}
-          off={repos && !repos.some((item) => item.claude) ? { digest: NOT_RECORDING } : undefined}
+          off={{
+            ...(repos && !repos.some((item) => item.claude) ? { digest: NOT_RECORDING } : {}),
+            ...(noGit ? { changes: NEEDS_GIT, commits: NEEDS_GIT } : {}),
+          }}
           keys={viewKeys}
           badges={{
             changes: comparison?.files.length,
@@ -747,7 +808,7 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
 
       <div className="main">
         <header className={`topbar${repos && repos.length > 0 && view === "home" ? " topbar--bare" : ""}`}>
-          {/* Home has its own greeting, so the bar only carries the controls there. */}
+          {/* Home has its own header, so the bar only carries the controls there. */}
           {repos && repos.length > 0 && view === "home" ? null : repos && repos.length > 0 ? (
             <div className="topbar__title">
               <Breadcrumb crumbs={crumbs} back={back} />
@@ -766,13 +827,14 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
             <Logo size={34} wordmark />
           )}
           <div className="topbar__controls">
-            <Clock />
             {sync && <SyncStatus sync={sync} onSync={() => syncNow.current()} />}
             <label
               data-tour="uncommitted"
               className={`toggle${canIncludeUncommitted ? "" : " toggle--disabled"}`}
               title={
-                canIncludeUncommitted
+                noGit
+                  ? NEEDS_GIT
+                  : canIncludeUncommitted
                   ? `Also show edits you haven't committed yet${shortcuts.uncommitted ? ` (key ${shortcuts.uncommitted.toUpperCase()})` : ""}. Settings decides whether it starts on.`
                   : "Only for the branch that is checked out"
               }
@@ -794,7 +856,17 @@ function Dashboard({ auth, shown, onSignOut, onAuthChange }: { auth: AuthStatus;
           </div>
         </header>
 
-        <main className={`screen screen--${view}${loading ? " screen--loading" : ""}`}>{content()}</main>
+        <main className={`screen screen--${view}${loading ? " screen--loading" : ""}`}>
+          {addedNote && (
+            <div className="added-note" role="status">
+              <p>{addedNote}</p>
+              <button onClick={() => setAddedNote(null)} aria-label="Dismiss">
+                OK
+              </button>
+            </div>
+          )}
+          {content()}
+        </main>
       </div>
 
       {asking && <AskUncommitted onAnswer={answer} />}
@@ -847,6 +919,8 @@ function AskUncommitted({ onAnswer }: { onAnswer: (on: boolean) => void }) {
 }
 
 // Screens about one project; the breadcrumb names the project before them.
+// Why a screen is off for a project that isn't a git repository.
+const NEEDS_GIT = "Needs git. This project isn't a git repository; run git init in its folder to turn this on.";
 const PROJECT_VIEWS = new Set<View>(["summary", "kt", "ask", "overview", "flow", "map", "changes", "commits", "help"]);
 
 // Where you are: Home › project › screen › what's picked. Every step but the last goes back to
@@ -876,16 +950,6 @@ function Breadcrumb({ crumbs, back }: { crumbs: { label: string; go?: () => void
       </ol>
     </nav>
   );
-}
-
-// Like a car's clock in the status bar.
-function Clock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 15_000);
-    return () => clearInterval(timer);
-  }, []);
-  return <span className="clock">{now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>;
 }
 
 // Every local branch and where it stands, beside the flow graph.

@@ -1,5 +1,4 @@
 import type {
-  Agenda,
   AiStatus,
   AiProvider,
   HostedConnect,
@@ -17,6 +16,7 @@ import type {
   AskTurn,
   Branches,
   Comparison,
+  KtDetail,
   KtGuide,
   Digest,
   DigestChangeDetail,
@@ -31,7 +31,6 @@ import type {
   FunctionExplanation,
   KnowledgeTransfer,
   ProjectExplanation,
-  ProjectCard,
   ProjectMap,
   Repo,
   SetupStep,
@@ -166,8 +165,16 @@ export const api = {
   ktImageUrl: (repoId: number, head: string, path: string) => `/api/repos/${repoId}/kt/image?${new URLSearchParams({ head, path })}`,
   // Every file with the notes written so far: what Ask and Changes read.
   kt: (repoId: number, head: string) => get<KnowledgeTransfer>(`/api/repos/${repoId}/kt?${new URLSearchParams({ head })}`),
-  explainFile: (repoId: number, path: string, head: string) =>
-    request<FileExplanation>(`/api/repos/${repoId}/explain/file`, "POST", { path, head }),
+  // Every file with what it depends on and what uses it, for the detailed KT.
+  // worktree: the working folder rather than the branch; left out, the server picks.
+  ktDetail: (repoId: number, head: string, worktree?: boolean) =>
+    get<KtDetail>(`/api/repos/${repoId}/kt/detail?${new URLSearchParams({ head, ...(worktree === undefined ? {} : { worktree: String(worktree) }) })}`),
+  // Asks the AI for the detailed KT's words; fresh: write them again.
+  writeKtDetail: (repoId: number, head: string, worktree: boolean, fresh = false) =>
+    request<KtDetail>(`/api/repos/${repoId}/kt/detail`, "POST", { head, worktree, fresh }),
+  // fresh: write the note again, as when the detailed KT is written again.
+  explainFile: (repoId: number, path: string, head: string, fresh = false, worktree = false) =>
+    request<FileExplanation>(`/api/repos/${repoId}/explain/file`, "POST", { path, head, fresh, worktree }),
   github: () => get<GitHubStatus>("/api/github"),
   // Starts GitHub's device sign-in; the answer has the code to enter on GitHub.
   githubConnect: (method: "app" | "gh" = "app") => request<GitHubStatus>("/api/github/connect", "POST", { method }),
@@ -190,7 +197,6 @@ export const api = {
   // A question about the project, answered in plain words; history is the conversation so far.
   ask: (repoId: number, question: string, history: AskTurn[], head: string) =>
     request<AskAnswer>(`/api/repos/${repoId}/ask`, "POST", { question, history, head }),
-  home: () => get<ProjectCard[]>("/api/home"),
   digest: (day?: string, repo?: number) => {
     const query = new URLSearchParams();
     if (day) query.set("day", day);
@@ -206,9 +212,6 @@ export const api = {
     request<{ change: string; undone_at: string | null }>("/api/digest/undo", "POST", { change }),
   putBackChange: (change: string) =>
     request<{ change: string; undone_at: string | null }>("/api/digest/put-back", "POST", { change }),
-  calendar: (days: number, refresh = false) => get<Agenda>(`/api/calendar?days=${days}${refresh ? "&refresh=true" : ""}`),
-  connectCalendar: (url: string) => request<Agenda>("/api/calendar", "PUT", { url }),
-  disconnectCalendar: () => request<void>("/api/calendar", "DELETE", {}),
 };
 
 export type CompareOptions = { base?: string; head?: string; uncommitted?: boolean };
